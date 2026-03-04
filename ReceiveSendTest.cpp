@@ -3,8 +3,10 @@
 #include <cstdio>
 #include <cstring>
 #include <vector>
+#include <algorithm>
 
-#include "../Include/PO8e.h"
+
+#include "PO8e.h"
 #include "compat.h"
 
 // =====================
