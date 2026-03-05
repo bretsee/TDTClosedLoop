@@ -138,6 +138,9 @@ static std::vector<double> build_mpc_input(const std::vector<int16_t>& sampleByC
 
 int main(int argc, char** argv)
 {
+    setvbuf(stdout, NULL, _IONBF, 0);
+    std::printf("MpcPo8eUdpClosedLoop build: %s %s\n", __DATE__, __TIME__);
+
     // --test-udp mode:
     //   MpcPo8eUdpClosedLoop.exe --test-udp [tdt_host_or_ip] [value] [count] [period_ms]
     // Example:
@@ -320,7 +323,7 @@ int main(int argc, char** argv)
         int64_t prevOffset = -1;
         int64_t expectedStep = 0;
         uint64_t sentPackets = 0;
-        const uint64_t printEveryPackets = 100;
+        const uint64_t printEveryPackets = 500;
         HiResClock clock;
         bool stopped = false;
         std::vector<int16_t> temp((size_t)std::max(nCh, 1));
@@ -328,11 +331,19 @@ int main(int argc, char** argv)
 
         while (!stopped)
         {
-            if (!card->waitForDataReady())
+            // Use finite timeout so exits are diagnosable instead of appearing to hang/quit silently.
+            if (!card->waitForDataReady(1000))
+            {
+                std::printf("\nExit reason: waitForDataReady() returned false (timeout or stream issue).\n");
                 break;
+            }
 
             size_t numSamples = card->samplesReady(&stopped);
-            if (stopped) break;
+            if (stopped)
+            {
+                std::printf("\nExit reason: PO8e stream reported stopped.\n");
+                break;
+            }
             if (numSamples == 0) continue;
 
             for (size_t i = 0; i < numSamples; ++i)
@@ -343,6 +354,7 @@ int main(int argc, char** argv)
                 {
                     std::printf("readBlock failed.\n");
                     stopped = true;
+                    std::printf("\nExit reason: readBlock() failed.\n");
                     break;
                 }
 
@@ -396,14 +408,14 @@ int main(int argc, char** argv)
                         const double total_ms = (double)(t_udp_send_us - t_in_us) / 1000.0;
                         std::printf("\nLatency: mpc=%.3f ms, in->udp=%.3f ms (packet=%llu)\n",
                                     mpc_ms, total_ms, (unsigned long long)sentPackets);
+                        std::printf("pos=%lld ready=%zu\n", (long long)pos, numSamples);
                     }
                 }
 
                 card->flushBufferedData(1);
             }
 
-            std::printf("pos=%lld ready=%zu\r", (long long)pos, numSamples);
-            std::fflush(stdout);
+            // Progress is now emitted with latency lines to reduce console spam.
         }
 
         std::printf("\nStopping.\n");

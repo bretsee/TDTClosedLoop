@@ -21,5 +21,8 @@ set "PATH=%MATLABROOT%\runtime\win64;%MATLABROOT%\bin\win64;%MATLABROOT%\extern\
 rem Usage:
 rem   run_closed_loop.bat [tdt_host_or_ip] [matlab_workdir] [mpc_input_count]
 MpcPo8eUdpClosedLoop.exe %*
+set EXITCODE=%ERRORLEVEL%
+echo MpcPo8eUdpClosedLoop exit code: %EXITCODE%
+exit /b %EXITCODE%
 
 endlocal
