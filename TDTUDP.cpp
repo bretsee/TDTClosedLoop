@@ -214,6 +214,36 @@ int sendUDPPacket(SOCKET sock, float floatValue)
     return bytesSent;
 }
 
+int sendUDPPacketWords(SOCKET sock, const float* values, uint8_t count)
+{
+    if (sock == INVALID_SOCKET || values == NULL || count == 0)
+        return SOCKET_ERROR;
+
+    if (count > MAX_SAMPLES)
+        count = MAX_SAMPLES;
+
+    char packet[BUFFER_SIZE] = { 0 };
+    packet[0] = (char)HEADER_0;
+    packet[1] = (char)HEADER_1;
+    packet[2] = (char)DATA_PACKET;
+    packet[3] = (char)count;
+
+    for (uint8_t i = 0; i < count; ++i)
+    {
+        uint32_t intVal = 0;
+        memcpy(&intVal, &values[i], sizeof(float));
+        uint32_t networkInt = htonl(intVal);
+        memcpy(packet + HEADER_BYTES + (i * 4), &networkInt, 4);
+    }
+
+    const int nBytes = HEADER_BYTES + (int)count * 4;
+    const int sent = send(sock, packet, nBytes, 0);
+    if (sent == SOCKET_ERROR)
+        fprintf(stdout, "send float data packet failed: %d\n", WSAGetLastError());
+
+    return sent;
+}
+
 //contact the RZ to make sure it is talking UDP, and that it has a matching protocol version
 bool checkRZ(SOCKET sock)
 {

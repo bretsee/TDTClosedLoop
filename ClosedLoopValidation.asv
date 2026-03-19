@@ -1,0 +1,6 @@
+SDKPATH = 'C:\Users\brets\Desktop\TDTMatlabSDK\TDTSDK'; % or whatever path you extracted the SDK zip into
+addpath(genpath(SDKPATH));
+%%
+data = TDTbin2mat('C:\Users\brets\Downloads\ClosedLoopTest_LD-260310-203818\ClosedLoopTest_LD-260310-203818')
+validata = readtable('flow_validate.csv')
+plot(data.scalars.UDP1.data)

@@ -9,6 +9,8 @@
 #include <iostream>
 #include <string>
 #include <inttypes.h>
+#include <fstream>
+#include <memory>
 
 #include "PO8e.h"
 #include "compat.h"
@@ -124,17 +126,117 @@ static std::vector<int32_t> quantize_amplitudes(const std::vector<double>& u,
     return out;
 }
 
-// Build MPC input vector from one PO8e sample-time across channels.
-// If mpcInputCount > channel count, remaining entries are zero-padded.
-static std::vector<double> build_mpc_input(const std::vector<int16_t>& sampleByChannel,
-                                           size_t mpcInputCount)
+static std::vector<float> clamp_amplitudes_f32(const std::vector<double>& u,
+                                               float minVal,
+                                               float maxVal)
 {
-    std::vector<double> x(mpcInputCount, 0.0);
-    const size_t n = std::min(mpcInputCount, sampleByChannel.size());
+    std::vector<float> out(u.size());
+    for (size_t i = 0; i < u.size(); ++i)
+    {
+        float v = (float)u[i];
+        if (v < minVal) v = minVal;
+        if (v > maxVal) v = maxVal;
+        out[i] = v;
+    }
+    return out;
+}
+
+// Build MATLAB input vector from preprocessed control features.
+// The first inputCount entries come from the feature vector. The vector is padded
+// out to outputCount so MATLAB can emit one value per intended UDP output channel.
+static std::vector<double> build_mpc_input(const std::vector<double>& features,
+                                           size_t inputCount,
+                                           size_t outputCount)
+{
+    const size_t totalCount = std::max(inputCount, outputCount);
+    std::vector<double> x(totalCount, 0.0);
+    const size_t n = std::min(inputCount, features.size());
     for (size_t i = 0; i < n; ++i)
-        x[i] = static_cast<double>(sampleByChannel[i]);
+        x[i] = features[i];
     return x;
 }
+
+struct SampleRingBuffer
+{
+    size_t capacity = 0;
+    size_t writeIndex = 0;
+    size_t size = 0;
+    std::vector<int64_t> timestampsUs;
+    std::vector<std::vector<float> > channelValues;
+
+    void initialize(size_t channelCount, size_t bufferCapacity)
+    {
+        capacity = std::max<size_t>(bufferCapacity, 1);
+        writeIndex = 0;
+        size = 0;
+        timestampsUs.assign(capacity, 0);
+        channelValues.assign(channelCount, std::vector<float>(capacity, 0.0f));
+    }
+
+    void pushFrame(const std::vector<int16_t>& frame, int64_t timestampUs)
+    {
+        if (capacity == 0 || channelValues.empty())
+            return;
+
+        timestampsUs[writeIndex] = timestampUs;
+        const size_t n = std::min(frame.size(), channelValues.size());
+        for (size_t ch = 0; ch < n; ++ch)
+            channelValues[ch][writeIndex] = static_cast<float>(frame[ch]);
+
+        writeIndex = (writeIndex + 1) % capacity;
+        if (size < capacity)
+            ++size;
+    }
+
+    // Placeholder preprocessing: mean absolute value over the most recent window.
+    std::vector<double> computeMeanAbsWindow(size_t inputCount,
+                                             int64_t windowEndUs,
+                                             int64_t windowUs,
+                                             size_t* minSamplesSeen = NULL) const
+    {
+        std::vector<double> out(inputCount, 0.0);
+        if (size == 0 || channelValues.empty())
+        {
+            if (minSamplesSeen != NULL)
+                *minSamplesSeen = 0;
+            return out;
+        }
+
+        const int64_t windowStartUs = windowEndUs - windowUs;
+        std::vector<size_t> counts(inputCount, 0);
+
+        for (size_t k = 0; k < size; ++k)
+        {
+            const size_t idx = (writeIndex + capacity - 1 - k) % capacity;
+            const int64_t ts = timestampsUs[idx];
+            if (ts < windowStartUs)
+                break;
+
+            const size_t n = std::min(inputCount, channelValues.size());
+            for (size_t ch = 0; ch < n; ++ch)
+            {
+                out[ch] += std::fabs((double)channelValues[ch][idx]);
+                ++counts[ch];
+            }
+        }
+
+        for (size_t ch = 0; ch < inputCount; ++ch)
+        {
+            if (counts[ch] > 0)
+                out[ch] /= (double)counts[ch];
+        }
+
+        if (minSamplesSeen != NULL)
+        {
+            size_t minCount = counts.empty() ? 0 : counts[0];
+            for (size_t ch = 1; ch < counts.size(); ++ch)
+                minCount = std::min(minCount, counts[ch]);
+            *minSamplesSeen = minCount;
+        }
+
+        return out;
+    }
+};
 
 int main(int argc, char** argv)
 {
@@ -212,38 +314,188 @@ int main(int argc, char** argv)
         return 0;
     }
 
+    if (argc >= 2 && std::string(argv[1]) == "--test-udp-once")
+    {
+        const char* testHost = (argc >= 3) ? argv[2] : "10.1.0.100";
+        const float testValue = (argc >= 4) ? (float)std::atof(argv[3]) : 5.0f;
+
+        if (!udp_init())
+        {
+            std::printf("UDP init failed.\n");
+            return 1;
+        }
+
+        const uint32_t rzIp = resolve_ipv4_addr(testHost);
+        if (rzIp == INADDR_NONE)
+        {
+            std::printf("Failed to resolve IPv4 target '%s'\n", testHost);
+            udp_cleanup();
+            return 1;
+        }
+
+        SOCKET testSock = openSocket(rzIp);
+        if (testSock == INVALID_SOCKET)
+        {
+            std::printf("Failed to open UDP socket to '%s'.\n", testHost);
+            udp_cleanup();
+            return 1;
+        }
+
+        if (!setRemoteIp(testSock))
+            std::printf("Warning: SET_REMOTE_IP failed.\n");
+
+        std::printf("UDP one-shot mode: host=%s value=%g\n", testHost, (double)testValue);
+        std::printf("Payload format: single float, network byte order\n");
+        const int sent = sendUDPPacket(testSock, testValue);
+        std::printf("sendUDPPacket returned: %d\n", sent);
+
+        disconnectRZ(testSock);
+        udp_cleanup();
+        return (sent == SOCKET_ERROR) ? 1 : 0;
+    }
+
+    if (argc >= 2 && std::string(argv[1]) == "--test-udp-words")
+    {
+        const char* testHost = (argc >= 3) ? argv[2] : "10.1.0.100";
+        int testCount = (argc >= 4) ? std::atoi(argv[3]) : 8;
+        const float baseValue = (argc >= 5) ? (float)std::atof(argv[4]) : 5.0f;
+        const float stepValue = (argc >= 6) ? (float)std::atof(argv[5]) : 5.0f;
+        const int periodMs = (argc >= 7) ? std::max(1, std::atoi(argv[6])) : 100;
+
+        if (testCount < 1) testCount = 1;
+        if (testCount > MAX_SAMPLES) testCount = MAX_SAMPLES;
+
+        if (!udp_init())
+        {
+            std::printf("UDP init failed.\n");
+            return 1;
+        }
+
+        const uint32_t rzIp = resolve_ipv4_addr(testHost);
+        if (rzIp == INADDR_NONE)
+        {
+            std::printf("Failed to resolve IPv4 target '%s'\n", testHost);
+            udp_cleanup();
+            return 1;
+        }
+
+        SOCKET testSock = openSocket(rzIp);
+        if (testSock == INVALID_SOCKET)
+        {
+            std::printf("Failed to open UDP socket to '%s'.\n", testHost);
+            udp_cleanup();
+            return 1;
+        }
+
+        if (!setRemoteIp(testSock))
+            std::printf("Warning: SET_REMOTE_IP failed.\n");
+
+        std::vector<float> payload((size_t)testCount, 0.0f);
+        for (int i = 0; i < testCount; ++i)
+            payload[(size_t)i] = baseValue + stepValue * (float)i;
+
+        std::printf("UDP multi-word test: host=%s count=%d periodMs=%d\n", testHost, testCount, periodMs);
+        std::printf("Payload[0..%d]:", testCount - 1);
+        for (int i = 0; i < testCount; ++i)
+            std::printf(" %g", (double)payload[(size_t)i]);
+        std::printf("\n");
+        std::printf("Payload format: %d float words, network byte order\n", testCount);
+        std::printf("Press Ctrl+C to stop.\n");
+
+        while (true)
+        {
+            if (sendUDPPacketWords(testSock, payload.data(), (uint8_t)testCount) == SOCKET_ERROR)
+                std::printf("Warning: UDP send failed.\n");
+            compatUSleep((uint32_t)periodMs * 1000);
+        }
+
+        disconnectRZ(testSock);
+        udp_cleanup();
+        return 0;
+    }
+
     // =========================================================================
     // SECTION 3: Runtime arguments
     // -------------------------------------------------------------------------
     // argv[1]: RZ target host/IP
     // argv[2]: MATLAB working directory containing mpc_step.m
     // argv[3]: MPC input vector size
+    // Optional flags:
+    //   --constant-output V
+    //   --udp-output-count N
+    //   --ring-buffer-capacity N
+    //   --validate-log path.csv
     // =========================================================================
     const char* tdt_host = (argc >= 2) ? argv[1] : "10.1.0.100"; //"TDT_UDP_28_2869";
     const char* matlab_workdir = (argc >= 3) ? argv[2] : "C:/Users/brets/Documents/MATLAB";
     const size_t mpcInputCount = (argc >= 4) ? static_cast<size_t>(std::max(1, std::atoi(argv[3]))) : 16;
+    size_t requestedUdpOutputCount = 0;
+    size_t ringBufferCapacity = 65536;
+    bool validateLogEnabled = false;
+    std::string validateLogPath;
+    bool constantOutputEnabled = false;
+    float constantOutputValue = 0.0f;
+    for (int i = 1; i < argc; ++i)
+    {
+        const std::string arg = argv[i];
+        if (arg == "--constant-output" && (i + 1) < argc)
+        {
+            constantOutputEnabled = true;
+            constantOutputValue = (float)std::atof(argv[i + 1]);
+            ++i;
+        }
+        else if (arg == "--validate-log" && (i + 1) < argc)
+        {
+            validateLogEnabled = true;
+            validateLogPath = argv[i + 1];
+            ++i;
+        }
+        else if (arg == "--udp-output-count" && (i + 1) < argc)
+        {
+            requestedUdpOutputCount = static_cast<size_t>(std::max(1, std::atoi(argv[i + 1])));
+            ++i;
+        }
+        else if (arg == "--ring-buffer-capacity" && (i + 1) < argc)
+        {
+            ringBufferCapacity = static_cast<size_t>(std::max(1, std::atoi(argv[i + 1])));
+            ++i;
+        }
+    }
 
     matlab::engine::MATLABEngine* engRaw = nullptr;
     PO8e* card = nullptr;
     SOCKET rzSock = INVALID_SOCKET;
     bool udpReady = false;
+    std::ofstream validateLog;
 
     try
     {
         // =====================================================================
         // SECTION 4: Start MATLAB Engine and set working folder for mpc_step.m
+        // ---------------------------------------------------------------------
+        // In constant-output mode we skip MATLAB entirely so we can isolate
+        // native-library failures from the control/transport path.
         // =====================================================================
-        auto eng = matlab::engine::startMATLAB();
-        engRaw = eng.get();
-        eng->eval(u"warning('off','all')");
+        std::unique_ptr<matlab::engine::MATLABEngine> eng;
+        if (!constantOutputEnabled)
         {
-            std::u16string cdCmd = u"cd('";
-            for (const char* p = matlab_workdir; *p; ++p)
-                cdCmd.push_back(static_cast<char16_t>(*p));
-            cdCmd += u"')";
-            eng->eval(cdCmd);
+            eng = matlab::engine::startMATLAB();
+            engRaw = eng.get();
+            eng->eval(u"warning('off','all')");
+            {
+                std::u16string cdCmd = u"cd('";
+                for (const char* p = matlab_workdir; *p; ++p)
+                    cdCmd.push_back(static_cast<char16_t>(*p));
+                cdCmd += u"')";
+                eng->eval(cdCmd);
+            }
+            std::cout << "MATLAB started. mpc_step path set to: " << matlab_workdir << "\n";
         }
-        std::cout << "MATLAB started. mpc_step path set to: " << matlab_workdir << "\n";
+        else
+        {
+            std::printf("Constant-output mode enabled: skipping MATLAB, value=%g\n",
+                        (double)constantOutputValue);
+        }
 
         // =====================================================================
         // SECTION 5: Open PO8e stream
@@ -274,6 +526,10 @@ int main(int argc, char** argv)
 
         const int nCh = card->numChannels();
         std::printf("Streaming. numChannels=%d\n", nCh);
+        const size_t udpOutputCount = (requestedUdpOutputCount > 0)
+            ? requestedUdpOutputCount
+            : (size_t)std::max(nCh, 1);
+        std::printf("Output channels per UDP packet=%zu\n", udpOutputCount);
 
         // =====================================================================
         // SECTION 6: Open UDP path to RZ and register local sender IP
@@ -309,42 +565,63 @@ int main(int argc, char** argv)
         else
             std::printf("Sent SET_REMOTE_IP command.\n");
 
+        if (validateLogEnabled)
+        {
+            validateLog.open(validateLogPath.c_str(), std::ios::out | std::ios::trunc);
+            if (!validateLog.is_open())
+            {
+                std::printf("Failed to open validate log file: %s\n", validateLogPath.c_str());
+                return 1;
+            }
+            validateLog << "packet,offset,input0,u0,amp0,t_in_us,t_mpc_done_us,t_udp_send_us,mpc_ms,in_to_udp_ms\n";
+            std::printf("Validation logging enabled: %s\n", validateLogPath.c_str());
+        }
+
         // =====================================================================
-        // SECTION 7: Closed-loop processing loop
+        // SECTION 7: Continuous acquisition + 100 Hz control loop
         // ---------------------------------------------------------------------
-        // For each available PO8e sample:
-        // 1) read one timepoint across channels
-        // 2) build MPC input vector
-        // 3) call MATLAB mpc_step()
-        // 4) quantize outputs to int32
-        // 5) send packed int32 words via TDT UDP format
+        // PO8e acquisition runs continuously and appends each sample frame into
+        // a per-channel ring buffer. Every 10 ms, the controller:
+        // 1) preprocesses the most recent 10 ms window into one scalar per input
+        //    channel (mean absolute value placeholder)
+        // 2) calls MATLAB mpc_step() once
+        // 3) sends one UDP packet containing the output vector
         // =====================================================================
+        static const int64_t CONTROL_INTERVAL_US = 10000;
+        static const int64_t PREPROCESS_WINDOW_US = 10000;
+        static const int POLL_SLEEP_US = 1000;
         int64_t pos = 0;
         int64_t prevOffset = -1;
         int64_t expectedStep = 0;
         uint64_t sentPackets = 0;
+        uint64_t controlTicks = 0;
+        uint64_t undersampledWindows = 0;
+        size_t minWindowSamplesSeen = (size_t)-1;
+        size_t nominalWindowSamples = 0;
         const uint64_t printEveryPackets = 500;
         HiResClock clock;
         bool stopped = false;
         std::vector<int16_t> temp((size_t)std::max(nCh, 1));
-        std::printf("Entering loop (MPC input size=%zu).\n", mpcInputCount);
+        SampleRingBuffer ring;
+        ring.initialize((size_t)std::max(nCh, 1), ringBufferCapacity);
+        int64_t nextControlUs = clock.now_us() + CONTROL_INTERVAL_US;
+        std::printf("Entering loop (MPC input size=%zu, UDP output count=%zu, control=100 Hz, ring capacity=%zu).\n",
+                    mpcInputCount, udpOutputCount, ringBufferCapacity);
 
         while (!stopped)
         {
-            // Use finite timeout so exits are diagnosable instead of appearing to hang/quit silently.
-            if (!card->waitForDataReady(1000))
-            {
-                std::printf("\nExit reason: waitForDataReady() returned false (timeout or stream issue).\n");
-                break;
-            }
-
+            // Poll buffered sample count directly. In practice this is more stable
+            // than repeatedly calling the vendor semaphore wait with very short
+            // timeouts inside the 100 Hz scheduler.
             size_t numSamples = card->samplesReady(&stopped);
             if (stopped)
             {
                 std::printf("\nExit reason: PO8e stream reported stopped.\n");
                 break;
             }
-            if (numSamples == 0) continue;
+
+            if (numSamples == 0)
+                compatUSleep(POLL_SLEEP_US);
 
             for (size_t i = 0; i < numSamples; ++i)
             {
@@ -385,39 +662,88 @@ int main(int argc, char** argv)
                     pos = offset;
                 }
 
-                // Convert current sample-frame into MPC control outputs.
-                const int64_t t_in_us = clock.now_us();       // right after readBlock
-                const std::vector<double> x = build_mpc_input(temp, mpcInputCount);
-                const std::vector<double> u = call_mpc_step(*engRaw, x);
-                const int64_t t_mpc_done_us = clock.now_us(); // right after mpc_step
-                const std::vector<int32_t> amps = quantize_amplitudes(u, 1.0, 0, 100000);
+                const int64_t sampleTimeUs = clock.now_us();
+                ring.pushFrame(temp, sampleTimeUs);
 
-                // TDT protocol limit from TDTUDP.h.
+                card->flushBufferedData(1);
+            }
+
+            // The controller runs at a fixed 100 Hz cadence independent of the
+            // raw sample acquisition loop.
+            int64_t nowUs = clock.now_us();
+            while (nowUs >= nextControlUs)
+            {
+                const int64_t t_in_us = clock.now_us();
+                size_t windowSamplesSeen = 0;
+                const std::vector<double> features =
+                    ring.computeMeanAbsWindow(mpcInputCount, t_in_us, PREPROCESS_WINDOW_US, &windowSamplesSeen);
+                const std::vector<double> x = build_mpc_input(features, mpcInputCount, udpOutputCount);
+                std::vector<double> u;
+                if (constantOutputEnabled)
+                    u.assign(udpOutputCount, (double)constantOutputValue);
+                else
+                    u = call_mpc_step(*engRaw, x);
+                const int64_t t_mpc_done_us = clock.now_us();
+                const std::vector<float> amps = clamp_amplitudes_f32(u, 0.0f, 100000.0f);
+                ++controlTicks;
+                minWindowSamplesSeen = std::min(minWindowSamplesSeen, windowSamplesSeen);
+                if (windowSamplesSeen > nominalWindowSamples)
+                    nominalWindowSamples = windowSamplesSeen;
+                else if (nominalWindowSamples > 0 && windowSamplesSeen < nominalWindowSamples)
+                    ++undersampledWindows;
+
                 const uint8_t nPackets = (uint8_t)std::min<size_t>(amps.size(), (size_t)MAX_SAMPLES);
                 if (nPackets > 0)
                 {
-                    // Use host-order payload to mirror known-working UDPExample behavior.
-                    if (sendPacketI32Words(rzSock, amps.data(), nPackets, false) == SOCKET_ERROR)
+                    if (sendUDPPacketWords(rzSock, amps.data(), nPackets) == SOCKET_ERROR)
                         std::printf("Warning: UDP send failed.\n");
-                    const int64_t t_udp_send_us = clock.now_us(); // right after UDP send returns
+                    const int64_t t_udp_send_us = clock.now_us();
 
                     ++sentPackets;
+                    if (validateLogEnabled && validateLog.is_open())
+                    {
+                        const double mpc_ms = (double)(t_mpc_done_us - t_in_us) / 1000.0;
+                        const double total_ms = (double)(t_udp_send_us - t_in_us) / 1000.0;
+                        const double x0 = x.empty() ? 0.0 : x[0];
+                        const double u0 = u.empty() ? 0.0 : u[0];
+                        const double amp0 = amps.empty() ? 0.0 : amps[0];
+                        validateLog
+                            << sentPackets << ','
+                            << pos << ','
+                            << x0 << ','
+                            << u0 << ','
+                            << amp0 << ','
+                            << t_in_us << ','
+                            << t_mpc_done_us << ','
+                            << t_udp_send_us << ','
+                            << mpc_ms << ','
+                            << total_ms << '\n';
+                    }
                     if ((sentPackets % printEveryPackets) == 0)
                     {
                         const double mpc_ms = (double)(t_mpc_done_us - t_in_us) / 1000.0;
                         const double total_ms = (double)(t_udp_send_us - t_in_us) / 1000.0;
                         std::printf("\nLatency: mpc=%.3f ms, in->udp=%.3f ms (packet=%llu)\n",
                                     mpc_ms, total_ms, (unsigned long long)sentPackets);
-                        std::printf("pos=%lld ready=%zu\n", (long long)pos, numSamples);
+                        std::printf("pos=%lld buffered=%zu\n", (long long)pos, ring.size);
                     }
                 }
 
-                card->flushBufferedData(1);
+                nextControlUs += CONTROL_INTERVAL_US;
+                nowUs = clock.now_us();
             }
-
-            // Progress is now emitted with latency lines to reduce console spam.
         }
 
+        if (minWindowSamplesSeen == (size_t)-1)
+            minWindowSamplesSeen = 0;
+        std::printf("\nSummary: packets=%llu controlTicks=%llu finalBuffered=%zu/%zu nominalWindowSamples=%zu minWindowSamples=%zu undersampledWindows=%llu\n",
+                    (unsigned long long)sentPackets,
+                    (unsigned long long)controlTicks,
+                    ring.size,
+                    ring.capacity,
+                    nominalWindowSamples,
+                    minWindowSamplesSeen,
+                    (unsigned long long)undersampledWindows);
         std::printf("\nStopping.\n");
     }
     catch (const std::exception& ex)

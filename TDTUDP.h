@@ -47,6 +47,7 @@
 
 SOCKET openSocket(uint32_t ipAddr);
 int sendUDPPacket(SOCKET sock, float floatValue);
+int sendUDPPacketWords(SOCKET sock, const float* values, uint8_t count);
 bool checkRZ(SOCKET sock);
 bool setRemoteIp(SOCKET sock);
 void disconnectRZ(SOCKET sock);

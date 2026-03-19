@@ -19,7 +19,7 @@ rem Include the common MATLAB runtime locations used by Engine/DataArray.
 set "PATH=%MATLABROOT%\runtime\win64;%MATLABROOT%\bin\win64;%MATLABROOT%\extern\bin\win64;%MATLABROOT%\sys\os\win64;%PATH%"
 
 rem Usage:
-rem   run_closed_loop.bat [tdt_host_or_ip] [matlab_workdir] [mpc_input_count]
+rem   run_closed_loop.bat [tdt_host_or_ip] [matlab_workdir] [mpc_input_count] [--udp-output-count N] [--validate-log path.csv]
 MpcPo8eUdpClosedLoop.exe %*
 set EXITCODE=%ERRORLEVEL%
 echo MpcPo8eUdpClosedLoop exit code: %EXITCODE%
