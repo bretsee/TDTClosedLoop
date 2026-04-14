@@ -80,14 +80,143 @@ static uint32_t resolve_ipv4_addr(const char* host)
     return out;
 }
 
+static SOCKET open_localhost_controller_socket(const char* host,
+                                               uint16_t remotePort,
+                                               uint16_t localPort,
+                                               int timeoutMs)
+{
+    addrinfo hints {};
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_DGRAM;
+    hints.ai_protocol = IPPROTO_UDP;
+
+    char remotePortText[16] = { 0 };
+    std::snprintf(remotePortText, sizeof(remotePortText), "%u", (unsigned)remotePort);
+
+    addrinfo* res = nullptr;
+    if (getaddrinfo(host, remotePortText, &hints, &res) != 0 || !res)
+        return INVALID_SOCKET;
+
+    SOCKET sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (sock == INVALID_SOCKET)
+    {
+        freeaddrinfo(res);
+        return INVALID_SOCKET;
+    }
+
+    sockaddr_in localAddr {};
+    localAddr.sin_family = AF_INET;
+    localAddr.sin_port = htons(localPort);
+    localAddr.sin_addr.S_un.S_addr = htonl(INADDR_LOOPBACK);
+
+    if (bind(sock, reinterpret_cast<const sockaddr*>(&localAddr), sizeof(localAddr)) != 0)
+    {
+        closesocket(sock);
+        freeaddrinfo(res);
+        return INVALID_SOCKET;
+    }
+
+    if (connect(sock, res->ai_addr, (int)res->ai_addrlen) != 0)
+    {
+        closesocket(sock);
+        freeaddrinfo(res);
+        return INVALID_SOCKET;
+    }
+
+    const DWORD timeout = (DWORD)std::max(timeoutMs, 1);
+    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const char*>(&timeout), sizeof(timeout));
+    setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<const char*>(&timeout), sizeof(timeout));
+    freeaddrinfo(res);
+    return sock;
+}
+
+static bool request_localhost_controller(SOCKET sock,
+                                         uint32_t sequence,
+                                         const std::vector<double>& features,
+                                         std::vector<double>* response,
+                                         std::string* errorMessage)
+{
+    if (response == NULL)
+        return false;
+    response->clear();
+
+    const uint32_t featureCount = (uint32_t)features.size();
+    const size_t packetBytes = 8 + (size_t)featureCount * 4;
+    std::vector<char> packet(packetBytes, 0);
+
+    const uint32_t seqNet = htonl(sequence);
+    const uint32_t countNet = htonl(featureCount);
+    std::memcpy(packet.data(), &seqNet, sizeof(seqNet));
+    std::memcpy(packet.data() + 4, &countNet, sizeof(countNet));
+    for (uint32_t i = 0; i < featureCount; ++i)
+    {
+        float v = (float)features[i];
+        uint32_t bits = 0;
+        std::memcpy(&bits, &v, sizeof(v));
+        bits = htonl(bits);
+        std::memcpy(packet.data() + 8 + (size_t)i * 4, &bits, 4);
+    }
+
+    const int sent = send(sock, packet.data(), (int)packet.size(), 0);
+    if (sent != (int)packet.size())
+    {
+        if (errorMessage != NULL)
+            *errorMessage = "localhost controller send failed";
+        return false;
+    }
+
+    char recvBuf[4096] = { 0 };
+    const int got = recv(sock, recvBuf, sizeof(recvBuf), 0);
+    if (got < 8)
+    {
+        if (errorMessage != NULL)
+            *errorMessage = (got == SOCKET_ERROR)
+                ? "localhost controller recv timeout/error"
+                : "localhost controller reply too short";
+        return false;
+    }
+
+    uint32_t replySeqNet = 0;
+    uint32_t replyCountNet = 0;
+    std::memcpy(&replySeqNet, recvBuf, 4);
+    std::memcpy(&replyCountNet, recvBuf + 4, 4);
+    const uint32_t replySeq = ntohl(replySeqNet);
+    const uint32_t replyCount = ntohl(replyCountNet);
+    if (replySeq != sequence)
+    {
+        if (errorMessage != NULL)
+            *errorMessage = "localhost controller reply sequence mismatch";
+        return false;
+    }
+    if (got < (int)(8 + (size_t)replyCount * 4))
+    {
+        if (errorMessage != NULL)
+            *errorMessage = "localhost controller reply payload truncated";
+        return false;
+    }
+
+    response->assign(replyCount, 0.0);
+    for (uint32_t i = 0; i < replyCount; ++i)
+    {
+        uint32_t bitsNet = 0;
+        std::memcpy(&bitsNet, recvBuf + 8 + (size_t)i * 4, 4);
+        uint32_t bits = ntohl(bitsNet);
+        float v = 0.0f;
+        std::memcpy(&v, &bits, sizeof(v));
+        (*response)[i] = (double)v;
+    }
+    return true;
+}
+
 // ============================================================================
 // SECTION 2: MATLAB MPC bridge helpers
 // ----------------------------------------------------------------------------
-// call_mpc_step() converts C++ vector -> MATLAB array, calls mpc_step(), then
-// converts MATLAB output back into a C++ vector.
+// call_matlab_controller() converts C++ vector -> MATLAB array, calls the named
+// MATLAB controller function, then converts MATLAB output back into a C++ vector.
 // ============================================================================
-static std::vector<double> call_mpc_step(matlab::engine::MATLABEngine& eng,
-                                         const std::vector<double>& x)
+static std::vector<double> call_matlab_controller(matlab::engine::MATLABEngine& eng,
+                                                  const std::u16string& functionName,
+                                                  const std::vector<double>& x)
 {
     using matlab::data::Array;
     using matlab::data::ArrayFactory;
@@ -98,7 +227,9 @@ static std::vector<double> call_mpc_step(matlab::engine::MATLABEngine& eng,
     for (size_t i = 0; i < x.size(); ++i)
         x_m[i] = x[i];
 
-    std::vector<Array> out = eng.feval(u"mpc_step", 1, std::vector<Array>{x_m});
+    std::vector<Array> args;
+    args.push_back(x_m);
+    std::vector<Array> out = eng.feval(functionName, 1, args);
     TypedArray<double> u_m = out[0];
 
     std::vector<double> u(u_m.getNumberOfElements());
@@ -106,6 +237,26 @@ static std::vector<double> call_mpc_step(matlab::engine::MATLABEngine& eng,
         u[i] = u_m[i];
 
     return u;
+}
+
+static std::vector<double> normalize_controller_output(const std::vector<double>& rawOutput,
+                                                       size_t outputCount)
+{
+    const size_t nOut = std::max<size_t>(outputCount, 1);
+    std::vector<double> out(nOut, 0.0);
+    if (rawOutput.empty())
+        return out;
+
+    if (rawOutput.size() == 1)
+    {
+        std::fill(out.begin(), out.end(), rawOutput[0]);
+        return out;
+    }
+
+    const size_t nCopy = std::min(rawOutput.size(), out.size());
+    for (size_t i = 0; i < nCopy; ++i)
+        out[i] = rawOutput[i];
+    return out;
 }
 
 // Clamp/scale MPC outputs into int32 amplitudes for UDP transmission.
@@ -141,6 +292,36 @@ static std::vector<float> clamp_amplitudes_f32(const std::vector<double>& u,
     return out;
 }
 
+static std::vector<float> clamp_amplitudes_f32_from_cached(const std::vector<double>& rawOutput,
+                                                           size_t outputCount,
+                                                           float minVal,
+                                                           float maxVal)
+{
+    const size_t nOut = std::max<size_t>(outputCount, 1);
+    std::vector<float> out(nOut, 0.0f);
+    if (rawOutput.empty())
+        return out;
+
+    if (rawOutput.size() == 1)
+    {
+        float v = (float)rawOutput[0];
+        if (v < minVal) v = minVal;
+        if (v > maxVal) v = maxVal;
+        std::fill(out.begin(), out.end(), v);
+        return out;
+    }
+
+    const size_t nCopy = std::min(rawOutput.size(), out.size());
+    for (size_t i = 0; i < nCopy; ++i)
+    {
+        float v = (float)rawOutput[i];
+        if (v < minVal) v = minVal;
+        if (v > maxVal) v = maxVal;
+        out[i] = v;
+    }
+    return out;
+}
+
 // Build MATLAB input vector from preprocessed control features.
 // The first inputCount entries come from the feature vector. The vector is padded
 // out to outputCount so MATLAB can emit one value per intended UDP output channel.
@@ -154,6 +335,31 @@ static std::vector<double> build_mpc_input(const std::vector<double>& features,
     for (size_t i = 0; i < n; ++i)
         x[i] = features[i];
     return x;
+}
+
+static std::vector<double> build_constant_input(size_t count, double value)
+{
+    std::vector<double> x(std::max<size_t>(count, 1), value);
+    return x;
+}
+
+static void shutdown_matlab_controller(std::unique_ptr<matlab::engine::MATLABEngine>& eng,
+                                       const std::string& controllerMode)
+{
+    if (!eng)
+        return;
+
+    try
+    {
+        if (controllerMode == "mpc_test")
+            eng->eval(u"try, mpc_test([]); catch, end");
+    }
+    catch (...)
+    {
+        // Best-effort reset only.
+    }
+
+    eng.reset();
 }
 
 struct SampleRingBuffer
@@ -421,27 +627,47 @@ int main(int argc, char** argv)
     // argv[2]: MATLAB working directory containing mpc_step.m
     // argv[3]: MPC input vector size
     // Optional flags:
+    //   --controller constant|ramp|mpc_test|mpc_test_cached|localhost_constant
     //   --constant-output V
     //   --udp-output-count N
     //   --ring-buffer-capacity N
     //   --validate-log path.csv
+    //   --matlab-start-delay-ticks N
+    //   --fast-exit
+    //   --skip-udp-send
+    //   --max-control-ticks N
     // =========================================================================
     const char* tdt_host = (argc >= 2) ? argv[1] : "10.1.0.100"; //"TDT_UDP_28_2869";
     const char* matlab_workdir = (argc >= 3) ? argv[2] : "C:/Users/brets/Documents/MATLAB";
     const size_t mpcInputCount = (argc >= 4) ? static_cast<size_t>(std::max(1, std::atoi(argv[3]))) : 16;
     size_t requestedUdpOutputCount = 0;
     size_t ringBufferCapacity = 65536;
+    size_t matlabStartDelayTicks = 0;
+    size_t maxControlTicks = 0;
+    std::string localhostControllerHost = "127.0.0.1";
+    uint16_t localhostControllerPort = 31000;
+    uint16_t localhostReplyPort = 31001;
+    int localhostTimeoutMs = 5;
+    bool fastExit = false;
+    bool skipUdpSend = false;
     bool validateLogEnabled = false;
     std::string validateLogPath;
+    std::string controllerMode = "ramp";
     bool constantOutputEnabled = false;
     float constantOutputValue = 0.0f;
     for (int i = 1; i < argc; ++i)
     {
         const std::string arg = argv[i];
-        if (arg == "--constant-output" && (i + 1) < argc)
+        if (arg == "--controller" && (i + 1) < argc)
+        {
+            controllerMode = argv[i + 1];
+            ++i;
+        }
+        else if (arg == "--constant-output" && (i + 1) < argc)
         {
             constantOutputEnabled = true;
             constantOutputValue = (float)std::atof(argv[i + 1]);
+            controllerMode = "constant";
             ++i;
         }
         else if (arg == "--validate-log" && (i + 1) < argc)
@@ -460,13 +686,60 @@ int main(int argc, char** argv)
             ringBufferCapacity = static_cast<size_t>(std::max(1, std::atoi(argv[i + 1])));
             ++i;
         }
+        else if (arg == "--matlab-start-delay-ticks" && (i + 1) < argc)
+        {
+            matlabStartDelayTicks = static_cast<size_t>(std::max(0, std::atoi(argv[i + 1])));
+            ++i;
+        }
+        else if (arg == "--fast-exit")
+        {
+            fastExit = true;
+        }
+        else if (arg == "--skip-udp-send")
+        {
+            skipUdpSend = true;
+        }
+        else if (arg == "--max-control-ticks" && (i + 1) < argc)
+        {
+            maxControlTicks = static_cast<size_t>(std::max(0, std::atoi(argv[i + 1])));
+            ++i;
+        }
+        else if (arg == "--localhost-controller-host" && (i + 1) < argc)
+        {
+            localhostControllerHost = argv[i + 1];
+            ++i;
+        }
+        else if (arg == "--localhost-controller-port" && (i + 1) < argc)
+        {
+            localhostControllerPort = (uint16_t)std::max(1, std::atoi(argv[i + 1]));
+            ++i;
+        }
+        else if (arg == "--localhost-reply-port" && (i + 1) < argc)
+        {
+            localhostReplyPort = (uint16_t)std::max(1, std::atoi(argv[i + 1]));
+            ++i;
+        }
+        else if (arg == "--localhost-timeout-ms" && (i + 1) < argc)
+        {
+            localhostTimeoutMs = std::max(1, std::atoi(argv[i + 1]));
+            ++i;
+        }
     }
 
     matlab::engine::MATLABEngine* engRaw = nullptr;
     PO8e* card = nullptr;
     SOCKET rzSock = INVALID_SOCKET;
+    SOCKET localhostControllerSock = INVALID_SOCKET;
     bool udpReady = false;
-    std::ofstream validateLog;
+        std::ofstream validateLog;
+        std::vector<double> postSetupCachedU;
+        std::vector<float> postSetupCachedAmps;
+        std::vector<double> localhostLastOutput;
+        uint32_t localhostSequence = 1;
+        uint32_t localhostMisses = 0;
+    bool useFastExitShutdown = false;
+
+    std::unique_ptr<matlab::engine::MATLABEngine> eng;
 
     try
     {
@@ -476,8 +749,18 @@ int main(int argc, char** argv)
         // In constant-output mode we skip MATLAB entirely so we can isolate
         // native-library failures from the control/transport path.
         // =====================================================================
-        std::unique_ptr<matlab::engine::MATLABEngine> eng;
-        if (!constantOutputEnabled)
+        std::u16string matlabControllerName = u"mpc_step";
+        const bool useMpcTestController =
+            (controllerMode == "mpc_test" || controllerMode == "mpc_test_cached");
+        const bool useMpcTestCachedMode = (controllerMode == "mpc_test_cached");
+        const bool useLocalhostController = (controllerMode == "localhost_constant");
+        useFastExitShutdown = (fastExit || useMpcTestController);
+        if (useMpcTestController)
+            matlabControllerName = u"mpc_test";
+        else if (controllerMode != "ramp" && controllerMode != "constant" && !useLocalhostController)
+            throw std::runtime_error("Unknown controller mode. Use constant, ramp, mpc_test, mpc_test_cached, or localhost_constant.");
+
+        if (controllerMode != "constant" && !useLocalhostController)
         {
             eng = matlab::engine::startMATLAB();
             engRaw = eng.get();
@@ -489,7 +772,46 @@ int main(int argc, char** argv)
                 cdCmd += u"')";
                 eng->eval(cdCmd);
             }
-            std::cout << "MATLAB started. mpc_step path set to: " << matlab_workdir << "\n";
+            std::cout << "MATLAB started. controller=" << controllerMode
+                      << " path=" << matlab_workdir << "\n";
+
+            const size_t warmupOutputCount = (requestedUdpOutputCount > 0)
+                ? requestedUdpOutputCount
+                : std::max<size_t>(mpcInputCount, 1);
+            const std::vector<double> warmupX =
+                build_constant_input(std::max(mpcInputCount, warmupOutputCount), 123.0);
+            std::printf("MATLAB warmup: calling controller with %zu-element input...\n", warmupX.size());
+            const std::vector<double> warmupRawU =
+                call_matlab_controller(*engRaw, matlabControllerName, warmupX);
+            const std::vector<double> warmupU =
+                normalize_controller_output(warmupRawU, warmupOutputCount);
+            const double warmupRaw0 = warmupRawU.empty() ? 0.0 : warmupRawU[0];
+            const double warmupU0 = warmupU.empty() ? 0.0 : warmupU[0];
+            std::printf("MATLAB warmup result: raw=%zu normalized=%zu raw0=%.6f out0=%.6f\n",
+                        warmupRawU.size(), warmupU.size(), warmupRaw0, warmupU0);
+
+            const std::vector<double> warmupRawU2 =
+                call_matlab_controller(*engRaw, matlabControllerName, warmupX);
+            const std::vector<double> warmupU2 =
+                normalize_controller_output(warmupRawU2, warmupOutputCount);
+            const double warmupRaw02 = warmupRawU2.empty() ? 0.0 : warmupRawU2[0];
+            const double warmupU02 = warmupU2.empty() ? 0.0 : warmupU2[0];
+            std::printf("MATLAB warmup result 2: raw=%zu normalized=%zu raw0=%.6f out0=%.6f\n",
+                        warmupRawU2.size(), warmupU2.size(), warmupRaw02, warmupU02);
+
+            if (useMpcTestController)
+            {
+                eng->eval(u"mpc_test([]);");
+                std::printf("MATLAB controller state reset after warmup probes.\n");
+            }
+        }
+        else if (useLocalhostController)
+        {
+            std::printf("Localhost controller mode enabled: host=%s controllerPort=%u replyPort=%u timeoutMs=%d\n",
+                        localhostControllerHost.c_str(),
+                        (unsigned)localhostControllerPort,
+                        (unsigned)localhostReplyPort,
+                        localhostTimeoutMs);
         }
         else
         {
@@ -543,6 +865,27 @@ int main(int argc, char** argv)
         }
         udpReady = true;
 
+        if (useLocalhostController)
+        {
+            localhostControllerSock = open_localhost_controller_socket(localhostControllerHost.c_str(),
+                                                                       localhostControllerPort,
+                                                                       localhostReplyPort,
+                                                                       localhostTimeoutMs);
+            if (localhostControllerSock == INVALID_SOCKET)
+            {
+                std::printf("Failed to open localhost controller socket to %s:%u (reply port %u).\n",
+                            localhostControllerHost.c_str(),
+                            (unsigned)localhostControllerPort,
+                            (unsigned)localhostReplyPort);
+                return 1;
+            }
+            localhostLastOutput.assign(udpOutputCount, 0.0);
+            std::printf("Localhost controller socket ready: %s:%u -> local port %u\n",
+                        localhostControllerHost.c_str(),
+                        (unsigned)localhostControllerPort,
+                        (unsigned)localhostReplyPort);
+        }
+
         const uint32_t rzIp = resolve_ipv4_addr(tdt_host);
         if (rzIp == INADDR_NONE)
         {
@@ -577,6 +920,24 @@ int main(int argc, char** argv)
             std::printf("Validation logging enabled: %s\n", validateLogPath.c_str());
         }
 
+        if (controllerMode != "constant" && !useLocalhostController)
+        {
+            const std::vector<double> postSetupX =
+                build_constant_input(std::max(mpcInputCount, udpOutputCount), 123.0);
+            std::printf("MATLAB post-setup probe: calling controller with %zu-element input...\n", postSetupX.size());
+            const std::vector<double> postSetupRawU =
+                call_matlab_controller(*engRaw, matlabControllerName, postSetupX);
+            const std::vector<double> postSetupU =
+                normalize_controller_output(postSetupRawU, udpOutputCount);
+            postSetupCachedU = postSetupU;
+            postSetupCachedAmps =
+                clamp_amplitudes_f32_from_cached(postSetupCachedU, udpOutputCount, 0.0f, 100000.0f);
+            const double postSetupRaw0 = postSetupRawU.empty() ? 0.0 : postSetupRawU[0];
+            const double postSetupU0 = postSetupU.empty() ? 0.0 : postSetupU[0];
+            std::printf("MATLAB post-setup result: raw=%zu normalized=%zu raw0=%.6f out0=%.6f\n",
+                        postSetupRawU.size(), postSetupU.size(), postSetupRaw0, postSetupU0);
+        }
+
         // =====================================================================
         // SECTION 7: Continuous acquisition + 100 Hz control loop
         // ---------------------------------------------------------------------
@@ -598,6 +959,14 @@ int main(int argc, char** argv)
         uint64_t undersampledWindows = 0;
         size_t minWindowSamplesSeen = (size_t)-1;
         size_t nominalWindowSamples = 0;
+        static const uint64_t LIVE_CONTROLLER_WARMUP_TICKS = 5;
+        static const uint64_t VERBOSE_CONTROL_TICKS = 3;
+        bool printedControllerShape = false;
+        bool printedCachedPhaseStart = false;
+        bool printedLiveFevalStart = false;
+        bool ranPreTransitionWarmFeval = false;
+        bool printedTick1BeforeSend = false;
+        bool printedTick1AfterSend = false;
         const uint64_t printEveryPackets = 500;
         HiResClock clock;
         bool stopped = false;
@@ -605,8 +974,43 @@ int main(int argc, char** argv)
         SampleRingBuffer ring;
         ring.initialize((size_t)std::max(nCh, 1), ringBufferCapacity);
         int64_t nextControlUs = clock.now_us() + CONTROL_INTERVAL_US;
-        std::printf("Entering loop (MPC input size=%zu, UDP output count=%zu, control=100 Hz, ring capacity=%zu).\n",
-                    mpcInputCount, udpOutputCount, ringBufferCapacity);
+
+        if (controllerMode == "mpc_test" && matlabStartDelayTicks > 0)
+        {
+            compatUSleep(20000);
+            size_t preloadSamples = card->samplesReady(&stopped);
+            const size_t preloadToRead = std::min<size_t>(preloadSamples, 64);
+            for (size_t i = 0; i < preloadToRead && !stopped; ++i)
+            {
+                int64_t offsets[1];
+                const size_t got = card->readBlock((short*)temp.data(), 1, offsets);
+                if (got != 1)
+                    break;
+                ring.pushFrame(temp, clock.now_us());
+                card->flushBufferedData(1);
+            }
+
+            const int64_t preLoopNowUs = clock.now_us();
+            size_t preLoopWindowSamples = 0;
+            const std::vector<double> preLoopFeatures =
+                ring.computeMeanAbsWindow(mpcInputCount, preLoopNowUs, PREPROCESS_WINDOW_US, &preLoopWindowSamples);
+            std::vector<double> preLoopX =
+                build_mpc_input(preLoopFeatures, mpcInputCount, udpOutputCount);
+            std::printf("Pre-loop live probe: buffered=%zu windowSamples=%zu feature0=%.6f\n",
+                        ring.size,
+                        preLoopWindowSamples,
+                        preLoopFeatures.empty() ? 0.0 : preLoopFeatures[0]);
+            const std::vector<double> preLoopRawU =
+                call_matlab_controller(*engRaw, matlabControllerName, preLoopX);
+            std::printf("Pre-loop live probe result: rawCount=%zu raw0=%.6f\n",
+                        preLoopRawU.size(),
+                        preLoopRawU.empty() ? 0.0 : preLoopRawU[0]);
+            eng->eval(u"mpc_test([]);");
+            std::printf("MATLAB controller state reset after pre-loop live probe.\n");
+        }
+
+        std::printf("Entering loop (MPC input size=%zu, UDP output count=%zu, control=100 Hz, ring capacity=%zu, matlabDelayTicks=%zu, maxControlTicks=%zu).\n",
+                    mpcInputCount, udpOutputCount, ringBufferCapacity, matlabStartDelayTicks, maxControlTicks);
 
         while (!stopped)
         {
@@ -673,18 +1077,171 @@ int main(int argc, char** argv)
             int64_t nowUs = clock.now_us();
             while (nowUs >= nextControlUs)
             {
+                const uint64_t tickIndex = controlTicks + 1;
+                if (tickIndex <= VERBOSE_CONTROL_TICKS)
+                {
+                    std::printf("Tick trace: begin controlTick=%llu packet=%llu buffered=%zu\n",
+                                (unsigned long long)tickIndex,
+                                (unsigned long long)sentPackets,
+                                ring.size);
+                }
                 const int64_t t_in_us = clock.now_us();
                 size_t windowSamplesSeen = 0;
                 const std::vector<double> features =
                     ring.computeMeanAbsWindow(mpcInputCount, t_in_us, PREPROCESS_WINDOW_US, &windowSamplesSeen);
-                const std::vector<double> x = build_mpc_input(features, mpcInputCount, udpOutputCount);
-                std::vector<double> u;
-                if (constantOutputEnabled)
-                    u.assign(udpOutputCount, (double)constantOutputValue);
+                if (tickIndex <= VERBOSE_CONTROL_TICKS)
+                {
+                    const double feature0 = features.empty() ? 0.0 : features[0];
+                    std::printf("Tick trace: features controlTick=%llu windowSamples=%zu feature0=%.6f\n",
+                                (unsigned long long)tickIndex,
+                                windowSamplesSeen,
+                                feature0);
+                }
+                std::vector<double> x = build_mpc_input(features, mpcInputCount, udpOutputCount);
+                const bool useFixedControllerInput =
+                    (controllerMode == "mpc_test" && controlTicks < LIVE_CONTROLLER_WARMUP_TICKS);
+                if (useFixedControllerInput)
+                    x = build_constant_input(std::max(mpcInputCount, udpOutputCount), 123.0);
+                if (tickIndex <= VERBOSE_CONTROL_TICKS)
+                {
+                    const double x0 = x.empty() ? 0.0 : x[0];
+                    std::printf("Tick trace: input controlTick=%llu inputMode=%s x0=%.6f\n",
+                                (unsigned long long)tickIndex,
+                                useFixedControllerInput ? "fixed123" : "live",
+                                x0);
+                }
+                std::vector<double> rawU;
+                const std::vector<double>* rawUView = NULL;
+                bool usedPostSetupCache = false;
+                const bool useDelayedMatlabCache =
+                    (controllerMode == "mpc_test" &&
+                     controlTicks < matlabStartDelayTicks &&
+                     !postSetupCachedU.empty() &&
+                     !postSetupCachedAmps.empty());
+                if (controllerMode == "constant")
+                {
+                    rawU.assign(1, (double)constantOutputValue);
+                    rawUView = &rawU;
+                }
+                else if (controllerMode == "localhost_constant")
+                {
+                    std::string localhostError;
+                    if (request_localhost_controller(localhostControllerSock,
+                                                    localhostSequence++,
+                                                    x,
+                                                    &rawU,
+                                                    &localhostError))
+                    {
+                        localhostMisses = 0;
+                        localhostLastOutput = normalize_controller_output(rawU, udpOutputCount);
+                        rawU = localhostLastOutput;
+                        rawUView = &rawU;
+                    }
+                    else
+                    {
+                        ++localhostMisses;
+                        if (localhostMisses < 5 && !localhostLastOutput.empty())
+                            rawU = localhostLastOutput;
+                        else
+                            rawU.assign(udpOutputCount, 0.0);
+                        rawUView = &rawU;
+                        if (localhostMisses == 1 || localhostMisses == 5)
+                        {
+                            std::printf("Localhost controller miss=%u error=%s failSafe=%s\n",
+                                        (unsigned)localhostMisses,
+                                        localhostError.c_str(),
+                                        (localhostMisses < 5) ? "hold-last" : "zero");
+                        }
+                    }
+                }
+                else if ((useMpcTestCachedMode && !postSetupCachedU.empty() && !postSetupCachedAmps.empty()) || useDelayedMatlabCache)
+                {
+                    usedPostSetupCache = true;
+                    rawUView = &postSetupCachedU;
+                }
                 else
-                    u = call_mpc_step(*engRaw, x);
+                {
+                    const bool isFirstDelayedLiveFeval =
+                        (controllerMode == "mpc_test" &&
+                         matlabStartDelayTicks > 0 &&
+                         !printedLiveFevalStart);
+                    if (controllerMode == "mpc_test" && matlabStartDelayTicks > 0 && !printedLiveFevalStart)
+                    {
+                        std::printf("Controller transition: entering live MATLAB feval at controlTick=%llu packet=%llu\n",
+                                    (unsigned long long)controlTicks,
+                                    (unsigned long long)sentPackets);
+                        printedLiveFevalStart = true;
+                    }
+                    if (isFirstDelayedLiveFeval && !ranPreTransitionWarmFeval)
+                    {
+                        std::printf("Controller transition: pre-warm MATLAB feval at controlTick=%llu packet=%llu\n",
+                                    (unsigned long long)controlTicks,
+                                    (unsigned long long)sentPackets);
+                        const std::vector<double> warmRawU =
+                            call_matlab_controller(*engRaw, matlabControllerName, x);
+                        const double warmRaw0 = warmRawU.empty() ? 0.0 : warmRawU[0];
+                        std::printf("Controller transition: pre-warm result rawCount=%zu raw0=%.6f\n",
+                                    warmRawU.size(), warmRaw0);
+                        ranPreTransitionWarmFeval = true;
+                    }
+                    rawU = call_matlab_controller(*engRaw, matlabControllerName, x);
+                    rawUView = &rawU;
+                }
+                if (tickIndex <= VERBOSE_CONTROL_TICKS)
+                {
+                    const double raw0 = (!rawUView || rawUView->empty()) ? 0.0 : (*rawUView)[0];
+                    const char* traceSource =
+                        (controllerMode == "localhost_constant") ? "localhost" :
+                        (usedPostSetupCache ? "postSetupCache" : "feval");
+                    std::printf("Tick trace: controller controlTick=%llu source=%s rawCount=%zu raw0=%.6f\n",
+                                (unsigned long long)tickIndex,
+                                traceSource,
+                                rawUView ? rawUView->size() : 0,
+                                raw0);
+                }
+                const bool useCachedFastPath = usedPostSetupCache;
+                std::vector<double> u;
+                if (!useCachedFastPath)
+                    u = normalize_controller_output(rawU, udpOutputCount);
                 const int64_t t_mpc_done_us = clock.now_us();
-                const std::vector<float> amps = clamp_amplitudes_f32(u, 0.0f, 100000.0f);
+                const std::vector<float> amps = useCachedFastPath
+                    ? postSetupCachedAmps
+                    : clamp_amplitudes_f32(u, 0.0f, 100000.0f);
+                if (tickIndex <= VERBOSE_CONTROL_TICKS)
+                {
+                    const double u0 = useCachedFastPath
+                        ? ((!rawUView || rawUView->empty()) ? 0.0 : (*rawUView)[0])
+                        : (u.empty() ? 0.0 : u[0]);
+                    const double amp0 = amps.empty() ? 0.0 : amps[0];
+                    std::printf("Tick trace: normalized controlTick=%llu path=%s u0=%.6f amp0=%.6f\n",
+                                (unsigned long long)tickIndex,
+                                useCachedFastPath ? "cachedFastPath" : "normal",
+                                u0,
+                                amp0);
+                }
+                if (usedPostSetupCache && !printedCachedPhaseStart)
+                {
+                    std::printf("Controller phase: cached output active at controlTick=%llu packet=%llu delayTicks=%zu\n",
+                                (unsigned long long)controlTicks,
+                                (unsigned long long)sentPackets,
+                                matlabStartDelayTicks);
+                    printedCachedPhaseStart = true;
+                }
+                if (!printedControllerShape)
+                {
+                    const double raw0 = (!rawUView || rawUView->empty()) ? 0.0 : (*rawUView)[0];
+                    const double out0 = useCachedFastPath
+                        ? ((!rawUView || rawUView->empty()) ? 0.0 : (*rawUView)[0])
+                        : (u.empty() ? 0.0 : u[0]);
+                    const char* inputMode = useFixedControllerInput ? "fixed123" : "live";
+                    const char* sourceMode =
+                        (controllerMode == "localhost_constant") ? "localhost" :
+                        (usedPostSetupCache ? "postSetupCache" : "feval");
+                    std::printf("Controller output shape: raw=%zu normalized=%zu raw0=%.6f out0=%.6f inputMode=%s source=%s\n",
+                                rawUView ? rawUView->size() : 0, amps.size(), raw0, out0,
+                                inputMode, sourceMode);
+                    printedControllerShape = true;
+                }
                 ++controlTicks;
                 minWindowSamplesSeen = std::min(minWindowSamplesSeen, windowSamplesSeen);
                 if (windowSamplesSeen > nominalWindowSamples)
@@ -695,9 +1252,34 @@ int main(int argc, char** argv)
                 const uint8_t nPackets = (uint8_t)std::min<size_t>(amps.size(), (size_t)MAX_SAMPLES);
                 if (nPackets > 0)
                 {
-                    if (sendUDPPacketWords(rzSock, amps.data(), nPackets) == SOCKET_ERROR)
-                        std::printf("Warning: UDP send failed.\n");
+                    if (!printedTick1BeforeSend)
+                    {
+                        std::printf("Tick debug: before first UDP send controlTick=%llu packet=%llu nPackets=%u skipUdp=%s\n",
+                                    (unsigned long long)controlTicks,
+                                    (unsigned long long)sentPackets,
+                                    (unsigned)nPackets,
+                                    skipUdpSend ? "true" : "false");
+                        printedTick1BeforeSend = true;
+                    }
+                    if (!skipUdpSend)
+                    {
+                        if (sendUDPPacketWords(rzSock, amps.data(), nPackets) == SOCKET_ERROR)
+                            std::printf("Warning: UDP send failed.\n");
+                    }
                     const int64_t t_udp_send_us = clock.now_us();
+                    if (!printedTick1AfterSend)
+                    {
+                        std::printf("Tick debug: after first UDP send controlTick=%llu packet=%llu\n",
+                                    (unsigned long long)controlTicks,
+                                    (unsigned long long)sentPackets);
+                        printedTick1AfterSend = true;
+                    }
+                    if (tickIndex <= VERBOSE_CONTROL_TICKS)
+                    {
+                        std::printf("Tick trace: send complete controlTick=%llu packet=%llu\n",
+                                    (unsigned long long)tickIndex,
+                                    (unsigned long long)sentPackets);
+                    }
 
                     ++sentPackets;
                     if (validateLogEnabled && validateLog.is_open())
@@ -705,7 +1287,9 @@ int main(int argc, char** argv)
                         const double mpc_ms = (double)(t_mpc_done_us - t_in_us) / 1000.0;
                         const double total_ms = (double)(t_udp_send_us - t_in_us) / 1000.0;
                         const double x0 = x.empty() ? 0.0 : x[0];
-                        const double u0 = u.empty() ? 0.0 : u[0];
+                        const double u0 = useCachedFastPath
+                            ? ((!rawUView || rawUView->empty()) ? 0.0 : (*rawUView)[0])
+                            : (u.empty() ? 0.0 : u[0]);
                         const double amp0 = amps.empty() ? 0.0 : amps[0];
                         validateLog
                             << sentPackets << ','
@@ -729,7 +1313,20 @@ int main(int argc, char** argv)
                     }
                 }
 
+                if (maxControlTicks > 0 && controlTicks >= maxControlTicks)
+                {
+                    stopped = true;
+                    std::printf("\nExit reason: reached max control ticks (%zu).\n", maxControlTicks);
+                    break;
+                }
+
                 nextControlUs += CONTROL_INTERVAL_US;
+                if (tickIndex <= VERBOSE_CONTROL_TICKS)
+                {
+                    std::printf("Tick trace: end controlTick=%llu nextPacket=%llu\n",
+                                (unsigned long long)tickIndex,
+                                (unsigned long long)sentPackets);
+                }
                 nowUs = clock.now_us();
             }
         }
@@ -751,8 +1348,16 @@ int main(int argc, char** argv)
         // SECTION 8: Exception-safe cleanup path.
         std::cerr << "Fatal error: " << ex.what() << "\n";
         if (card) PO8e::releaseCard(card);
+        if (localhostControllerSock != INVALID_SOCKET) closesocket(localhostControllerSock);
         if (rzSock != INVALID_SOCKET) disconnectRZ(rzSock);
         if (udpReady) udp_cleanup();
+        if (useFastExitShutdown)
+        {
+            std::printf("Fast exit shutdown active: skipping MATLAB engine teardown after exception.\n");
+            std::fflush(stdout);
+            _Exit(1);
+        }
+        shutdown_matlab_controller(eng, controllerMode);
         return 1;
     }
     catch (...)
@@ -760,14 +1365,30 @@ int main(int argc, char** argv)
         // SECTION 8: Exception-safe cleanup path.
         std::cerr << "Fatal error: unknown exception\n";
         if (card) PO8e::releaseCard(card);
+        if (localhostControllerSock != INVALID_SOCKET) closesocket(localhostControllerSock);
         if (rzSock != INVALID_SOCKET) disconnectRZ(rzSock);
         if (udpReady) udp_cleanup();
+        if (useFastExitShutdown)
+        {
+            std::printf("Fast exit shutdown active: skipping MATLAB engine teardown after unknown exception.\n");
+            std::fflush(stdout);
+            _Exit(1);
+        }
+        shutdown_matlab_controller(eng, controllerMode);
         return 1;
     }
 
     // SECTION 9: Normal shutdown cleanup.
     if (rzSock != INVALID_SOCKET) disconnectRZ(rzSock);
+    if (localhostControllerSock != INVALID_SOCKET) closesocket(localhostControllerSock);
     if (udpReady) udp_cleanup();
     if (card) PO8e::releaseCard(card);
+    if (useFastExitShutdown)
+    {
+        std::printf("Fast exit shutdown active: skipping MATLAB engine teardown.\n");
+        std::fflush(stdout);
+        _Exit(0);
+    }
+    shutdown_matlab_controller(eng, controllerMode);
     return 0;
 }
