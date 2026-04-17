@@ -11,6 +11,7 @@
 #include <inttypes.h>
 #include <fstream>
 #include <memory>
+#include <limits>
 
 #include "PO8e.h"
 #include "compat.h"
@@ -34,6 +35,17 @@ static void udp_cleanup()
     WSACleanup();
 }
 
+static int64_t hires_now_us()
+{
+    LARGE_INTEGER freq {};
+    if (QueryPerformanceFrequency(&freq) == 0 || freq.QuadPart == 0)
+        return 0;
+
+    LARGE_INTEGER t {};
+    QueryPerformanceCounter(&t);
+    return (int64_t)((t.QuadPart * 1000000LL) / freq.QuadPart);
+}
+
 struct HiResClock
 {
     LARGE_INTEGER freq {};
@@ -48,11 +60,52 @@ struct HiResClock
     {
         if (!ok || freq.QuadPart == 0)
             return 0;
-        LARGE_INTEGER t {};
-        QueryPerformanceCounter(&t);
-        return (int64_t)((t.QuadPart * 1000000LL) / freq.QuadPart);
+        return hires_now_us();
     }
 };
+
+struct TimingStats
+{
+    uint64_t count = 0;
+    int64_t totalUs = 0;
+    int64_t minUs = INT64_MAX;
+    int64_t maxUs = 0;
+
+    void add(int64_t us)
+    {
+        if (us < 0)
+            us = 0;
+        ++count;
+        totalUs += us;
+        minUs = std::min(minUs, us);
+        maxUs = std::max(maxUs, us);
+    }
+};
+
+static void print_timing_stats(const char* label, const TimingStats& stats)
+{
+    const int64_t minUs = (stats.count > 0) ? stats.minUs : 0;
+    const double avgUs = (stats.count > 0)
+        ? ((double)stats.totalUs / (double)stats.count)
+        : 0.0;
+    const int64_t maxUs = (stats.count > 0) ? stats.maxUs : 0;
+    std::printf("%s count=%llu minUs=%lld avgUs=%.1f maxUs=%lld\n",
+                label,
+                (unsigned long long)stats.count,
+                (long long)minUs,
+                avgUs,
+                (long long)maxUs);
+}
+
+struct LocalhostRequestDiagnostics
+{
+    int drainedReplies = 0;
+    int staleReplies = 0;
+    int64_t roundTripUs = 0;
+};
+
+static std::vector<double> normalize_controller_output(const std::vector<double>& rawOutput,
+                                                       size_t outputCount);
 
 // Resolve the user-provided host/IP to an IPv4 address usable by openSocket().
 // openSocket() expects a raw IPv4 value (in network byte order).
@@ -130,16 +183,36 @@ static SOCKET open_localhost_controller_socket(const char* host,
     return sock;
 }
 
-static bool request_localhost_controller(SOCKET sock,
-                                         uint32_t sequence,
-                                         const std::vector<double>& features,
-                                         std::vector<double>* response,
-                                         std::string* errorMessage)
+static bool set_socket_nonblocking(SOCKET sock, bool enabled)
 {
-    if (response == NULL)
-        return false;
-    response->clear();
+    u_long mode = enabled ? 1UL : 0UL;
+    return (ioctlsocket(sock, FIONBIO, &mode) == 0);
+}
 
+static bool try_parse_localhost_reply_header(const char* recvBuf,
+                                             int got,
+                                             uint32_t* replySeq,
+                                             uint32_t* replyCount)
+{
+    if (!recvBuf || got < 8 || !replySeq || !replyCount)
+        return false;
+
+    uint32_t replySeqNet = 0;
+    uint32_t replyCountNet = 0;
+    std::memcpy(&replySeqNet, recvBuf, 4);
+    std::memcpy(&replyCountNet, recvBuf + 4, 4);
+    *replySeq = ntohl(replySeqNet);
+    *replyCount = ntohl(replyCountNet);
+    return true;
+}
+
+static bool send_localhost_controller_request(SOCKET sock,
+                                              uint32_t sequence,
+                                              const std::vector<double>& features,
+                                              std::string* errorMessage)
+{
+    // Requests are packed as [seq][count][float32 payload] in network byte order.
+    // The single-thread async loop calls this only when no older request is in flight.
     const uint32_t featureCount = (uint32_t)features.size();
     const size_t packetBytes = 8 + (size_t)featureCount * 4;
     std::vector<char> packet(packetBytes, 0);
@@ -164,48 +237,74 @@ static bool request_localhost_controller(SOCKET sock,
             *errorMessage = "localhost controller send failed";
         return false;
     }
+    return true;
+}
+
+static bool try_recv_localhost_controller_reply(SOCKET sock,
+                                                uint32_t expectedSequence,
+                                                std::vector<double>* response,
+                                                LocalhostRequestDiagnostics* diagnostics,
+                                                std::string* errorMessage)
+{
+    // Poll one or more queued datagrams without blocking. We accept only the
+    // reply matching the current in-flight sequence and silently discard older
+    // replies that arrived after the scheduler had already moved on.
+    if (response == NULL)
+        return false;
+    response->clear();
+    if (diagnostics != NULL)
+        *diagnostics = LocalhostRequestDiagnostics {};
 
     char recvBuf[4096] = { 0 };
-    const int got = recv(sock, recvBuf, sizeof(recvBuf), 0);
-    if (got < 8)
+    int staleReplies = 0;
+    for (;;)
     {
-        if (errorMessage != NULL)
-            *errorMessage = (got == SOCKET_ERROR)
-                ? "localhost controller recv timeout/error"
-                : "localhost controller reply too short";
-        return false;
-    }
+        const int got = recv(sock, recvBuf, sizeof(recvBuf), 0);
+        if (got == SOCKET_ERROR)
+        {
+            const int wsa = WSAGetLastError();
+            if (wsa == WSAEWOULDBLOCK)
+                return false;
+            if (errorMessage != NULL)
+                *errorMessage = "localhost controller recv failed";
+            return false;
+        }
 
-    uint32_t replySeqNet = 0;
-    uint32_t replyCountNet = 0;
-    std::memcpy(&replySeqNet, recvBuf, 4);
-    std::memcpy(&replyCountNet, recvBuf + 4, 4);
-    const uint32_t replySeq = ntohl(replySeqNet);
-    const uint32_t replyCount = ntohl(replyCountNet);
-    if (replySeq != sequence)
-    {
-        if (errorMessage != NULL)
-            *errorMessage = "localhost controller reply sequence mismatch";
-        return false;
-    }
-    if (got < (int)(8 + (size_t)replyCount * 4))
-    {
-        if (errorMessage != NULL)
-            *errorMessage = "localhost controller reply payload truncated";
-        return false;
-    }
+        uint32_t replySeq = 0;
+        uint32_t replyCount = 0;
+        if (!try_parse_localhost_reply_header(recvBuf, got, &replySeq, &replyCount))
+        {
+            continue;
+        }
 
-    response->assign(replyCount, 0.0);
-    for (uint32_t i = 0; i < replyCount; ++i)
-    {
-        uint32_t bitsNet = 0;
-        std::memcpy(&bitsNet, recvBuf + 8 + (size_t)i * 4, 4);
-        uint32_t bits = ntohl(bitsNet);
-        float v = 0.0f;
-        std::memcpy(&v, &bits, sizeof(v));
-        (*response)[i] = (double)v;
+        if (replySeq != expectedSequence)
+        {
+            ++staleReplies;
+            if (diagnostics != NULL)
+                diagnostics->staleReplies = staleReplies;
+            continue;
+        }
+        if (got < (int)(8 + (size_t)replyCount * 4))
+        {
+            if (errorMessage != NULL)
+                *errorMessage = "localhost controller reply payload truncated";
+            return false;
+        }
+
+        response->assign(replyCount, 0.0);
+        for (uint32_t i = 0; i < replyCount; ++i)
+        {
+            uint32_t bitsNet = 0;
+            std::memcpy(&bitsNet, recvBuf + 8 + (size_t)i * 4, 4);
+            uint32_t bits = ntohl(bitsNet);
+            float v = 0.0f;
+            std::memcpy(&v, &bits, sizeof(v));
+            (*response)[i] = (double)v;
+        }
+        if (diagnostics != NULL)
+            diagnostics->staleReplies = staleReplies;
+        return true;
     }
-    return true;
 }
 
 // ============================================================================
@@ -242,6 +341,8 @@ static std::vector<double> call_matlab_controller(matlab::engine::MATLABEngine& 
 static std::vector<double> normalize_controller_output(const std::vector<double>& rawOutput,
                                                        size_t outputCount)
 {
+    // Controllers may return either a scalar or a full output vector. Normalize
+    // both cases into a fixed-width vector so downstream UDP code can stay simple.
     const size_t nOut = std::max<size_t>(outputCount, 1);
     std::vector<double> out(nOut, 0.0);
     if (rawOutput.empty())
@@ -627,7 +728,7 @@ int main(int argc, char** argv)
     // argv[2]: MATLAB working directory containing mpc_step.m
     // argv[3]: MPC input vector size
     // Optional flags:
-    //   --controller constant|ramp|mpc_test|mpc_test_cached|localhost_constant
+    //   --controller constant|ramp|mpc_test|mpc_test_cached|localhost|localhost_constant
     //   --constant-output V
     //   --udp-output-count N
     //   --ring-buffer-capacity N
@@ -736,7 +837,12 @@ int main(int argc, char** argv)
         std::vector<float> postSetupCachedAmps;
         std::vector<double> localhostLastOutput;
         uint32_t localhostSequence = 1;
-        uint32_t localhostMisses = 0;
+        uint32_t localhostLastSeenReplySeq = 0;
+        bool localhostRequestInFlight = false;
+        uint32_t localhostInFlightSequence = 0;
+        int64_t localhostInFlightSentUs = 0;
+        int64_t localhostLatestReplyUs = 0;
+        std::string localhostLastError;
     bool useFastExitShutdown = false;
 
     std::unique_ptr<matlab::engine::MATLABEngine> eng;
@@ -753,12 +859,13 @@ int main(int argc, char** argv)
         const bool useMpcTestController =
             (controllerMode == "mpc_test" || controllerMode == "mpc_test_cached");
         const bool useMpcTestCachedMode = (controllerMode == "mpc_test_cached");
-        const bool useLocalhostController = (controllerMode == "localhost_constant");
+        const bool useLocalhostController =
+            (controllerMode == "localhost" || controllerMode == "localhost_constant");
         useFastExitShutdown = (fastExit || useMpcTestController);
         if (useMpcTestController)
             matlabControllerName = u"mpc_test";
         else if (controllerMode != "ramp" && controllerMode != "constant" && !useLocalhostController)
-            throw std::runtime_error("Unknown controller mode. Use constant, ramp, mpc_test, mpc_test_cached, or localhost_constant.");
+            throw std::runtime_error("Unknown controller mode. Use constant, ramp, mpc_test, mpc_test_cached, localhost, or localhost_constant.");
 
         if (controllerMode != "constant" && !useLocalhostController)
         {
@@ -880,10 +987,12 @@ int main(int argc, char** argv)
                 return 1;
             }
             localhostLastOutput.assign(udpOutputCount, 0.0);
+            set_socket_nonblocking(localhostControllerSock, true);
             std::printf("Localhost controller socket ready: %s:%u -> local port %u\n",
                         localhostControllerHost.c_str(),
                         (unsigned)localhostControllerPort,
                         (unsigned)localhostReplyPort);
+            std::printf("Localhost controller mode: single-thread async poll with one in-flight request\n");
         }
 
         const uint32_t rzIp = resolve_ipv4_addr(tdt_host);
@@ -957,10 +1066,30 @@ int main(int argc, char** argv)
         uint64_t sentPackets = 0;
         uint64_t controlTicks = 0;
         uint64_t undersampledWindows = 0;
+        uint64_t droppedControlTicks = 0;
+        uint64_t localhostRequests = 0;
+        uint64_t localhostReplySuccesses = 0;
+        uint64_t localhostReplyTimeouts = 0;
+        uint64_t localhostReplyStaleDropped = 0;
+        uint64_t localhostReplyPreSendDrained = 0;
         size_t minWindowSamplesSeen = (size_t)-1;
         size_t nominalWindowSamples = 0;
+        TimingStats preprocessTiming;
+        TimingStats controllerTiming;
+        TimingStats normalizeClampTiming;
+        TimingStats udpSendTiming;
+        TimingStats totalTickTiming;
+        TimingStats localhostOutputAgeTiming;
         static const uint64_t LIVE_CONTROLLER_WARMUP_TICKS = 5;
-        static const uint64_t VERBOSE_CONTROL_TICKS = 3;
+        static const uint64_t VERBOSE_CONTROL_TICKS = 2;
+        static const int64_t LOCALHOST_FRESH_OUTPUT_US = 100000;
+        static const int64_t LOCALHOST_MAX_HOLD_OUTPUT_US = 250000;
+        uint64_t localhostTicksUsingFreshOutput = 0;
+        uint64_t localhostTicksUsingHeldOutput = 0;
+        uint64_t localhostTicksUsingZeroOutput = 0;
+        uint64_t localhostFreshReplyTransitions = 0;
+        uint64_t localhostPolicyTransitions = 0;
+        int localhostOutputPolicy = -1;
         bool printedControllerShape = false;
         bool printedCachedPhaseStart = false;
         bool printedLiveFevalStart = false;
@@ -1075,7 +1204,7 @@ int main(int argc, char** argv)
             // The controller runs at a fixed 100 Hz cadence independent of the
             // raw sample acquisition loop.
             int64_t nowUs = clock.now_us();
-            while (nowUs >= nextControlUs)
+            if (nowUs >= nextControlUs)
             {
                 const uint64_t tickIndex = controlTicks + 1;
                 if (tickIndex <= VERBOSE_CONTROL_TICKS)
@@ -1089,6 +1218,7 @@ int main(int argc, char** argv)
                 size_t windowSamplesSeen = 0;
                 const std::vector<double> features =
                     ring.computeMeanAbsWindow(mpcInputCount, t_in_us, PREPROCESS_WINDOW_US, &windowSamplesSeen);
+                const int64_t t_features_done_us = clock.now_us();
                 if (tickIndex <= VERBOSE_CONTROL_TICKS)
                 {
                     const double feature0 = features.empty() ? 0.0 : features[0];
@@ -1123,35 +1253,155 @@ int main(int argc, char** argv)
                     rawU.assign(1, (double)constantOutputValue);
                     rawUView = &rawU;
                 }
-                else if (controllerMode == "localhost_constant")
+                else if (useLocalhostController)
                 {
-                    std::string localhostError;
-                    if (request_localhost_controller(localhostControllerSock,
-                                                    localhostSequence++,
-                                                    x,
-                                                    &rawU,
-                                                    &localhostError))
+                    // Localhost mode is intentionally single-threaded here:
+                    // 1) poll once for the currently in-flight reply
+                    // 2) mark it complete or timed out
+                    // 3) send a new request only if no older request is outstanding
+                    //
+                    // This keeps the 100 Hz scheduler nonblocking without needing
+                    // a worker thread or a queue of stale controller jobs.
+                    uint32_t submittedSeq = 0;
+                    std::vector<double> localhostReplyRaw;
+                    LocalhostRequestDiagnostics localhostDiag {};
+                    std::string localhostReplyError;
+                    bool gotReply = false;
+                    if (localhostRequestInFlight)
                     {
-                        localhostMisses = 0;
-                        localhostLastOutput = normalize_controller_output(rawU, udpOutputCount);
-                        rawU = localhostLastOutput;
-                        rawUView = &rawU;
+                        gotReply = try_recv_localhost_controller_reply(localhostControllerSock,
+                                                                      localhostInFlightSequence,
+                                                                      &localhostReplyRaw,
+                                                                      &localhostDiag,
+                                                                      &localhostReplyError);
+                        localhostReplyStaleDropped += (uint64_t)std::max(localhostDiag.staleReplies, 0);
+                        if (gotReply)
+                        {
+                            localhostRequestInFlight = false;
+                            localhostLastOutput = normalize_controller_output(localhostReplyRaw, udpOutputCount);
+                            localhostLatestReplyUs = t_in_us;
+                            localhostLastSeenReplySeq = localhostInFlightSequence;
+                            ++localhostReplySuccesses;
+                            ++localhostFreshReplyTransitions;
+                            controllerTiming.add(t_in_us - localhostInFlightSentUs);
+                            localhostLastError.clear();
+                        }
+                        else if (!localhostReplyError.empty())
+                        {
+                            localhostLastError = localhostReplyError;
+                        }
+                        else if ((t_in_us - localhostInFlightSentUs) > (int64_t)localhostTimeoutMs * 1000)
+                        {
+                            localhostRequestInFlight = false;
+                            ++localhostReplyTimeouts;
+                            localhostLastError = "timeout waiting for localhost controller reply";
+                        }
+                    }
+
+                    if (!localhostRequestInFlight)
+                    {
+                        std::string localhostSendError;
+                        submittedSeq = localhostSequence++;
+                        if (send_localhost_controller_request(localhostControllerSock,
+                                                              submittedSeq,
+                                                              x,
+                                                              &localhostSendError))
+                        {
+                            localhostRequestInFlight = true;
+                            localhostInFlightSequence = submittedSeq;
+                            localhostInFlightSentUs = t_in_us;
+                            ++localhostRequests;
+                        }
+                        else
+                        {
+                            localhostLastError = localhostSendError;
+                        }
                     }
                     else
                     {
-                        ++localhostMisses;
-                        if (localhostMisses < 5 && !localhostLastOutput.empty())
-                            rawU = localhostLastOutput;
-                        else
-                            rawU.assign(udpOutputCount, 0.0);
-                        rawUView = &rawU;
-                        if (localhostMisses == 1 || localhostMisses == 5)
-                        {
-                            std::printf("Localhost controller miss=%u error=%s failSafe=%s\n",
-                                        (unsigned)localhostMisses,
-                                        localhostError.c_str(),
-                                        (localhostMisses < 5) ? "hold-last" : "zero");
-                        }
+                        ++localhostReplyPreSendDrained;
+                    }
+
+                    const bool localhostHasValidOutput = !localhostLastOutput.empty() && localhostLastSeenReplySeq != 0;
+                    const uint32_t localhostLatestReplySeq = localhostLastSeenReplySeq;
+                    const uint64_t localhostOverwrittenRequests = localhostReplyPreSendDrained;
+                    int64_t localhostOutputAgeUs = -1;
+                    const char* localhostPolicyName = "zero";
+                    const char* localhostPolicyReason = "no reply yet";
+                    int localhostCurrentPolicy = 0;
+
+                    if (localhostHasValidOutput && localhostLatestReplyUs > 0)
+                        localhostOutputAgeUs = t_in_us - localhostLatestReplyUs;
+
+                    if (localhostHasValidOutput &&
+                        localhostOutputAgeUs >= 0 &&
+                        localhostOutputAgeUs <= LOCALHOST_FRESH_OUTPUT_US)
+                    {
+                        // Fresh output: use the newest reply directly.
+                        rawU = localhostLastOutput;
+                        localhostCurrentPolicy = 2;
+                        localhostPolicyName = "fresh";
+                        localhostPolicyReason = "reply age within fresh threshold";
+                        ++localhostTicksUsingFreshOutput;
+                        localhostOutputAgeTiming.add(localhostOutputAgeUs);
+                    }
+                    else if (localhostHasValidOutput &&
+                             localhostOutputAgeUs >= 0 &&
+                             localhostOutputAgeUs <= LOCALHOST_MAX_HOLD_OUTPUT_US)
+                    {
+                        // Held output: the controller is alive, but its newest reply is
+                        // older than our "fresh" threshold, so we keep using it briefly.
+                        rawU = localhostLastOutput;
+                        localhostCurrentPolicy = 1;
+                        localhostPolicyName = "hold-last";
+                        localhostPolicyReason = "reply age within hold threshold";
+                        ++localhostTicksUsingHeldOutput;
+                        localhostOutputAgeTiming.add(localhostOutputAgeUs);
+                    }
+                    else
+                    {
+                        // Zero fail-safe: no valid reply has arrived yet, or the newest
+                        // reply is too old to trust for stimulation output.
+                        rawU.assign(udpOutputCount, 0.0);
+                        localhostCurrentPolicy = 0;
+                        localhostPolicyName = "zero";
+                        localhostPolicyReason = localhostHasValidOutput
+                            ? "reply too old"
+                            : "no valid reply yet";
+                        ++localhostTicksUsingZeroOutput;
+                    }
+                    rawUView = &rawU;
+
+                    if (localhostCurrentPolicy != localhostOutputPolicy)
+                    {
+                        ++localhostPolicyTransitions;
+                        localhostOutputPolicy = localhostCurrentPolicy;
+                        const double replyAgeMs = (localhostOutputAgeUs >= 0)
+                            ? (double)localhostOutputAgeUs / 1000.0
+                            : -1.0;
+                        const char* policyReason = localhostPolicyReason;
+                        if (localhostCurrentPolicy == 0 && !localhostLastError.empty())
+                            policyReason = localhostLastError.c_str();
+                        std::printf("Localhost output policy: controlTick=%llu policy=%s latestReplySeq=%u ageMs=%.3f reason=%s overwritten=%llu\n",
+                                    (unsigned long long)tickIndex,
+                                    localhostPolicyName,
+                                    (unsigned)localhostLatestReplySeq,
+                                    replyAgeMs,
+                                    policyReason,
+                                    (unsigned long long)localhostOverwrittenRequests);
+                    }
+                    else if (tickIndex <= VERBOSE_CONTROL_TICKS)
+                    {
+                        const double replyAgeMs = (localhostOutputAgeUs >= 0)
+                            ? (double)localhostOutputAgeUs / 1000.0
+                            : -1.0;
+                        std::printf("Localhost async: controlTick=%llu submittedSeq=%u latestReplySeq=%u policy=%s ageMs=%.3f overwritten=%llu\n",
+                                    (unsigned long long)tickIndex,
+                                    (unsigned)submittedSeq,
+                                    (unsigned)localhostLatestReplySeq,
+                                    localhostPolicyName,
+                                    replyAgeMs,
+                                    (unsigned long long)localhostOverwrittenRequests);
                     }
                 }
                 else if ((useMpcTestCachedMode && !postSetupCachedU.empty() && !postSetupCachedAmps.empty()) || useDelayedMatlabCache)
@@ -1191,7 +1441,7 @@ int main(int argc, char** argv)
                 {
                     const double raw0 = (!rawUView || rawUView->empty()) ? 0.0 : (*rawUView)[0];
                     const char* traceSource =
-                        (controllerMode == "localhost_constant") ? "localhost" :
+                        (useLocalhostController) ? "localhost" :
                         (usedPostSetupCache ? "postSetupCache" : "feval");
                     std::printf("Tick trace: controller controlTick=%llu source=%s rawCount=%zu raw0=%.6f\n",
                                 (unsigned long long)tickIndex,
@@ -1204,9 +1454,14 @@ int main(int argc, char** argv)
                 if (!useCachedFastPath)
                     u = normalize_controller_output(rawU, udpOutputCount);
                 const int64_t t_mpc_done_us = clock.now_us();
+                preprocessTiming.add(t_features_done_us - t_in_us);
+                if (!useLocalhostController)
+                    controllerTiming.add(t_mpc_done_us - t_features_done_us);
                 const std::vector<float> amps = useCachedFastPath
                     ? postSetupCachedAmps
                     : clamp_amplitudes_f32(u, 0.0f, 100000.0f);
+                const int64_t t_normalize_done_us = clock.now_us();
+                normalizeClampTiming.add(t_normalize_done_us - t_mpc_done_us);
                 if (tickIndex <= VERBOSE_CONTROL_TICKS)
                 {
                     const double u0 = useCachedFastPath
@@ -1235,7 +1490,7 @@ int main(int argc, char** argv)
                         : (u.empty() ? 0.0 : u[0]);
                     const char* inputMode = useFixedControllerInput ? "fixed123" : "live";
                     const char* sourceMode =
-                        (controllerMode == "localhost_constant") ? "localhost" :
+                        (useLocalhostController) ? "localhost" :
                         (usedPostSetupCache ? "postSetupCache" : "feval");
                     std::printf("Controller output shape: raw=%zu normalized=%zu raw0=%.6f out0=%.6f inputMode=%s source=%s\n",
                                 rawUView ? rawUView->size() : 0, amps.size(), raw0, out0,
@@ -1252,6 +1507,8 @@ int main(int argc, char** argv)
                 const uint8_t nPackets = (uint8_t)std::min<size_t>(amps.size(), (size_t)MAX_SAMPLES);
                 if (nPackets > 0)
                 {
+                    // The scheduler can skip physical UDP transmit during bring-up while
+                    // still exercising feature extraction, controller logic, and timing.
                     if (!printedTick1BeforeSend)
                     {
                         std::printf("Tick debug: before first UDP send controlTick=%llu packet=%llu nPackets=%u skipUdp=%s\n",
@@ -1267,6 +1524,8 @@ int main(int argc, char** argv)
                             std::printf("Warning: UDP send failed.\n");
                     }
                     const int64_t t_udp_send_us = clock.now_us();
+                    udpSendTiming.add(t_udp_send_us - t_normalize_done_us);
+                    totalTickTiming.add(t_udp_send_us - t_in_us);
                     if (!printedTick1AfterSend)
                     {
                         std::printf("Tick debug: after first UDP send controlTick=%llu packet=%llu\n",
@@ -1321,35 +1580,85 @@ int main(int argc, char** argv)
                 }
 
                 nextControlUs += CONTROL_INTERVAL_US;
+                nowUs = clock.now_us();
+                if (nowUs >= nextControlUs)
+                {
+                    const int64_t lateUs = nowUs - nextControlUs;
+                    const uint64_t skipped = 1 + (uint64_t)(lateUs / CONTROL_INTERVAL_US);
+                    droppedControlTicks += skipped;
+                    nextControlUs = nowUs + CONTROL_INTERVAL_US;
+                    if (droppedControlTicks <= 5 || (droppedControlTicks % 100) == 0)
+                    {
+                        std::printf("Scheduler resync: dropped=%llu totalDropped=%llu lateUs=%lld\n",
+                                    (unsigned long long)skipped,
+                                    (unsigned long long)droppedControlTicks,
+                                    (long long)lateUs);
+                    }
+                }
                 if (tickIndex <= VERBOSE_CONTROL_TICKS)
                 {
                     std::printf("Tick trace: end controlTick=%llu nextPacket=%llu\n",
                                 (unsigned long long)tickIndex,
                                 (unsigned long long)sentPackets);
                 }
-                nowUs = clock.now_us();
             }
         }
 
         if (minWindowSamplesSeen == (size_t)-1)
             minWindowSamplesSeen = 0;
-        std::printf("\nSummary: packets=%llu controlTicks=%llu finalBuffered=%zu/%zu nominalWindowSamples=%zu minWindowSamples=%zu undersampledWindows=%llu\n",
+        // The summary is intended to answer three questions quickly:
+        // 1) did the 100 Hz scheduler stay healthy?
+        // 2) how expensive was each stage?
+        // 3) in localhost mode, how often did we use fresh vs held vs zero output?
+        std::printf("\nSummary: packets=%llu controlTicks=%llu droppedControlTicks=%llu finalBuffered=%zu/%zu nominalWindowSamples=%zu minWindowSamples=%zu undersampledWindows=%llu\n",
                     (unsigned long long)sentPackets,
                     (unsigned long long)controlTicks,
+                    (unsigned long long)droppedControlTicks,
                     ring.size,
                     ring.capacity,
                     nominalWindowSamples,
                     minWindowSamplesSeen,
                     (unsigned long long)undersampledWindows);
+        std::printf("Timing summary:\n");
+        print_timing_stats("  preprocess", preprocessTiming);
+        print_timing_stats("  controller", controllerTiming);
+        print_timing_stats("  normalizeClamp", normalizeClampTiming);
+        print_timing_stats("  udpSend", udpSendTiming);
+        print_timing_stats("  totalTick", totalTickTiming);
+        if (useLocalhostController)
+        {
+            print_timing_stats("  localhostOutputAge", localhostOutputAgeTiming);
+            std::printf("Localhost summary: submitted=%llu replies=%llu failures=%llu timeouts=%llu staleDropped=%llu skippedWhileBusy=%llu freshTicks=%llu heldTicks=%llu zeroTicks=%llu freshReplyTransitions=%llu policyTransitions=%llu inFlight=%s lastReplySeq=%u\n",
+                        (unsigned long long)localhostRequests,
+                        (unsigned long long)localhostReplySuccesses,
+                        (unsigned long long)0,
+                        (unsigned long long)localhostReplyTimeouts,
+                        (unsigned long long)localhostReplyStaleDropped,
+                        (unsigned long long)localhostReplyPreSendDrained,
+                        (unsigned long long)localhostTicksUsingFreshOutput,
+                        (unsigned long long)localhostTicksUsingHeldOutput,
+                        (unsigned long long)localhostTicksUsingZeroOutput,
+                        (unsigned long long)localhostFreshReplyTransitions,
+                        (unsigned long long)localhostPolicyTransitions,
+                        localhostRequestInFlight ? "true" : "false",
+                        (unsigned)localhostLastSeenReplySeq);
+            if (!localhostLastError.empty())
+                std::printf("Localhost last error: %s\n", localhostLastError.c_str());
+        }
         std::printf("\nStopping.\n");
     }
     catch (const std::exception& ex)
     {
         // SECTION 8: Exception-safe cleanup path.
         std::cerr << "Fatal error: " << ex.what() << "\n";
+        std::printf("Cleanup trace: exception path begin\n");
+        if (card) std::printf("Cleanup trace: releasing PO8e card\n");
         if (card) PO8e::releaseCard(card);
+        if (localhostControllerSock != INVALID_SOCKET) std::printf("Cleanup trace: closing localhost controller socket\n");
         if (localhostControllerSock != INVALID_SOCKET) closesocket(localhostControllerSock);
+        if (rzSock != INVALID_SOCKET) std::printf("Cleanup trace: disconnecting RZ socket\n");
         if (rzSock != INVALID_SOCKET) disconnectRZ(rzSock);
+        if (udpReady) std::printf("Cleanup trace: WSACleanup\n");
         if (udpReady) udp_cleanup();
         if (useFastExitShutdown)
         {
@@ -1364,9 +1673,14 @@ int main(int argc, char** argv)
     {
         // SECTION 8: Exception-safe cleanup path.
         std::cerr << "Fatal error: unknown exception\n";
+        std::printf("Cleanup trace: unknown-exception path begin\n");
+        if (card) std::printf("Cleanup trace: releasing PO8e card\n");
         if (card) PO8e::releaseCard(card);
+        if (localhostControllerSock != INVALID_SOCKET) std::printf("Cleanup trace: closing localhost controller socket\n");
         if (localhostControllerSock != INVALID_SOCKET) closesocket(localhostControllerSock);
+        if (rzSock != INVALID_SOCKET) std::printf("Cleanup trace: disconnecting RZ socket\n");
         if (rzSock != INVALID_SOCKET) disconnectRZ(rzSock);
+        if (udpReady) std::printf("Cleanup trace: WSACleanup\n");
         if (udpReady) udp_cleanup();
         if (useFastExitShutdown)
         {
@@ -1379,9 +1693,16 @@ int main(int argc, char** argv)
     }
 
     // SECTION 9: Normal shutdown cleanup.
+    // Shutdown ordering is left explicit because teardown has been a recurring
+    // debugging focus during this project, especially when MATLAB/UDP state is live.
+    std::printf("Cleanup trace: normal shutdown begin\n");
+    if (rzSock != INVALID_SOCKET) std::printf("Cleanup trace: disconnecting RZ socket\n");
     if (rzSock != INVALID_SOCKET) disconnectRZ(rzSock);
+    if (localhostControllerSock != INVALID_SOCKET) std::printf("Cleanup trace: closing localhost controller socket\n");
     if (localhostControllerSock != INVALID_SOCKET) closesocket(localhostControllerSock);
+    if (udpReady) std::printf("Cleanup trace: WSACleanup\n");
     if (udpReady) udp_cleanup();
+    if (card) std::printf("Cleanup trace: releasing PO8e card\n");
     if (card) PO8e::releaseCard(card);
     if (useFastExitShutdown)
     {

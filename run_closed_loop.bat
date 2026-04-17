@@ -19,7 +19,7 @@ rem Include the common MATLAB runtime locations used by Engine/DataArray.
 set "PATH=%MATLABROOT%\runtime\win64;%MATLABROOT%\bin\win64;%MATLABROOT%\extern\bin\win64;%MATLABROOT%\sys\os\win64;%PATH%"
 
 rem Usage:
-rem   run_closed_loop.bat [tdt_host_or_ip] [matlab_workdir] [mpc_input_count] [--controller constant|ramp|mpc_test|mpc_test_cached|localhost_constant] [--constant-output V] [--udp-output-count N] [--ring-buffer-capacity N] [--validate-log path.csv] [--matlab-start-delay-ticks N] [--fast-exit] [--skip-udp-send] [--max-control-ticks N] [--localhost-controller-host 127.0.0.1] [--localhost-controller-port 31000] [--localhost-reply-port 31001] [--localhost-timeout-ms 5]
+rem   run_closed_loop.bat [tdt_host_or_ip] [matlab_workdir] [mpc_input_count] [--controller constant|ramp|mpc_test|mpc_test_cached|localhost|localhost_constant] [--constant-output V] [--udp-output-count N] [--ring-buffer-capacity N] [--validate-log path.csv] [--matlab-start-delay-ticks N] [--fast-exit] [--skip-udp-send] [--max-control-ticks N] [--localhost-controller-host 127.0.0.1] [--localhost-controller-port 31000] [--localhost-reply-port 31001] [--localhost-timeout-ms 5]
 MpcPo8eUdpClosedLoop.exe %*
 set EXITCODE=%ERRORLEVEL%
 echo MpcPo8eUdpClosedLoop exit code: %EXITCODE%
