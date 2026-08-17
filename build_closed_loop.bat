@@ -26,11 +26,11 @@ if errorlevel 1 (
     )
 )
 
-cl /EHsc /std:c++17 MpcPo8eUdpClosedLoop.cpp TDTUDP.cpp ^
+cl /EHsc /std:c++17 /Zi /Fd:MpcPo8eUdpClosedLoop_compile.pdb MpcPo8eUdpClosedLoop.cpp TDTUDP.cpp ^
  /I"%MATLABROOT%\extern\include" ^
  /I"%MATLABROOT%\extern\include\MatlabEngine" ^
  /I"%MATLABROOT%\extern\include\MatlabDataArray" ^
- /link ^
+ /link /DEBUG /PDB:MpcPo8eUdpClosedLoop.pdb ^
  /LIBPATH:"%MATLABROOT%\extern\lib\win64\microsoft" ^
  PO8eStreaming.lib ws2_32.lib libMatlabEngine.lib libMatlabDataArray.lib
 

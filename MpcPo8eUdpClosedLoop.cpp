@@ -12,8 +12,10 @@
 #include <fstream>
 #include <memory>
 #include <limits>
+#include <atomic>
 
 #include "PO8e.h"
+#include "SampleSource.h"
 #include "compat.h"
 #include "TDTUDP.h"
 #include "MatlabEngine.hpp"
@@ -342,15 +344,32 @@ static std::vector<double> normalize_controller_output(const std::vector<double>
                                                        size_t outputCount)
 {
     // Controllers may return either a scalar or a full output vector. Normalize
-    // both cases into a fixed-width vector so downstream UDP code can stay simple.
+    // both into a fixed-width vector so downstream UDP code can stay simple.
+    //
+    // A scalar reply goes to SLOT 0 ONLY. It used to be broadcast to every
+    // output, which is a safety defect in the standard workflow: a single-pair
+    // sysid capture yields an m=1 model, mpc_test then returns a scalar, and the
+    // broadcast delivered that command to all 8 bipolar pairs -- stimulating 7
+    // sites the operator believes are off. The mapping from a single-input model
+    // to the RIGHT pair belongs server-side (matlab_controller_server
+    // cfg.stimPairs / 4_mpc_server -Pairs), which returns a full-width vector.
     const size_t nOut = std::max<size_t>(outputCount, 1);
     std::vector<double> out(nOut, 0.0);
     if (rawOutput.empty())
         return out;
 
-    if (rawOutput.size() == 1)
+    if (rawOutput.size() == 1 && nOut > 1)
     {
-        std::fill(out.begin(), out.end(), rawOutput[0]);
+        static bool warned = false;
+        if (!warned)
+        {
+            warned = true;
+            std::printf("WARNING: controller replied with 1 value for %zu outputs; "
+                        "sending it on OUTPUT 1 ONLY (no broadcast). If a different "
+                        "stim pair was identified, set the server-side pair mapping "
+                        "(4_mpc_server -Pairs <n>).\n", nOut);
+        }
+        out[0] = rawOutput[0];
         return out;
     }
 
@@ -403,12 +422,13 @@ static std::vector<float> clamp_amplitudes_f32_from_cached(const std::vector<dou
     if (rawOutput.empty())
         return out;
 
-    if (rawOutput.size() == 1)
+    if (rawOutput.size() == 1 && nOut > 1)
     {
+        // Slot 0 only -- same no-broadcast rule as normalize_controller_output.
         float v = (float)rawOutput[0];
         if (v < minVal) v = minVal;
         if (v > maxVal) v = maxVal;
-        std::fill(out.begin(), out.end(), v);
+        out[0] = v;
         return out;
     }
 
@@ -480,7 +500,7 @@ struct SampleRingBuffer
         channelValues.assign(channelCount, std::vector<float>(capacity, 0.0f));
     }
 
-    void pushFrame(const std::vector<int16_t>& frame, int64_t timestampUs)
+    void pushFrame(const std::vector<float>& frame, int64_t timestampUs)
     {
         if (capacity == 0 || channelValues.empty())
             return;
@@ -488,7 +508,7 @@ struct SampleRingBuffer
         timestampsUs[writeIndex] = timestampUs;
         const size_t n = std::min(frame.size(), channelValues.size());
         for (size_t ch = 0; ch < n; ++ch)
-            channelValues[ch][writeIndex] = static_cast<float>(frame[ch]);
+            channelValues[ch][writeIndex] = frame[ch];
 
         writeIndex = (writeIndex + 1) % capacity;
         if (size < capacity)
@@ -543,7 +563,131 @@ struct SampleRingBuffer
 
         return out;
     }
+
+    // Fixed-sample-count preprocessing: mean absolute value over the most recent
+    // nSamples frames per channel, independent of when those samples ARRIVED.
+    //
+    // This replaces computeMeanAbsWindow for the live path. The PO8e delivers in
+    // bursts, so a fixed 10 ms of ARRIVAL time held anywhere from 3 to 5,439
+    // samples on hardware -- at the top end averaging ~200 ms of signal, which
+    // washes out the 15-28 ms evoked response we are trying to measure. A fixed
+    // count makes every tick's feature comparable regardless of delivery jitter.
+    //
+    // It also lets the window be chosen as a whole number of stim periods. At
+    // 610.3516 Hz acquisition (base/40) and 101.7253 Hz stim (base/240) there are
+    // exactly 6 samples per stim period, so any multiple of 6 spans a whole number
+    // of artifact cycles and the artifact becomes a constant offset rather than a
+    // tick-to-tick wobble that would look like signal.
+    std::vector<double> computeMeanAbsSamples(size_t inputCount,
+                                              size_t nSamples,
+                                              size_t* samplesUsed = NULL) const
+    {
+        std::vector<double> out(inputCount, 0.0);
+        const size_t take = std::min(nSamples, size);
+        if (samplesUsed != NULL)
+            *samplesUsed = take;
+        if (take == 0 || channelValues.empty())
+            return out;
+
+        const size_t n = std::min(inputCount, channelValues.size());
+        for (size_t k = 0; k < take; ++k)
+        {
+            const size_t idx = (writeIndex + capacity - 1 - k) % capacity;
+            for (size_t ch = 0; ch < n; ++ch)
+                out[ch] += std::fabs((double)channelValues[ch][idx]);
+        }
+
+        for (size_t ch = 0; ch < n; ++ch)
+            out[ch] /= (double)take;
+
+        return out;
+    }
 };
+
+// Drive every stim output to zero before releasing the RZ2.
+//
+// StimGen free-runs and the RZ2 HOLDS the last commanded amplitude, so simply
+// exiting leaves the stimulator delivering that amplitude indefinitely. Measured
+// 2026-08-14 (block LD-260814-155801): 41.5 s of continuous stimulation at the
+// full commanded amplitude after the controller exited, ending only when the
+// recording was stopped by hand. This applies to crashes and Ctrl+C too, which is
+// exactly when nobody is watching the console.
+//
+// send_envelope.py has always zeroed on exit; the control loop never did.
+// Sent repeatedly because UDP is lossy and this is the one packet that must land.
+//
+// Deliberately allocation-free: this is also called from the console-control and
+// unhandled-exception handlers below, where the heap may be the thing that broke
+// (2026-08-15: the 0xc0000374 crashes were heap corruption).
+static void zero_stim_outputs(SOCKET sock, size_t outputCount);
+
+// Emergency-zero state. C++ catch blocks cannot see console close, Ctrl+C, or
+// SEH faults, so before 2026-08-15 every one of those left the RZ2 holding the
+// last commanded amplitude (measured: 41.5 s of continuous stim after exit,
+// block LD-260814-155801). The handlers below are armed once the RZ socket is
+// live and cover:
+//   - Ctrl+C / Ctrl+Break / console close  (SetConsoleCtrlHandler)
+//   - unhandled SEH faults, best effort    (SetUnhandledExceptionFilter;
+//     returns EXCEPTION_CONTINUE_SEARCH so WER still writes the crash dump)
+// A hard external kill (TerminateProcess / Stop-Process) still bypasses
+// everything a process can do -- the durable answer is an RZ2-side watchdog
+// that zeros on UDP silence, which does not exist yet.
+static std::atomic<uintptr_t> g_emergencySock{(uintptr_t)INVALID_SOCKET};
+static std::atomic<size_t>    g_emergencyOutputs{0};
+
+static void zero_stim_outputs(SOCKET sock, size_t outputCount)
+{
+    if (sock == INVALID_SOCKET || outputCount == 0)
+        return;
+    const uint8_t n = (uint8_t)std::min<size_t>(outputCount, (size_t)MAX_SAMPLES);
+    static float zeros[MAX_SAMPLES] = { 0.0f };
+    int sent = 0;
+    for (int i = 0; i < 5; ++i)
+    {
+        if (sendUDPPacketWords(sock, zeros, n) != SOCKET_ERROR)
+            ++sent;
+        compatUSleep(2000);
+    }
+    std::printf("Cleanup trace: zeroed %u stim output(s), %d/5 packets acknowledged by send()\n",
+                (unsigned)n, sent);
+    // One zeroing is enough; disarm so a later Ctrl+C on a closed socket is a no-op.
+    g_emergencySock.store((uintptr_t)INVALID_SOCKET);
+}
+
+static void emergency_zero_now(const char* why)
+{
+    const SOCKET sock = (SOCKET)g_emergencySock.exchange((uintptr_t)INVALID_SOCKET);
+    const size_t n = g_emergencyOutputs.load();
+    if (sock == INVALID_SOCKET || n == 0)
+        return;
+    std::printf("\nEMERGENCY STIM ZERO (%s)\n", why);
+    const uint8_t count = (uint8_t)std::min<size_t>(n, (size_t)MAX_SAMPLES);
+    static float zeros[MAX_SAMPLES] = { 0.0f };
+    for (int i = 0; i < 5; ++i)
+        sendUDPPacketWords(sock, zeros, count);
+}
+
+static BOOL WINAPI console_ctrl_zero_handler(DWORD ctrlType)
+{
+    (void)ctrlType;
+    emergency_zero_now("console control event");
+    return FALSE;   // let the default handler terminate the process afterwards
+}
+
+static LONG WINAPI unhandled_exception_zero_filter(EXCEPTION_POINTERS* info)
+{
+    (void)info;
+    emergency_zero_now("unhandled exception");
+    return EXCEPTION_CONTINUE_SEARCH;   // WER still runs and writes the dump
+}
+
+static void arm_emergency_zero(SOCKET sock, size_t outputCount)
+{
+    g_emergencyOutputs.store(outputCount);
+    g_emergencySock.store((uintptr_t)sock);
+    SetConsoleCtrlHandler(console_ctrl_zero_handler, TRUE);
+    SetUnhandledExceptionFilter(unhandled_exception_zero_filter);
+}
 
 int main(int argc, char** argv)
 {
@@ -553,7 +697,8 @@ int main(int argc, char** argv)
     // --test-udp mode:
     //   MpcPo8eUdpClosedLoop.exe --test-udp [tdt_host_or_ip] [value] [count] [period_ms]
     // Example:
-    //   MpcPo8eUdpClosedLoop.exe --test-udp 10.1.0.1 12345 4 20
+    //   MpcPo8eUdpClosedLoop.exe --test-udp 10.1.0.100 12345 4 20
+    // (RZ2 = 10.1.0.100; 10.1.0.1 is this PC's own static address, not a target.)
     if (argc >= 2 && std::string(argv[1]) == "--test-udp")
     {
         const char* testHost = (argc >= 3) ? argv[2] : "10.1.0.100";
@@ -737,6 +882,17 @@ int main(int argc, char** argv)
     //   --fast-exit
     //   --skip-udp-send
     //   --max-control-ticks N
+    //   --feature-window-samples N
+    //                            frames per channel averaged into each feature
+    //                            (default 6 = one 101.7253 Hz stim period at the
+    //                            610.3516 Hz acquisition rate). Prefer multiples
+    //                            of 6 so the stim artifact spans whole cycles.
+    //   --sim-input sine|noise|file:<path>   (run with no PO8e card)
+    //   --sim-fs <hz>            emulated acquisition rate (default 610.3516,
+    //                            the real NPro1 rate = base 24414.0625 / 40)
+    //   --sim-channels <n>       emulated channel count (default = mpc input size)
+    //   --sim-sine-hz <hz>       sine test frequency (default 10)
+    //   --sim-amp <a>            sim signal amplitude in int16 units (default 1000)
     // =========================================================================
     const char* tdt_host = (argc >= 2) ? argv[1] : "10.1.0.100"; //"TDT_UDP_28_2869";
     const char* matlab_workdir = (argc >= 3) ? argv[2] : "C:/Users/brets/Documents/MATLAB";
@@ -756,6 +912,20 @@ int main(int argc, char** argv)
     std::string controllerMode = "ramp";
     bool constantOutputEnabled = false;
     float constantOutputValue = 0.0f;
+    bool simInputEnabled = false;
+    SimSampleSource::Mode simMode = SimSampleSource::SINE;
+    std::string simFilePath;
+    // Real NPro1 rate: base 24414.0625 / 40. The old 24414 default ran simulation
+    // 40x faster than hardware, which is why sim showed a healthy ~250 samples per
+    // window while the rig showed 3-5439.
+    double simFs = 610.3516;
+    int simChannels = 0;            // 0 => default to mpcInputCount below
+    double simSineHz = 10.0;
+    double simAmplitude = 1000.0;
+    // Frames per channel averaged into each feature. 6 = one stim period at
+    // 101.7253 Hz against 610.3516 Hz acquisition; multiples of 6 keep the stim
+    // artifact contribution constant tick to tick.
+    size_t featureWindowSamples = 6;
     for (int i = 1; i < argc; ++i)
     {
         const std::string arg = argv[i];
@@ -780,6 +950,11 @@ int main(int argc, char** argv)
         else if (arg == "--udp-output-count" && (i + 1) < argc)
         {
             requestedUdpOutputCount = static_cast<size_t>(std::max(1, std::atoi(argv[i + 1])));
+            ++i;
+        }
+        else if (arg == "--feature-window-samples" && (i + 1) < argc)
+        {
+            featureWindowSamples = static_cast<size_t>(std::max(1, std::atoi(argv[i + 1])));
             ++i;
         }
         else if (arg == "--ring-buffer-capacity" && (i + 1) < argc)
@@ -825,11 +1000,52 @@ int main(int argc, char** argv)
             localhostTimeoutMs = std::max(1, std::atoi(argv[i + 1]));
             ++i;
         }
+        else if (arg == "--sim-input" && (i + 1) < argc)
+        {
+            simInputEnabled = true;
+            const std::string spec = argv[i + 1];
+            if (spec == "sine")
+                simMode = SimSampleSource::SINE;
+            else if (spec == "noise")
+                simMode = SimSampleSource::NOISE;
+            else if (spec.rfind("file:", 0) == 0)
+            {
+                simMode = SimSampleSource::FILE;
+                simFilePath = spec.substr(5);
+            }
+            else
+                std::printf("Unknown --sim-input spec '%s'; defaulting to sine.\n", spec.c_str());
+            ++i;
+        }
+        else if (arg == "--sim-fs" && (i + 1) < argc)
+        {
+            simFs = std::atof(argv[i + 1]);
+            ++i;
+        }
+        else if (arg == "--sim-channels" && (i + 1) < argc)
+        {
+            simChannels = std::max(1, std::atoi(argv[i + 1]));
+            ++i;
+        }
+        else if (arg == "--sim-sine-hz" && (i + 1) < argc)
+        {
+            simSineHz = std::atof(argv[i + 1]);
+            ++i;
+        }
+        else if (arg == "--sim-amp" && (i + 1) < argc)
+        {
+            simAmplitude = std::atof(argv[i + 1]);
+            ++i;
+        }
     }
 
     matlab::engine::MATLABEngine* engRaw = nullptr;
     PO8e* card = nullptr;
+    std::unique_ptr<ISampleSource> source;
     SOCKET rzSock = INVALID_SOCKET;
+    // Mirrors udpOutputCount (which is scoped inside the try) so the cleanup
+    // paths know how many words to zero.
+    size_t activeUdpOutputCount = 0;
     SOCKET localhostControllerSock = INVALID_SOCKET;
     bool udpReady = false;
         std::ofstream validateLog;
@@ -927,38 +1143,72 @@ int main(int argc, char** argv)
         }
 
         // =====================================================================
-        // SECTION 5: Open PO8e stream
+        // SECTION 5: Open acquisition stream (live PO8e card or --sim-input)
         // =====================================================================
-        int total = PO8e::cardCount();
-        std::printf("Found %d card(s) in the system.\n", total);
-        if (total <= 0) return 0;
-
-        std::printf("Connecting to card 0...\n");
-        card = PO8e::connectToCard(0);
-        if (!card)
+        if (simInputEnabled)
         {
-            std::printf("Connection failed.\n");
+            const int simCh = (simChannels > 0) ? simChannels : (int)mpcInputCount;
+            std::printf("Sim input enabled: bypassing PO8e card.\n");
+            source.reset(new SimSampleSource(simCh, simFs, simMode, simFilePath,
+                                             simSineHz, simAmplitude));
+        }
+        else
+        {
+            int total = PO8e::cardCount();
+            std::printf("Found %d card(s) in the system.\n", total);
+            if (total <= 0) return 0;
+
+            std::printf("Connecting to card 0...\n");
+            card = PO8e::connectToCard(0);
+            if (!card)
+            {
+                std::printf("Connection failed.\n");
+                return 1;
+            }
+            std::printf("Connected: %p\n", (void*)card);
+            source.reset(new Po8eSampleSource(card));
+        }
+
+        if (!source->startCollecting())
+        {
+            std::printf("startCollecting() failed with: %d\n", source->getLastError());
             return 1;
         }
-        std::printf("Connected: %p\n", (void*)card);
-
-        if (!card->startCollecting())
-        {
-            std::printf("startCollecting() failed with: %d\n", card->getLastError());
-            return 1;
-        }
-        std::printf("Card is collecting.\n");
+        std::printf("Source is collecting (%s).\n", source->name());
 
         std::printf("Waiting for stream...\n");
-        while (card->samplesReady() == 0)
+        while (source->samplesReady(nullptr) == 0)
             compatUSleep(5000);
 
-        const int nCh = card->numChannels();
-        std::printf("Streaming. numChannels=%d\n", nCh);
+        const int nCh = source->numChannels();
+        // Bytes per sample is set by the Synapse gizmo, NOT by this code: 2 = int16,
+        // 4 = float32. Sizing the read buffer for int16 while the card streams
+        // float32 overruns the heap by nCh*2 bytes on EVERY readBlock -- that was
+        // the 2026-08-14/15 crash (0xc0000374, caught in PO8eStreaming.dll by
+        // PageHeap), and the misread bytes also made every feature garbage.
+        const int sampleBytes = source->sampleSizeBytes();
+        std::printf("Streaming. numChannels=%d sampleBytes=%d (%s)\n",
+                    nCh, sampleBytes,
+                    sampleBytes == 4 ? "float32" : (sampleBytes == 2 ? "int16" : "UNRECOGNIZED"));
+        if (sampleBytes != 2 && sampleBytes != 4)
+        {
+            std::printf("FATAL: unsupported stream sample size %d bytes -- check the Synapse "
+                        "gizmo data format (expected int16 or float32).\n", sampleBytes);
+            return 1;
+        }
+        // The RZ2 UDP receive gizmo reads 8 float words -- one per BIPOLAR STIM PAIR
+        // (sSig[2k] = -sSig[2k-1], verified exact on 2026-08-12). Defaulting to the
+        // live stream width would silently send 32 words once the 32-channel
+        // recording is in use, and everything past word 8 is discarded with no
+        // error anywhere. 8 is the real actuator count, not a truncation.
+        static const size_t DEFAULT_UDP_OUTPUT_COUNT = 8;
         const size_t udpOutputCount = (requestedUdpOutputCount > 0)
             ? requestedUdpOutputCount
-            : (size_t)std::max(nCh, 1);
-        std::printf("Output channels per UDP packet=%zu\n", udpOutputCount);
+            : DEFAULT_UDP_OUTPUT_COUNT;
+        activeUdpOutputCount = udpOutputCount;
+        std::printf("Output channels per UDP packet=%zu (bipolar stim pairs)\n", udpOutputCount);
+        std::printf("Feature window=%zu samples/channel (fixed count, not arrival time)\n",
+                    featureWindowSamples);
 
         // =====================================================================
         // SECTION 6: Open UDP path to RZ and register local sender IP
@@ -1008,9 +1258,27 @@ int main(int argc, char** argv)
             return 1;
         }
         std::printf("UDP socket connected to RZ target: %s:%u\n", tdt_host, (unsigned)LISTEN_PORT);
+        arm_emergency_zero(rzSock, activeUdpOutputCount);
 
-        // Optional handshake check; left disabled to avoid blocking if the RZ isn't replying yet.
-        // if (!checkRZ(rzSock)) std::printf("Warning: RZ UDP version check failed.\n");
+        // Handshake check. checkRZ() does a blocking recv() with no timeout, which
+        // is why this was commented out since the first commit. The cost was that
+        // production had zero confirmation anything was listening: openSocket() uses
+        // connect()+send() with no bind, so send() returns the full byte count even
+        // when the destination does not exist. That is exactly how the 2026-08-09
+        // network fault stayed silent. A 1 s SO_RCVTIMEO makes the check safe --
+        // it warns and continues instead of hanging.
+        //
+        // Only checkRZ() receives on this socket (setRemoteIp/disconnectRZ are
+        // send-only), so the timeout affects nothing else.
+        {
+            DWORD rzRecvTimeoutMs = 1000;
+            setsockopt(rzSock, SOL_SOCKET, SO_RCVTIMEO,
+                       (const char*)&rzRecvTimeoutMs, sizeof rzRecvTimeoutMs);
+            if (checkRZ(rzSock))
+                std::printf("checkRZ: RZ2 ACK received.\n");
+            else
+                std::printf("WARNING: RZ2 did not ACK GET_VERSION - nothing may be receiving.\n");
+        }
 
         if (!setRemoteIp(rzSock))
             std::printf("Warning: SET_REMOTE_IP failed.\n");
@@ -1052,13 +1320,14 @@ int main(int argc, char** argv)
         // ---------------------------------------------------------------------
         // PO8e acquisition runs continuously and appends each sample frame into
         // a per-channel ring buffer. Every 10 ms, the controller:
-        // 1) preprocesses the most recent 10 ms window into one scalar per input
-        //    channel (mean absolute value placeholder)
+        // 1) preprocesses the most recent featureWindowSamples frames into one
+        //    scalar per input channel (mean absolute value placeholder).
+        //    NOTE: a fixed SAMPLE COUNT, not a time window -- PO8e delivery is
+        //    bursty, so an arrival-time window spanned 3-5439 samples on hardware.
         // 2) calls MATLAB mpc_step() once
         // 3) sends one UDP packet containing the output vector
         // =====================================================================
         static const int64_t CONTROL_INTERVAL_US = 10000;
-        static const int64_t PREPROCESS_WINDOW_US = 10000;
         static const int POLL_SLEEP_US = 1000;
         int64_t pos = 0;
         int64_t prevOffset = -1;
@@ -1096,33 +1365,74 @@ int main(int argc, char** argv)
         bool ranPreTransitionWarmFeval = false;
         bool printedTick1BeforeSend = false;
         bool printedTick1AfterSend = false;
-        const uint64_t printEveryPackets = 500;
+        const uint64_t printEveryPackets = 25;
         HiResClock clock;
         bool stopped = false;
-        std::vector<int16_t> temp((size_t)std::max(nCh, 1));
+        // Raw frame buffer sized per the PO8e contract: numChannels * dataSampleSize
+        // bytes per frame (PO8e.h readBlock docs). Decoded into floats before the ring.
+        std::vector<uint8_t> rawFrame((size_t)std::max(nCh, 1) * (size_t)sampleBytes);
+        std::vector<float> frame((size_t)std::max(nCh, 1), 0.0f);
+        const auto decodeFrame = [&]() {
+            if (sampleBytes == 4)
+            {
+                std::memcpy(frame.data(), rawFrame.data(), frame.size() * sizeof(float));
+            }
+            else
+            {
+                const int16_t* s = reinterpret_cast<const int16_t*>(rawFrame.data());
+                for (size_t ch = 0; ch < frame.size(); ++ch)
+                    frame[ch] = (float)s[ch];
+            }
+        };
         SampleRingBuffer ring;
         ring.initialize((size_t)std::max(nCh, 1), ringBufferCapacity);
+        uint64_t backlogFramesDropped = 0;
+
+        // Discard whatever accumulated before the loop started.
+        //
+        // The PO8e streams continuously from the moment Synapse begins, so by the
+        // time the operator confirms 'go' the card can hold tens of seconds of
+        // history. On 2026-08-14 that was 22,249 frames (36.5 s). Draining it one
+        // frame per readBlock() call cannot outrun live data still arriving, so the
+        // card's buffer overran, the offset counter jumped 12,712 frames, and the
+        // run died ~36 control ticks in.
+        //
+        // Nothing wants that history: the feature is the newest featureWindowSamples
+        // frames, so old data is pure latency.
+        {
+            bool preStopped = false;
+            const size_t backlog = source->samplesReady(&preStopped);
+            if (backlog > 0)
+            {
+                source->flushBufferedData((int)backlog);
+                backlogFramesDropped += backlog;
+                std::printf("Discarded %zu frame(s) buffered before loop start "
+                            "(stale history; the feature only uses the newest %zu).\n",
+                            backlog, featureWindowSamples);
+            }
+        }
+
         int64_t nextControlUs = clock.now_us() + CONTROL_INTERVAL_US;
 
         if (controllerMode == "mpc_test" && matlabStartDelayTicks > 0)
         {
             compatUSleep(20000);
-            size_t preloadSamples = card->samplesReady(&stopped);
+            size_t preloadSamples = source->samplesReady(&stopped);
             const size_t preloadToRead = std::min<size_t>(preloadSamples, 64);
             for (size_t i = 0; i < preloadToRead && !stopped; ++i)
             {
                 int64_t offsets[1];
-                const size_t got = card->readBlock((short*)temp.data(), 1, offsets);
+                const size_t got = source->readBlock(rawFrame.data(), 1, offsets);
                 if (got != 1)
                     break;
-                ring.pushFrame(temp, clock.now_us());
-                card->flushBufferedData(1);
+                decodeFrame();
+                ring.pushFrame(frame, clock.now_us());
+                source->flushBufferedData(1);
             }
 
-            const int64_t preLoopNowUs = clock.now_us();
             size_t preLoopWindowSamples = 0;
             const std::vector<double> preLoopFeatures =
-                ring.computeMeanAbsWindow(mpcInputCount, preLoopNowUs, PREPROCESS_WINDOW_US, &preLoopWindowSamples);
+                ring.computeMeanAbsSamples(mpcInputCount, featureWindowSamples, &preLoopWindowSamples);
             std::vector<double> preLoopX =
                 build_mpc_input(preLoopFeatures, mpcInputCount, udpOutputCount);
             std::printf("Pre-loop live probe: buffered=%zu windowSamples=%zu feature0=%.6f\n",
@@ -1146,7 +1456,7 @@ int main(int argc, char** argv)
             // Poll buffered sample count directly. In practice this is more stable
             // than repeatedly calling the vendor semaphore wait with very short
             // timeouts inside the 100 Hz scheduler.
-            size_t numSamples = card->samplesReady(&stopped);
+            size_t numSamples = source->samplesReady(&stopped);
             if (stopped)
             {
                 std::printf("\nExit reason: PO8e stream reported stopped.\n");
@@ -1156,10 +1466,24 @@ int main(int argc, char** argv)
             if (numSamples == 0)
                 compatUSleep(POLL_SLEEP_US);
 
+            // Bounded ingest. If we ever fall behind, catch up by DISCARDING the
+            // oldest frames instead of walking through them one vendor call at a
+            // time -- that is precisely how the card was allowed to overrun. Frames
+            // dropped here are counted and reported at exit; an overrun is silent,
+            // unbounded, and corrupts the offset counter.
+            static const size_t kMaxIngestPerPass = 4096;
+            if (numSamples > kMaxIngestPerPass)
+            {
+                const size_t drop = numSamples - kMaxIngestPerPass;
+                source->flushBufferedData((int)drop);
+                backlogFramesDropped += drop;
+                numSamples = kMaxIngestPerPass;
+            }
+
             for (size_t i = 0; i < numSamples; ++i)
             {
                 int64_t offsets[1];
-                const size_t got = card->readBlock((short*)temp.data(), 1, offsets);
+                const size_t got = source->readBlock(rawFrame.data(), 1, offsets);
                 if (got != 1)
                 {
                     std::printf("readBlock failed.\n");
@@ -1196,9 +1520,10 @@ int main(int argc, char** argv)
                 }
 
                 const int64_t sampleTimeUs = clock.now_us();
-                ring.pushFrame(temp, sampleTimeUs);
+                decodeFrame();
+                ring.pushFrame(frame, sampleTimeUs);
 
-                card->flushBufferedData(1);
+                source->flushBufferedData(1);
             }
 
             // The controller runs at a fixed 100 Hz cadence independent of the
@@ -1217,7 +1542,7 @@ int main(int argc, char** argv)
                 const int64_t t_in_us = clock.now_us();
                 size_t windowSamplesSeen = 0;
                 const std::vector<double> features =
-                    ring.computeMeanAbsWindow(mpcInputCount, t_in_us, PREPROCESS_WINDOW_US, &windowSamplesSeen);
+                    ring.computeMeanAbsSamples(mpcInputCount, featureWindowSamples, &windowSamplesSeen);
                 const int64_t t_features_done_us = clock.now_us();
                 if (tickIndex <= VERBOSE_CONTROL_TICKS)
                 {
@@ -1499,9 +1824,13 @@ int main(int argc, char** argv)
                 }
                 ++controlTicks;
                 minWindowSamplesSeen = std::min(minWindowSamplesSeen, windowSamplesSeen);
-                if (windowSamplesSeen > nominalWindowSamples)
-                    nominalWindowSamples = windowSamplesSeen;
-                else if (nominalWindowSamples > 0 && windowSamplesSeen < nominalWindowSamples)
+                // "Nominal" is now the REQUESTED count rather than a running max.
+                // The old running-max form reported 299/300 windows undersampled
+                // even in simulation, because the first tick set the high-water
+                // mark and nothing afterwards could match it -- a false alarm that
+                // masked the real arrival-time defect.
+                nominalWindowSamples = featureWindowSamples;
+                if (windowSamplesSeen < featureWindowSamples)
                     ++undersampledWindows;
 
                 const uint8_t nPackets = (uint8_t)std::min<size_t>(amps.size(), (size_t)MAX_SAMPLES);
@@ -1560,7 +1889,7 @@ int main(int argc, char** argv)
                             << t_mpc_done_us << ','
                             << t_udp_send_us << ','
                             << mpc_ms << ','
-                            << total_ms << '\n';
+                            << total_ms << std::endl;  // flushed per row so the CSV survives an abnormal termination
                     }
                     if ((sentPackets % printEveryPackets) == 0)
                     {
@@ -1619,6 +1948,9 @@ int main(int argc, char** argv)
                     nominalWindowSamples,
                     minWindowSamplesSeen,
                     (unsigned long long)undersampledWindows);
+        std::printf("Acquisition: backlogFramesDropped=%llu (stale pre-start history "
+                    "plus any mid-run catch-up; not a data loss the controller can see)\n",
+                    (unsigned long long)backlogFramesDropped);
         std::printf("Timing summary:\n");
         print_timing_stats("  preprocess", preprocessTiming);
         print_timing_stats("  controller", controllerTiming);
@@ -1656,6 +1988,7 @@ int main(int argc, char** argv)
         if (card) PO8e::releaseCard(card);
         if (localhostControllerSock != INVALID_SOCKET) std::printf("Cleanup trace: closing localhost controller socket\n");
         if (localhostControllerSock != INVALID_SOCKET) closesocket(localhostControllerSock);
+        if (rzSock != INVALID_SOCKET) zero_stim_outputs(rzSock, activeUdpOutputCount);
         if (rzSock != INVALID_SOCKET) std::printf("Cleanup trace: disconnecting RZ socket\n");
         if (rzSock != INVALID_SOCKET) disconnectRZ(rzSock);
         if (udpReady) std::printf("Cleanup trace: WSACleanup\n");
@@ -1678,6 +2011,7 @@ int main(int argc, char** argv)
         if (card) PO8e::releaseCard(card);
         if (localhostControllerSock != INVALID_SOCKET) std::printf("Cleanup trace: closing localhost controller socket\n");
         if (localhostControllerSock != INVALID_SOCKET) closesocket(localhostControllerSock);
+        if (rzSock != INVALID_SOCKET) zero_stim_outputs(rzSock, activeUdpOutputCount);
         if (rzSock != INVALID_SOCKET) std::printf("Cleanup trace: disconnecting RZ socket\n");
         if (rzSock != INVALID_SOCKET) disconnectRZ(rzSock);
         if (udpReady) std::printf("Cleanup trace: WSACleanup\n");
@@ -1696,6 +2030,9 @@ int main(int argc, char** argv)
     // Shutdown ordering is left explicit because teardown has been a recurring
     // debugging focus during this project, especially when MATLAB/UDP state is live.
     std::printf("Cleanup trace: normal shutdown begin\n");
+    // Zero the stimulator BEFORE dropping the socket. The RZ2 holds the last
+    // commanded amplitude, so exiting without this leaves stim running.
+    if (rzSock != INVALID_SOCKET) zero_stim_outputs(rzSock, activeUdpOutputCount);
     if (rzSock != INVALID_SOCKET) std::printf("Cleanup trace: disconnecting RZ socket\n");
     if (rzSock != INVALID_SOCKET) disconnectRZ(rzSock);
     if (localhostControllerSock != INVALID_SOCKET) std::printf("Cleanup trace: closing localhost controller socket\n");

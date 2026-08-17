@@ -1,0 +1,41 @@
+# Compiler build output (built locally from the .cpp sources in this repo)
+*.obj
+*.exe
+*.pdb
+*.ilk
+
+# Crash dumps + WER artifacts (kept locally as evidence; 10s-100s of MB)
+crash_dumps/
+wer_setup_result.txt
+
+# Per-run artifacts (regenerated every rig session; the ledger is committed)
+loop_run*.log
+matlab_server*.log
+matlab_mpc_*.log
+matlab_server.err
+rig_run*.csv
+capture_rig_run*.csv
+capture_mpc_*.csv
+capture_openloop.csv
+server_lat*.csv
+mpc_lat*.csv
+mpc_test_debug.csv
+sim_*.csv
+envelope_sent_*.csv
+envelope_zero_*.csv
+envelope_check.png
+
+# Scratch/bench captures (capture_synth{,2}.csv are committed fixtures -- named
+# patterns here must not match them)
+capture_test.csv
+capture_widthtest.csv
+capture_reverify.csv
+capture_mismatch.csv
+capture_impulse_synth.csv
+impulse_synth_*
+ref_touch_test*
+
+# Deployment references are built per-prep on the day; commit deliberately if a
+# specific one becomes canonical
+ref_touch.csv
+ref_touch_meta.json

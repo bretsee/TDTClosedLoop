@@ -158,7 +158,9 @@ static bool send_data_i32(SOCKET sock, const int32_t* data, uint8_t count)
 
 int main(int argc, char** argv)
 {
-    const char* host = (argc >= 2) ? argv[1] : "10.1.0.1";
+    // RZ2 = 10.1.0.100. (10.1.0.1 is this PC's own static address; using it here
+    // sent traffic to ourselves and looked like success -- send() always succeeds.)
+    const char* host = (argc >= 2) ? argv[1] : "10.1.0.100";
     const int32_t baseValue = (argc >= 3) ? (int32_t)std::atoi(argv[2]) : 12345;
     int count = (argc >= 4) ? std::atoi(argv[3]) : 1;
     int periodMs = (argc >= 5) ? std::atoi(argv[4]) : 20;
