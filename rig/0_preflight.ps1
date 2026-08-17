@@ -52,7 +52,7 @@ if (-not (Test-Path $backup)) {
 # --- Smoke test: does the loop still hold its budget? ------------------------
 Write-Host "  Running 300-tick smoke test (no hardware, ~5 s)..." -ForegroundColor Gray
 $out = & .\MpcPo8eUdpClosedLoop.exe 127.0.0.1 . 16 --controller constant --constant-output 5 `
-        --sim-input sine --sim-fs 24414 --sim-channels 16 --skip-udp-send `
+        --sim-input sine --sim-fs 610.3516 --sim-channels 16 --skip-udp-send `
         --max-control-ticks 300 --validate-log sim_smoke.csv 2>&1
 $exit = $LASTEXITCODE
 
