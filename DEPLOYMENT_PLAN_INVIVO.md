@@ -142,6 +142,26 @@ modulate DOWN as well as up; re-fit the model AROUND that operating point (run t
 PRBS capture with `-UMin 10`). Tissue-safety sign-off on continuous tonic stim is
 the PI's call, not this document's.
 
+## Saline validation 2026-08-17 (run sal1, block `ClosedLoopTest_LD-260817-195626`)
+
+All-8-pairs jittered impulse probe, amps [5 10 18 25]. Audited with
+`rig/validate_impulse_design.py` (design) + `rig/check_impulse_delivery.py` (block):
+
+- **Bipolar mapping CONFIRMED with data: word k → electrodes (2k−1, 2k)**, all 8
+  pairs, exact inversion (corr −1.000000, max|w1+w2| = 0), focality 300–3000×.
+  UDP1→Scle onset match 855/855, delay ~2 ms.
+- **Stim rate is STILL base/100 = 244.141 Hz** (Plse, 19,681 pulses) = 2.5
+  acquisition samples per stim period, non-integer → for closed-loop runs use
+  `-FeatureWindow 30` (= 12.0 periods) unless the circuit is changed to base/240.
+- **OPEN: hold-last stretches probes.** MATLAB-server ~100 ms stalls made the loop
+  repeat the last command: 12 designed single-tick pulses went out as 7–9-tick
+  (70–90 ms) bursts. Analysis is safe (fit_impulse_model's isolation filter drops
+  them) but the charge IS delivered — in tissue prefer `cpp_controller.exe`
+  openloop (no stalls, 0.02 ms) for probe runs, or add a stale-policy-zero flag.
+- **OPEN: 5.1% of designed pulses (46/901) never reached the wire**
+  (stale-dropped/overwritten replies, same stall mechanism; same mitigation).
+  Harmless for saline; mildly uneven trial counts if unmitigated.
+
 ## Known watch items going in
 - 5–8% localhost timeouts at `-TimeoutMs 5` (fix: 10 ms, above).
 - Occasional 16–23 mV feature transients in saline runs c05–c09, uncorrelated with
