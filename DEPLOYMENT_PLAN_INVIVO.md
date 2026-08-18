@@ -185,6 +185,30 @@ All-8-pairs jittered impulse probe, amps [5 10 18 25]. Audited with
   across 8 pairs the median spacing is 59 ms with a designed 30 ms guard;
   that is intentional, per-pair analysis is unaffected.
 
+### Resolved 2026-08-18 PM: frame-locked ticking + two probe protocols
+
+- **Carrier beat FIXED loop-side** (`--tick-frames 6` / `2_loop.ps1 -TickFrames 6`):
+  the control tick now fires every 6 ingested frames — the frame clock IS the RZ2
+  crystal, so ticks are carrier-synchronous by construction (sim: grid exactly
+  6.0000 frames/tick, 101.7258 Hz, starvedTicks=0; a 50 ms watchdog keeps the
+  zero policy alive if the stream stalls). Wall-clock mode remains the default;
+  use `-TickFrames 6` on probe runs. Rig acceptance = `check_impulse_delivery.py`
+  showing ~0 missed / ~0 double. **Do NOT use -TickFrames for CLOSED-loop runs
+  until Ts is aligned** (mpc_test `P.controlFs`, fit_sysid, export_plant_lti —
+  currently 100 Hz labels vs the 101.7253 Hz frame-locked rate, 1.7%).
+  Binary archived: `MpcPo8eUdpClosedLoop.aug18-tickframes.{exe,pdb}`.
+- **Two probe protocols** (`1c_server.ps1 -Schedule ...`), both amps [5 10 18 25]
+  + 80 ms geometric jitter:
+  - `sequential` — **clean baseline**: contiguous per-pair blocks, channels fully
+    independent (validator: 0 warnings, no cross-pair proximity). Default 28000
+    ticks (~4.6 min), ~15 trials/amp/pair.
+  - `interleaved` (default) — time-efficient (8 pairs in 70 s, ~29 trials/amp)
+    with configurable `-CrossGuardMs` (default 20). Retained deliberately: the
+    seq-vs-interleaved KERNEL CONTRAST is the interim cross-pair interaction
+    probe (should be null in saline; divergence in tissue = interaction signal).
+  - The formal multi-pair additivity protocol (designed amplitude/offset
+    combinations) is DEFERRED until per-pair kernels exist to calibrate it.
+
 ### MATLAB-free probe path (preferred for probes from 2026-08-18 on)
 
 ```powershell

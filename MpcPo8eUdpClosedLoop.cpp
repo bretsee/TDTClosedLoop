@@ -887,6 +887,21 @@ int main(int argc, char** argv)
     //                            (default 6 = one 101.7253 Hz stim period at the
     //                            610.3516 Hz acquisition rate). Prefer multiples
     //                            of 6 so the stim artifact spans whole cycles.
+    //   --tick-frames N          0 (default) = wall-clock 10 ms scheduling.
+    //                            N>0 = FRAME-LOCKED: fire a control tick every N
+    //                            ingested frames. Frames are clocked by the RZ2
+    //                            crystal, so N=6 at 610.3516 Hz = 9.8304 ms =
+    //                            exactly one 101.7253 Hz stim-carrier period --
+    //                            every single-tick command window then gates
+    //                            exactly one carrier latch (no beat, no missed or
+    //                            doubled probe pulses; measured 1.9%/4.2% on
+    //                            2026-08-18 under wall-clock ticking). A 50 ms
+    //                            watchdog still fires ticks if frames stall so the
+    //                            localhost zero policy keeps running. NOTE: the
+    //                            control rate becomes fs/N (101.7253 Hz); fine for
+    //                            probe runs (analysis is per tick), but align Ts in
+    //                            mpc_test/fit_sysid/export_plant_lti before using
+    //                            this for CLOSED-loop runs.
     //   --sim-input sine|noise|file:<path>   (run with no PO8e card)
     //   --sim-fs <hz>            emulated acquisition rate (default 610.3516,
     //                            the real NPro1 rate = base 24414.0625 / 40)
@@ -926,6 +941,8 @@ int main(int argc, char** argv)
     // 101.7253 Hz against 610.3516 Hz acquisition; multiples of 6 keep the stim
     // artifact contribution constant tick to tick.
     size_t featureWindowSamples = 6;
+    // 0 = wall-clock 10 ms ticks; N>0 = tick every N ingested frames (see docs).
+    size_t tickFrames = 0;
     for (int i = 1; i < argc; ++i)
     {
         const std::string arg = argv[i];
@@ -955,6 +972,11 @@ int main(int argc, char** argv)
         else if (arg == "--feature-window-samples" && (i + 1) < argc)
         {
             featureWindowSamples = static_cast<size_t>(std::max(1, std::atoi(argv[i + 1])));
+            ++i;
+        }
+        else if (arg == "--tick-frames" && (i + 1) < argc)
+        {
+            tickFrames = static_cast<size_t>(std::max(0, std::atoi(argv[i + 1])));
             ++i;
         }
         else if (arg == "--ring-buffer-capacity" && (i + 1) < argc)
@@ -1329,6 +1351,12 @@ int main(int argc, char** argv)
         // =====================================================================
         static const int64_t CONTROL_INTERVAL_US = 10000;
         static const int POLL_SLEEP_US = 1000;
+        // Frame-locked mode safety net: if the stream stalls (alive but silent),
+        // fire a tick anyway after this long so the localhost policy still runs
+        // (and can zero the output). ~5 nominal tick periods.
+        static const int64_t TICK_FRAMES_WATCHDOG_US = 50000;
+        uint64_t framesSinceTick = 0;
+        uint64_t starvedTicks = 0;
         int64_t pos = 0;
         int64_t prevOffset = -1;
         int64_t expectedStep = 0;
@@ -1413,6 +1441,7 @@ int main(int argc, char** argv)
         }
 
         int64_t nextControlUs = clock.now_us() + CONTROL_INTERVAL_US;
+        int64_t lastTickUs = clock.now_us();   // frame-locked watchdog baseline
 
         if (controllerMode == "mpc_test" && matlabStartDelayTicks > 0)
         {
@@ -1448,8 +1477,18 @@ int main(int argc, char** argv)
             std::printf("MATLAB controller state reset after pre-loop live probe.\n");
         }
 
-        std::printf("Entering loop (MPC input size=%zu, UDP output count=%zu, control=100 Hz, ring capacity=%zu, matlabDelayTicks=%zu, maxControlTicks=%zu).\n",
-                    mpcInputCount, udpOutputCount, ringBufferCapacity, matlabStartDelayTicks, maxControlTicks);
+        if (tickFrames > 0)
+        {
+            const double streamFs = simInputEnabled ? simFs : 610.3516;
+            std::printf("Entering loop (MPC input size=%zu, UDP output count=%zu, control=FRAME-LOCKED %zu frames/tick (~%.4f Hz on the stream clock), ring capacity=%zu, matlabDelayTicks=%zu, maxControlTicks=%zu).\n",
+                        mpcInputCount, udpOutputCount, tickFrames, streamFs / (double)tickFrames,
+                        ringBufferCapacity, matlabStartDelayTicks, maxControlTicks);
+        }
+        else
+        {
+            std::printf("Entering loop (MPC input size=%zu, UDP output count=%zu, control=100 Hz, ring capacity=%zu, matlabDelayTicks=%zu, maxControlTicks=%zu).\n",
+                        mpcInputCount, udpOutputCount, ringBufferCapacity, matlabStartDelayTicks, maxControlTicks);
+        }
 
         while (!stopped)
         {
@@ -1522,14 +1561,39 @@ int main(int argc, char** argv)
                 const int64_t sampleTimeUs = clock.now_us();
                 decodeFrame();
                 ring.pushFrame(frame, sampleTimeUs);
+                ++framesSinceTick;
 
                 source->flushBufferedData(1);
             }
 
-            // The controller runs at a fixed 100 Hz cadence independent of the
-            // raw sample acquisition loop.
+            // Tick scheduling. Wall-clock mode (default): fixed 100 Hz cadence on
+            // the PC clock, independent of acquisition. Frame-locked mode
+            // (--tick-frames N): fire when N new frames have been ingested -- the
+            // frame clock IS the RZ2 crystal, so N=6 pins every tick to exactly
+            // one 101.7253 Hz stim-carrier period with zero drift. The watchdog
+            // keeps ticks (and the zero policy) alive if the stream stalls.
             int64_t nowUs = clock.now_us();
-            if (nowUs >= nextControlUs)
+            bool fireTick;
+            if (tickFrames > 0)
+            {
+                fireTick = (framesSinceTick >= tickFrames);
+                if (!fireTick && nowUs - lastTickUs >= TICK_FRAMES_WATCHDOG_US)
+                {
+                    fireTick = true;
+                    ++starvedTicks;
+                    if (starvedTicks <= 5 || (starvedTicks % 100) == 0)
+                        std::printf("Frame-locked watchdog: no %zu new frames in %lld ms; "
+                                    "forcing tick (starvedTicks=%llu)\n",
+                                    tickFrames,
+                                    (long long)((nowUs - lastTickUs) / 1000),
+                                    (unsigned long long)starvedTicks);
+                }
+            }
+            else
+            {
+                fireTick = (nowUs >= nextControlUs);
+            }
+            if (fireTick)
             {
                 const uint64_t tickIndex = controlTicks + 1;
                 if (tickIndex <= VERBOSE_CONTROL_TICKS)
@@ -1908,20 +1972,48 @@ int main(int argc, char** argv)
                     break;
                 }
 
-                nextControlUs += CONTROL_INTERVAL_US;
-                nowUs = clock.now_us();
-                if (nowUs >= nextControlUs)
+                if (tickFrames > 0)
                 {
-                    const int64_t lateUs = nowUs - nextControlUs;
-                    const uint64_t skipped = 1 + (uint64_t)(lateUs / CONTROL_INTERVAL_US);
-                    droppedControlTicks += skipped;
-                    nextControlUs = nowUs + CONTROL_INTERVAL_US;
-                    if (droppedControlTicks <= 5 || (droppedControlTicks % 100) == 0)
+                    lastTickUs = clock.now_us();
+                    // Phase-preserving: consume exactly one tick's worth of frames.
+                    // A watchdog-forced tick may have fewer -- reset to 0 then
+                    // (phase re-locks on the next frames that arrive).
+                    if (framesSinceTick >= tickFrames)
+                        framesSinceTick -= tickFrames;
+                    else
+                        framesSinceTick = 0;
+                    // Fell >=3 periods behind (burst after a stall): resync rather
+                    // than firing a rapid catch-up train of stim commands.
+                    if (framesSinceTick >= 3 * (uint64_t)tickFrames)
                     {
-                        std::printf("Scheduler resync: dropped=%llu totalDropped=%llu lateUs=%lld\n",
-                                    (unsigned long long)skipped,
-                                    (unsigned long long)droppedControlTicks,
-                                    (long long)lateUs);
+                        const uint64_t skipped = framesSinceTick / tickFrames;
+                        droppedControlTicks += skipped;
+                        framesSinceTick %= tickFrames;
+                        if (droppedControlTicks <= 5 || (droppedControlTicks % 100) == 0)
+                        {
+                            std::printf("Frame-locked resync: dropped=%llu totalDropped=%llu\n",
+                                        (unsigned long long)skipped,
+                                        (unsigned long long)droppedControlTicks);
+                        }
+                    }
+                }
+                else
+                {
+                    nextControlUs += CONTROL_INTERVAL_US;
+                    nowUs = clock.now_us();
+                    if (nowUs >= nextControlUs)
+                    {
+                        const int64_t lateUs = nowUs - nextControlUs;
+                        const uint64_t skipped = 1 + (uint64_t)(lateUs / CONTROL_INTERVAL_US);
+                        droppedControlTicks += skipped;
+                        nextControlUs = nowUs + CONTROL_INTERVAL_US;
+                        if (droppedControlTicks <= 5 || (droppedControlTicks % 100) == 0)
+                        {
+                            std::printf("Scheduler resync: dropped=%llu totalDropped=%llu lateUs=%lld\n",
+                                        (unsigned long long)skipped,
+                                        (unsigned long long)droppedControlTicks,
+                                        (long long)lateUs);
+                        }
                     }
                 }
                 if (tickIndex <= VERBOSE_CONTROL_TICKS)
@@ -1951,6 +2043,12 @@ int main(int argc, char** argv)
         std::printf("Acquisition: backlogFramesDropped=%llu (stale pre-start history "
                     "plus any mid-run catch-up; not a data loss the controller can see)\n",
                     (unsigned long long)backlogFramesDropped);
+        if (tickFrames > 0)
+        {
+            std::printf("Scheduler: tickMode=frame-locked(%zu frames/tick) starvedTicks=%llu "
+                        "(watchdog-forced ticks while the stream stalled; want 0)\n",
+                        tickFrames, (unsigned long long)starvedTicks);
+        }
         std::printf("Timing summary:\n");
         print_timing_stats("  preprocess", preprocessTiming);
         print_timing_stats("  controller", controllerTiming);

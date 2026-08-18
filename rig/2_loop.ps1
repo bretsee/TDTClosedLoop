@@ -37,6 +37,13 @@ param(
     # the stim artifact spans whole cycles.
     [int]    $FeatureWindow = 6,
 
+    # 0 = wall-clock 10 ms ticks (legacy). 6 = FRAME-LOCKED: tick every 6 ingested
+    # frames = exactly one 101.7253 Hz stim-carrier period on the RZ2's own clock,
+    # eliminating the carrier beat (1.9% missed / 4.2% doubled probe pulses under
+    # wall-clock ticking, measured 2026-08-18). Use 6 for probe runs. Do NOT use
+    # for closed-loop runs until Ts is aligned in mpc_test/fit_sysid (runbook).
+    [int]    $TickFrames = 0,
+
     # Which binary to run. MpcPo8eUdpClosedLoop.jul23.exe is the archived Jul-23
     # build that completed 3000 ticks on rig day 1 -- use it to A/B whether a
     # crash is caused by the newer changes or by the card/environment.
@@ -57,6 +64,10 @@ $args = @(
     '--udp-output-count',"$OutputCount",
     '--feature-window-samples',"$FeatureWindow"
 )
+if ($TickFrames -gt 0) {
+    $args += @('--tick-frames',"$TickFrames")
+    Write-Host "Tick scheduling: FRAME-LOCKED, $TickFrames frames/tick (~101.7253 Hz, carrier-synchronous)" -ForegroundColor Cyan
+}
 
 if ($Sim) {
     $target = '127.0.0.1'
@@ -80,16 +91,17 @@ if ($Sim) {
 Write-Host "Running $Ticks ticks ($($Ticks/100) s)..." -ForegroundColor Cyan
 $log = "loop_run$Run.log"
 Write-Host "Binary: $Exe" -ForegroundColor Gray
-# The archived Jul-23 build predates --feature-window-samples; drop flags it
-# cannot parse so the A/B actually runs instead of failing on an unknown arg.
+# Archived builds predate --feature-window-samples / --tick-frames; drop flags
+# they cannot parse so the A/B actually runs instead of failing on an unknown arg.
 $exeArgs = $args
-if ($Exe -match 'jul23') {
+if ($Exe -match 'jul23|aug1[45]') {
     $exeArgs = @()
     for ($i = 0; $i -lt $args.Count; $i++) {
-        if ($args[$i] -eq '--feature-window-samples') { $i++; continue }
+        if ($args[$i] -eq '--feature-window-samples' -and $Exe -match 'jul23') { $i++; continue }
+        if ($args[$i] -eq '--tick-frames') { $i++; continue }
         $exeArgs += $args[$i]
     }
-    Write-Host "  (dropped --feature-window-samples: not present in the Jul-23 build)" -ForegroundColor Gray
+    Write-Host "  (dropped flags not present in this archived build)" -ForegroundColor Gray
 }
 & $Exe $target "$($repo -replace '\\','/')" $InputChannels @exeArgs 2>&1 | Tee-Object -FilePath $log
 

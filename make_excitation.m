@@ -44,6 +44,19 @@ function U = make_excitation(kind, nTicks, m, opts)
 %                 (inversion), the cheapest strictly-positive draw available
 %                 without a toolbox. Mean pulse period becomes
 %                 (gapTicks + 1 + gapJitterMeanTicks) ticks.        (default 0)
+%     schedule    'interleaved' (default): all active channels share the whole
+%                 record, staggered + jittered, with a crossGuardTicks exclusion
+%                 between any two pulses on ANY channels. Time-efficient (8 pairs
+%                 in one record) but cross-pair spacing averages only ~7 ticks.
+%                 'sequential': the record is split into contiguous per-channel
+%                 BLOCKS, in active-channel order -- each channel's whole train
+%                 lives in its own block, so channels are fully independent (no
+%                 cross-pair proximity at all, no guard shifting, jitter mean
+%                 exact). Costs numel(active)x the ticks for the same per-channel
+%                 trial count.
+%     crossGuardTicks  interleaved only: no two pulses on any channels within
+%                 this many ticks of each other (conflicts shift forward)
+%                                                                    (default 2)
 %     seed        RNG seed for reproducibility               (default 12345)
 %     decorrelate shift channels apart so inputs are not collinear (default true)
 %     activeChannels  channel indices allowed to move; every other channel is
@@ -83,6 +96,8 @@ function U = make_excitation(kind, nTicks, m, opts)
     opts = set_default(opts, 'pulseAmps', [10 20 30 40]);
     opts = set_default(opts, 'gapTicks', 50);
     opts = set_default(opts, 'gapJitterMeanTicks', 0);
+    opts = set_default(opts, 'schedule', 'interleaved');
+    opts = set_default(opts, 'crossGuardTicks', 2);
     opts = set_default(opts, 'seed', 12345);
     opts = set_default(opts, 'decorrelate', true);
     opts = set_default(opts, 'activeChannels', []);
@@ -244,7 +259,7 @@ function U = build_impulse(nTicks, m, opts)
     gap = max(1, round(opts.gapTicks));
     period = gap + 1;
     jitterMean = max(0, round(opts.gapJitterMeanTicks));
-    crossGuard = 2;
+    crossGuard = max(0, round(opts.crossGuardTicks));
 
     if isempty(opts.activeChannels)
         activeSet = 1:m;
@@ -254,49 +269,74 @@ function U = build_impulse(nTicks, m, opts)
     end
 
     U = opts.uMin * ones(nTicks, m);
-    claimed = false(nTicks, 1);
     counts = zeros(1, m);
-    for ch = activeSet
-        % decorrelate staggers channel start times; the claimed-tick guard above
-        % is what actually forbids collisions once jitter makes trains drift.
-        offset = 0;
-        if opts.decorrelate && m > 1
-            offset = round((ch - 1) * period / m);
+    schedule = lower(string(opts.schedule));
+
+    if schedule == "sequential"
+        % Fully independent channels: contiguous per-channel blocks in
+        % active-channel order. No cross-pair proximity exists at all, so no
+        % guard logic runs and the jitter distribution is exactly as designed.
+        % Each block starts with its own leading gap (clean pre-pulse baseline)
+        % and the block boundary itself provides >= gapTicks of quiet between
+        % the last pulse of one channel and the first of the next.
+        nAct = numel(activeSet);
+        edges = round(linspace(0, nTicks, nAct + 1));
+        for a = 1:nAct
+            ch = activeSet(a);
+            [U, counts(ch)] = place_train(U, ch, edges(a) + 1, edges(a + 1), ...
+                                          amps, gap, period, jitterMean, opts.seed);
         end
-        if jitterMean > 0
-            % Independent per-channel substream; 7919 (a prime) spreads the
-            % seeds so channels do not share LCG trajectories.
-            rs = local_rng(opts.seed + 7919 * ch);
-            p = 1 / jitterMean;
-        end
-        pulseIdx = 0;
-        tick = 1 + gap + offset;           % leading gap = clean pre-pulse baseline
-        while tick <= nTicks
-            t = tick;
-            while t <= nTicks && any(claimed(max(1, t - crossGuard):min(nTicks, t + crossGuard)))
-                t = t + 1;
+        schedDesc = sprintf(', sequential blocks of %d ticks', ...
+                            round(nTicks / max(1, nAct)));
+    elseif schedule == "interleaved"
+        claimed = false(nTicks, 1);
+        for ch = activeSet
+            % decorrelate staggers channel start times; the claimed-tick guard
+            % is what actually forbids collisions once jitter makes trains drift.
+            offset = 0;
+            if opts.decorrelate && m > 1
+                offset = round((ch - 1) * period / m);
             end
-            if t > nTicks
-                break;
-            end
-            pulseIdx = pulseIdx + 1;
-            U(t, ch) = amps(mod(pulseIdx - 1, numel(amps)) + 1);
-            claimed(t) = true;
             if jitterMean > 0
-                if p >= 1
-                    jit = 1;
-                else
-                    [rs, r] = local_rand(rs);
-                    r = min(max(r, 1e-12), 1 - 1e-12);
-                    jit = ceil(log(1 - r) / log(1 - p));   % geometric on {1,2,...}, mean = jitterMean
-                end
-            else
-                jit = 0;
+                % Independent per-channel substream; 7919 (a prime) spreads the
+                % seeds so channels do not share LCG trajectories.
+                rs = local_rng(opts.seed + 7919 * ch);
+                p = 1 / jitterMean;
             end
-            tick = t + period + jit;
+            pulseIdx = 0;
+            tick = 1 + gap + offset;       % leading gap = clean pre-pulse baseline
+            while tick <= nTicks
+                t = tick;
+                while t <= nTicks && any(claimed(max(1, t - crossGuard):min(nTicks, t + crossGuard)))
+                    t = t + 1;
+                end
+                if t > nTicks
+                    break;
+                end
+                pulseIdx = pulseIdx + 1;
+                U(t, ch) = amps(mod(pulseIdx - 1, numel(amps)) + 1);
+                claimed(t) = true;
+                if jitterMean > 0
+                    if p >= 1
+                        jit = 1;
+                    else
+                        [rs, r] = local_rand(rs);
+                        r = min(max(r, 1e-12), 1 - 1e-12);
+                        jit = ceil(log(1 - r) / log(1 - p));   % geometric on {1,2,...}
+                    end
+                else
+                    jit = 0;
+                end
+                tick = t + period + jit;
+            end
+            counts(ch) = pulseIdx;
         end
-        counts(ch) = pulseIdx;
+        schedDesc = sprintf(', interleaved (cross-guard %d ticks)', crossGuard);
+    else
+        error('make_excitation:UnknownSchedule', ...
+              'Unknown impulse schedule "%s". Use interleaved or sequential.', schedule);
     end
+
     if jitterMean > 0
         jitterDesc = sprintf(' + geometric jitter mean %d ticks (%.0f ms)', ...
                              jitterMean, jitterMean * 10);
@@ -305,9 +345,37 @@ function U = build_impulse(nTicks, m, opts)
     end
     nPulses = mean(counts(activeSet));
     fprintf(['impulse: %.0f pulses/channel on %d channel(s) (~%.0f per amplitude ' ...
-             'of [%s]), gap %d ticks (%.0f ms)%s.\n'], ...
+             'of [%s]), gap %d ticks (%.0f ms)%s%s.\n'], ...
             nPulses, numel(activeSet), nPulses / max(1, numel(amps)), ...
-            strtrim(sprintf('%g ', amps)), gap, gap * 10, jitterDesc);
+            strtrim(sprintf('%g ', amps)), gap, gap * 10, jitterDesc, schedDesc);
+end
+
+function [U, nPulses] = place_train(U, ch, blockStart, blockEnd, amps, gap, period, jitterMean, seed)
+    % One channel's jittered impulse train confined to [blockStart, blockEnd].
+    % Same per-channel substream seeding as the interleaved path, so a channel's
+    % train is reproducible from the seed regardless of schedule.
+    if jitterMean > 0
+        rs = local_rng(seed + 7919 * ch);
+        p = 1 / jitterMean;
+    end
+    nPulses = 0;
+    tick = blockStart + gap;               % leading gap inside the block
+    while tick <= blockEnd
+        nPulses = nPulses + 1;
+        U(tick, ch) = amps(mod(nPulses - 1, numel(amps)) + 1);
+        if jitterMean > 0
+            if p >= 1
+                jit = 1;
+            else
+                [rs, r] = local_rand(rs);
+                r = min(max(r, 1e-12), 1 - 1e-12);
+                jit = ceil(log(1 - r) / log(1 - p));
+            end
+        else
+            jit = 0;
+        end
+        tick = tick + period + jit;
+    end
 end
 
 % =========================================================================

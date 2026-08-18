@@ -30,6 +30,17 @@ param(
     [int]      $Ticks       = 7000,
     [int]      $Seed        = 20260818,
     [int]      $Outputs     = 8,
+
+    # 'interleaved' (default): all pairs share the record, cross-guard enforced.
+    # 'sequential': fully independent per-pair blocks -- the clean-baseline
+    # protocol (no cross-pair proximity at all). Costs ~8x the ticks for the same
+    # per-pair statistics; with the sequential default of 28000 ticks (~4.6 min)
+    # each pair gets ~57 pulses = ~15 trials/amplitude.
+    [ValidateSet('interleaved','sequential')]
+    [string]   $Schedule    = 'interleaved',
+
+    # Interleaved only: minimum spacing between pulses on ANY two pairs.
+    [double]   $CrossGuardMs = 20,
     # Active stim channels; default all $Outputs pairs (the saline validation
     # design). For tissue probing pass ONE pair, e.g. -Channels 3.
     [int[]]    $Channels    = $null,
@@ -50,6 +61,14 @@ if (-not (Test-Path $py)) {
     Write-Host "FAIL: venv python not found at $py" -ForegroundColor Red
     exit 1
 }
+
+# Sequential needs ~numel(pairs)x the ticks for the same per-pair statistics.
+# Default to 28000 (~4.6 min, ~15 trials/amp/pair) unless -Ticks was given.
+if ($Schedule -eq 'sequential' -and -not $PSBoundParameters.ContainsKey('Ticks')) {
+    $Ticks = 28000
+    Write-Host "Sequential schedule: -Ticks defaulted to $Ticks (~$([math]::Round($Ticks/6000.0,1)) min)" -ForegroundColor Cyan
+}
+$guardTicks = [math]::Max(0, [math]::Round($CrossGuardMs / 10))
 
 if ([string]::IsNullOrWhiteSpace($Design)) { $Design = "design_run$Run.csv" }
 $capture = "capture_rig_run$Run.csv"
@@ -74,12 +93,13 @@ if (Test-Path $Design) {
     } else {
         Write-Host "Active stim channels: ALL $Outputs" -ForegroundColor Yellow
     }
-    Write-Host "Design: generating $Design (MATLAB, ~30 s, offline -- not in the loop)..." -ForegroundColor Cyan
+    Write-Host "Design: generating $Design ($Schedule; MATLAB, ~30 s, offline -- not in the loop)..." -ForegroundColor Cyan
     $code = @"
 cd('$($repo -replace '\\','/')'); addpath('rig');
 write_excitation_csv('$Design','impulse',$Ticks,$Outputs, ...
     struct('pulseAmps',{[$ampList]},'gapTicks',$GapTicks, ...
            'gapJitterMeanTicks',$jitterTicks,'uMin',$UMin,'uMax',$UMax, ...
+           'schedule','$Schedule','crossGuardTicks',$guardTicks, ...
            'seed',$Seed$activeExpr));
 "@
     & "$mr\bin\matlab.exe" -batch $code 2>&1
@@ -93,7 +113,7 @@ write_excitation_csv('$Design','impulse',$Ticks,$Outputs, ...
 Write-Host "Validating design..." -ForegroundColor Cyan
 & $py rig\validate_impulse_design.py --capture $Design --amps @($PulseAmps) `
       --gap-ticks $GapTicks --jitter-mean-ticks ([math]::Max(1, [math]::Round($GapJitterMs / 10))) `
-      --umax $UMax
+      --umax $UMax --guard-ticks $guardTicks
 if ($LASTEXITCODE -ne 0) {
     Write-Host "FAIL: design validation failed -- not starting the server." -ForegroundColor Red
     exit 1

@@ -64,6 +64,27 @@ function bench_test_reference_mpc
         all(rowPulses <= 1) && all(spacing >= 3), ...
         sprintf('no collisions, min cross-channel spacing %d ticks', min(spacing)));
 
+    % ---- 1c. sequential schedule: fully independent per-channel blocks ---
+    optsS = optsJ;
+    optsS.schedule = 'sequential';
+    US = make_excitation('impulse', 28000, 8, optsS);
+    edges = round(linspace(0, 28000, 9));
+    seqOk = true;
+    seqCounts = zeros(1, 8);
+    for ch = 1:8
+        pj = find(US(:, ch) > 0);
+        inBlock = ~isempty(pj) && all(pj > edges(ch)) && all(pj <= edges(ch + 1));
+        isoS = all(US(max(pj - 1, 1), ch) == 0) && all(US(min(pj + 1, 28000), ch) == 0);
+        jitS = diff(pj) - 51;
+        seqOk = seqOk && inBlock && isoS && all(jitS >= 1) && ...
+                isequal(unique(US(pj, ch))', [5 10 18 25]) && numel(pj) >= 40;
+        seqCounts(ch) = numel(pj);
+    end
+    seqOk = seqOk && all(sum(US > 0, 2) <= 1);
+    fails = fails + report('impulse sequential blocks', seqOk, ...
+        sprintf('%d..%d pulses/block, confined + isolated, jitter >= 1', ...
+                min(seqCounts), max(seqCounts)));
+
     % ---- 2. one-arg call (legacy path) ----------------------------------
     evalin('base', 'clear MPC_OPTS MPC_TARGET');
     mpc_test([]);
