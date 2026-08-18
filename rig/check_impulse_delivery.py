@@ -121,6 +121,7 @@ def main():
         if pk > 0 else np.array([])
     print("\nper-probe delivered-pulse audit (carrier ticks inside each probe's Scle-high span):")
     n_miss = n_single = n_double = n_probe = 0
+    latch_delays = []
     for w in range(min(n_words, S.shape[0])):
         onU = np.flatnonzero((U[w][1:] > 1e-9) & (U[w][:-1] <= 1e-9)) + 1
         hi = S[w] > 1e-9
@@ -134,7 +135,12 @@ def main():
                 continue
             t0 = (i0 + np.argmax(seg)) / fsS
             t1 = (i0 + len(seg) - np.argmax(seg[::-1])) / fsS
-            counts.append(int(np.sum((carrier >= t0) & (carrier < t1))))
+            nc = int(np.sum((carrier >= t0) & (carrier < t1)))
+            counts.append(nc)
+            if nc >= 1:
+                idx = int(np.searchsorted(carrier, t0))
+                if idx < len(carrier):
+                    latch_delays.append(carrier[idx] - t)   # command arrival -> latch
         c = np.bincount(np.array(counts) if counts else np.zeros(0, int), minlength=3)
         n_probe += len(counts)
         n_miss += int(c[0]); n_single += int(c[1]); n_double += int(c[2:].sum())
@@ -146,10 +152,20 @@ def main():
               % (n_probe, n_miss, pm, n_single, 100.0 * n_single / n_probe, n_double, pd))
         if n_miss or n_double:
             note("FAIL" if pm > 5 else "warn",
-                 "carrier-latch beat: %.1f%% probes delivered 0 pulses, %.1f%% "
-                 "delivered 2 -- expected while the command clock free-runs "
-                 "against the stim carrier; excluded trials are measurable, "
-                 "kernel amplitudes carry ~this much spread" % (pm, pd))
+                 "carrier-latch races: %.1f%% probes delivered 0 pulses, %.1f%% "
+                 "delivered 2 -- command edges landing near carrier latches "
+                 "(beat under wall-clock ticking; jitter/phase under "
+                 "frame-locked). Excluded trials are measurable; see the phase "
+                 "recommendation below" % (pm, pd))
+    if latch_delays:
+        period_s = np.median(np.diff(carrier)) if len(carrier) > 2 else 1.0 / 101.7253
+        dmed = float(np.median(latch_delays))
+        trim = (dmed - period_s / 2.0) * 1e6
+        print("\ncarrier phase: median command->latch delay %.2f ms (period %.3f ms; "
+              "mid-period target %.2f ms)" % (1e3 * dmed, 1e3 * period_s, 500.0 * period_s))
+        print("  frame-locked runs: pass  -TickPhaseUs %.0f  to 2_loop.ps1 to center "
+              "commands mid-latch-period (grid is counter-quantized, so this value "
+              "is stable for the Synapse session)" % trim)
 
     # ---- sSig bipolar mapping ----------------------------------------------
     G, fsG = d.streams.sSig.data, d.streams.sSig.fs

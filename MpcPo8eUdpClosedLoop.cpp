@@ -888,20 +888,27 @@ int main(int argc, char** argv)
     //                            610.3516 Hz acquisition rate). Prefer multiples
     //                            of 6 so the stim artifact spans whole cycles.
     //   --tick-frames N          0 (default) = wall-clock 10 ms scheduling.
-    //                            N>0 = FRAME-LOCKED: fire a control tick every N
-    //                            ingested frames. Frames are clocked by the RZ2
-    //                            crystal, so N=6 at 610.3516 Hz = 9.8304 ms =
-    //                            exactly one 101.7253 Hz stim-carrier period --
-    //                            every single-tick command window then gates
-    //                            exactly one carrier latch (no beat, no missed or
-    //                            doubled probe pulses; measured 1.9%/4.2% on
-    //                            2026-08-18 under wall-clock ticking). A 50 ms
-    //                            watchdog still fires ticks if frames stall so the
-    //                            localhost zero policy keeps running. NOTE: the
-    //                            control rate becomes fs/N (101.7253 Hz); fine for
-    //                            probe runs (analysis is per tick), but align Ts in
-    //                            mpc_test/fit_sysid/export_plant_lti before using
-    //                            this for CLOSED-loop runs.
+    //                            N>0 = FRAME-LOCKED via a software PLL: ticks fire
+    //                            on the smooth PC clock, with period/phase steered
+    //                            onto the PO8e frame-counter grid (the RZ2
+    //                            crystal). N=6 at 610.3516 Hz = 9.8304 ms =
+    //                            exactly one 101.7253 Hz stim-carrier period, so
+    //                            each single-tick command window gates exactly one
+    //                            carrier latch. Wall-clock ticking beat against
+    //                            the carrier (1.9% missed / 4.2% doubled probe
+    //                            pulses, 2026-08-18 AM); firing directly on frame
+    //                            arrival inherited chunky-arrival jitter and was
+    //                            far worse (21.6%/21.0%, run seq1) -- hence the
+    //                            PLL. A stalled stream keeps ticking on the PC
+    //                            clock, so the localhost zero policy stays alive.
+    //                            NOTE: the control rate becomes fs/N (101.7253
+    //                            Hz); fine for probe runs (analysis is per tick),
+    //                            but align Ts in mpc_test/fit_sysid/
+    //                            export_plant_lti before CLOSED-loop use.
+    //   --tick-phase-us X        frame-locked only: shift the (counter-quantized)
+    //                            tick grid by X us. check_impulse_delivery.py
+    //                            prints the value that centers commands
+    //                            mid-latch-period.
     //   --sim-input sine|noise|file:<path>   (run with no PO8e card)
     //   --sim-fs <hz>            emulated acquisition rate (default 610.3516,
     //                            the real NPro1 rate = base 24414.0625 / 40)
@@ -943,6 +950,13 @@ int main(int argc, char** argv)
     size_t featureWindowSamples = 6;
     // 0 = wall-clock 10 ms ticks; N>0 = tick every N ingested frames (see docs).
     size_t tickFrames = 0;
+    // Frame-locked grid phase trim in us (may be negative). The tick grid is
+    // quantized to absolute multiples of the stream counter, and the carrier
+    // divides the SAME counter, so the command->latch delay is a fixed,
+    // per-session constant. check_impulse_delivery.py measures it and prints
+    // the value to pass here to center commands mid-latch-period (max margin
+    // against the ~1 ms tick-fire jitter).
+    double tickPhaseUs = 0.0;
     for (int i = 1; i < argc; ++i)
     {
         const std::string arg = argv[i];
@@ -977,6 +991,11 @@ int main(int argc, char** argv)
         else if (arg == "--tick-frames" && (i + 1) < argc)
         {
             tickFrames = static_cast<size_t>(std::max(0, std::atoi(argv[i + 1])));
+            ++i;
+        }
+        else if (arg == "--tick-phase-us" && (i + 1) < argc)
+        {
+            tickPhaseUs = std::atof(argv[i + 1]);
             ++i;
         }
         else if (arg == "--ring-buffer-capacity" && (i + 1) < argc)
@@ -1351,12 +1370,33 @@ int main(int argc, char** argv)
         // =====================================================================
         static const int64_t CONTROL_INTERVAL_US = 10000;
         static const int POLL_SLEEP_US = 1000;
-        // Frame-locked mode safety net: if the stream stalls (alive but silent),
-        // fire a tick anyway after this long so the localhost policy still runs
-        // (and can zero the output). ~5 nominal tick periods.
-        static const int64_t TICK_FRAMES_WATCHDOG_US = 50000;
-        uint64_t framesSinceTick = 0;
-        uint64_t starvedTicks = 0;
+        // Frame-locked (PLL) mode: ticks fire on the smooth PC clock, but the
+        // period and phase are steered toward the PO8e frame-counter grid (the
+        // RZ2 crystal). Firing directly on frame ARRIVAL was tried 2026-08-18
+        // and failed on hardware: frames arrive in irregular chunks, so tick
+        // times inherited +/-2.5 ms arrival jitter and probe windows spanned
+        // 0..2 carrier latches (21.6% missed / 21.0% doubled pulses, run seq1).
+        // Low-gain feedback averages the chunky arrivals out: tick-to-tick
+        // spacing stays ~= one carrier period while long-term phase tracks the
+        // stream. A stalled stream keeps ticking on the PC clock (PLL simply
+        // stops updating), so the localhost zero policy stays alive with no
+        // separate watchdog.
+        const double streamFsNominal = simInputEnabled ? simFs : 610.3515625;
+        const double tickPeriodNomUs = (tickFrames > 0)
+            ? 1e6 * (double)tickFrames / streamFsNominal
+            : (double)CONTROL_INTERVAL_US;
+        double tickPeriodUsF = tickPeriodNomUs;      // PLL frequency state
+        double pllBasePos = 0.0;                     // stream pos of the grid origin
+        uint64_t pllTicksSinceBase = 0;
+        bool pllLocked = false;
+        uint64_t pllResyncs = 0;
+        double pllAbsErrSumUs = 0.0, pllAbsErrMaxUs = 0.0;
+        uint64_t pllErrSamples = 0;
+        int64_t lastFrameArrivalUs = 0;
+        static const double PLL_PHASE_GAIN = 0.05;    // fraction of phase error per tick
+        static const double PLL_PHASE_SLEW_US = 250.0; // max per-tick timing nudge
+        static const double PLL_FREQ_GAIN = 0.0015;   // period trim per tick
+        static const double PLL_FREQ_SLEW_US = 3.0;
         int64_t pos = 0;
         int64_t prevOffset = -1;
         int64_t expectedStep = 0;
@@ -1440,8 +1480,7 @@ int main(int argc, char** argv)
             }
         }
 
-        int64_t nextControlUs = clock.now_us() + CONTROL_INTERVAL_US;
-        int64_t lastTickUs = clock.now_us();   // frame-locked watchdog baseline
+        int64_t nextControlUs = clock.now_us() + (int64_t)(tickPeriodUsF + 0.5);
 
         if (controllerMode == "mpc_test" && matlabStartDelayTicks > 0)
         {
@@ -1561,39 +1600,16 @@ int main(int argc, char** argv)
                 const int64_t sampleTimeUs = clock.now_us();
                 decodeFrame();
                 ring.pushFrame(frame, sampleTimeUs);
-                ++framesSinceTick;
+                lastFrameArrivalUs = sampleTimeUs;   // PLL phase-detector input
 
                 source->flushBufferedData(1);
             }
 
-            // Tick scheduling. Wall-clock mode (default): fixed 100 Hz cadence on
-            // the PC clock, independent of acquisition. Frame-locked mode
-            // (--tick-frames N): fire when N new frames have been ingested -- the
-            // frame clock IS the RZ2 crystal, so N=6 pins every tick to exactly
-            // one 101.7253 Hz stim-carrier period with zero drift. The watchdog
-            // keeps ticks (and the zero policy) alive if the stream stalls.
+            // Tick scheduling. Both modes fire on the PC clock deadline; in
+            // frame-locked mode the deadline is steered by the PLL (below) so
+            // the tick grid tracks the RZ2 frame counter with smooth timing.
             int64_t nowUs = clock.now_us();
-            bool fireTick;
-            if (tickFrames > 0)
-            {
-                fireTick = (framesSinceTick >= tickFrames);
-                if (!fireTick && nowUs - lastTickUs >= TICK_FRAMES_WATCHDOG_US)
-                {
-                    fireTick = true;
-                    ++starvedTicks;
-                    if (starvedTicks <= 5 || (starvedTicks % 100) == 0)
-                        std::printf("Frame-locked watchdog: no %zu new frames in %lld ms; "
-                                    "forcing tick (starvedTicks=%llu)\n",
-                                    tickFrames,
-                                    (long long)((nowUs - lastTickUs) / 1000),
-                                    (unsigned long long)starvedTicks);
-                }
-            }
-            else
-            {
-                fireTick = (nowUs >= nextControlUs);
-            }
-            if (fireTick)
+            if (nowUs >= nextControlUs)
             {
                 const uint64_t tickIndex = controlTicks + 1;
                 if (tickIndex <= VERBOSE_CONTROL_TICKS)
@@ -1974,26 +1990,90 @@ int main(int argc, char** argv)
 
                 if (tickFrames > 0)
                 {
-                    lastTickUs = clock.now_us();
-                    // Phase-preserving: consume exactly one tick's worth of frames.
-                    // A watchdog-forced tick may have fewer -- reset to 0 then
-                    // (phase re-locks on the next frames that arrive).
-                    if (framesSinceTick >= tickFrames)
-                        framesSinceTick -= tickFrames;
-                    else
-                        framesSinceTick = 0;
-                    // Fell >=3 periods behind (burst after a stall): resync rather
-                    // than firing a rapid catch-up train of stim commands.
-                    if (framesSinceTick >= 3 * (uint64_t)tickFrames)
+                    // PLL update. Phase detector: extrapolate the stream position
+                    // to this tick's scheduled time from the newest frame's
+                    // (position, arrival-time) pair, and compare against the tick
+                    // grid target. Positive error = stream ahead of our grid =
+                    // we are late -> shorten the next period slightly. Gains are
+                    // deliberately low so chunky frame arrivals average out and
+                    // tick-to-tick spacing stays smooth.
+                    const int64_t schedUs = nextControlUs;
+                    double corrUs = 0.0;
+                    const double stepUnits = (expectedStep > 0) ? (double)expectedStep : 1.0;
+                    const double unitsPerUs = streamFsNominal * stepUnits / 1e6;
+                    const double unitsPerTick = (double)tickFrames * stepUnits;
+                    if (prevOffset >= 0 && lastFrameArrivalUs > 0)
                     {
-                        const uint64_t skipped = framesSinceTick / tickFrames;
+                        const double predictedPos = (double)pos +
+                            (double)(schedUs - lastFrameArrivalUs) * unitsPerUs;
+                        if (!pllLocked)
+                        {
+                            // Quantize the grid origin to an absolute multiple of
+                            // unitsPerTick: the stim carrier divides the SAME
+                            // counter, so this makes the command->latch phase a
+                            // fixed per-session constant instead of start-time
+                            // luck. --tick-phase-us then dials that constant to
+                            // mid-latch-period (measured by
+                            // check_impulse_delivery.py).
+                            pllBasePos = std::ceil(predictedPos / unitsPerTick) * unitsPerTick
+                                         + tickPhaseUs * unitsPerUs;
+                            pllTicksSinceBase = 0;
+                            pllLocked = true;
+                        }
+                        else
+                        {
+                            const double target =
+                                pllBasePos + (double)pllTicksSinceBase * unitsPerTick;
+                            const double phaseErrUs = (predictedPos - target) / unitsPerUs;
+                            if (std::fabs(phaseErrUs) > 3.0 * tickPeriodNomUs)
+                            {
+                                // Offset jump or long stall: rebase instead of
+                                // slewing through many periods of error.
+                                pllBasePos = predictedPos;
+                                pllTicksSinceBase = 0;
+                                ++pllResyncs;
+                                if (pllResyncs <= 5 || (pllResyncs % 100) == 0)
+                                    std::printf("Frame-PLL resync: phase error %.1f ms "
+                                                "(total resyncs %llu)\n",
+                                                phaseErrUs / 1000.0,
+                                                (unsigned long long)pllResyncs);
+                            }
+                            else
+                            {
+                                corrUs = PLL_PHASE_GAIN * phaseErrUs;
+                                if (corrUs >  PLL_PHASE_SLEW_US) corrUs =  PLL_PHASE_SLEW_US;
+                                if (corrUs < -PLL_PHASE_SLEW_US) corrUs = -PLL_PHASE_SLEW_US;
+                                double trimUs = PLL_FREQ_GAIN * phaseErrUs;
+                                if (trimUs >  PLL_FREQ_SLEW_US) trimUs =  PLL_FREQ_SLEW_US;
+                                if (trimUs < -PLL_FREQ_SLEW_US) trimUs = -PLL_FREQ_SLEW_US;
+                                tickPeriodUsF -= trimUs;
+                                const double lim = 0.1 * tickPeriodNomUs;
+                                if (tickPeriodUsF > tickPeriodNomUs + lim) tickPeriodUsF = tickPeriodNomUs + lim;
+                                if (tickPeriodUsF < tickPeriodNomUs - lim) tickPeriodUsF = tickPeriodNomUs - lim;
+                                pllAbsErrSumUs += std::fabs(phaseErrUs);
+                                if (std::fabs(phaseErrUs) > pllAbsErrMaxUs)
+                                    pllAbsErrMaxUs = std::fabs(phaseErrUs);
+                                ++pllErrSamples;
+                            }
+                        }
+                        ++pllTicksSinceBase;
+                    }
+                    nextControlUs += (int64_t)(tickPeriodUsF - corrUs + 0.5);
+                    nowUs = clock.now_us();
+                    if (nowUs >= nextControlUs)
+                    {
+                        const int64_t lateUs = nowUs - nextControlUs;
+                        const uint64_t skipped =
+                            1 + (uint64_t)((double)lateUs / tickPeriodNomUs);
                         droppedControlTicks += skipped;
-                        framesSinceTick %= tickFrames;
+                        nextControlUs = nowUs + (int64_t)(tickPeriodUsF + 0.5);
+                        pllTicksSinceBase += skipped;   // keep the grid target aligned
                         if (droppedControlTicks <= 5 || (droppedControlTicks % 100) == 0)
                         {
-                            std::printf("Frame-locked resync: dropped=%llu totalDropped=%llu\n",
+                            std::printf("Scheduler resync: dropped=%llu totalDropped=%llu lateUs=%lld\n",
                                         (unsigned long long)skipped,
-                                        (unsigned long long)droppedControlTicks);
+                                        (unsigned long long)droppedControlTicks,
+                                        (long long)lateUs);
                         }
                     }
                 }
@@ -2045,9 +2125,12 @@ int main(int argc, char** argv)
                     (unsigned long long)backlogFramesDropped);
         if (tickFrames > 0)
         {
-            std::printf("Scheduler: tickMode=frame-locked(%zu frames/tick) starvedTicks=%llu "
-                        "(watchdog-forced ticks while the stream stalled; want 0)\n",
-                        tickFrames, (unsigned long long)starvedTicks);
+            std::printf("Scheduler: tickMode=frame-locked-PLL(%zu frames/tick, nominal %.4f ms) "
+                        "phaseErr avg %.2f ms max %.2f ms resyncs %llu\n",
+                        tickFrames, tickPeriodNomUs / 1000.0,
+                        pllErrSamples ? pllAbsErrSumUs / (double)pllErrSamples / 1000.0 : 0.0,
+                        pllAbsErrMaxUs / 1000.0,
+                        (unsigned long long)pllResyncs);
         }
         std::printf("Timing summary:\n");
         print_timing_stats("  preprocess", preprocessTiming);

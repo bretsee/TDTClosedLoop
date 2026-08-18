@@ -44,6 +44,11 @@ param(
     # for closed-loop runs until Ts is aligned in mpc_test/fit_sysid (runbook).
     [int]    $TickFrames = 0,
 
+    # Frame-locked only: phase trim in us for the counter-quantized tick grid.
+    # check_impulse_delivery.py prints the recommended value (centers commands
+    # mid-latch-period, maximum margin against tick-fire jitter).
+    [double] $TickPhaseUs = 0,
+
     # Which binary to run. MpcPo8eUdpClosedLoop.jul23.exe is the archived Jul-23
     # build that completed 3000 ticks on rig day 1 -- use it to A/B whether a
     # crash is caused by the newer changes or by the card/environment.
@@ -66,7 +71,8 @@ $args = @(
 )
 if ($TickFrames -gt 0) {
     $args += @('--tick-frames',"$TickFrames")
-    Write-Host "Tick scheduling: FRAME-LOCKED, $TickFrames frames/tick (~101.7253 Hz, carrier-synchronous)" -ForegroundColor Cyan
+    if ($TickPhaseUs -ne 0) { $args += @('--tick-phase-us',"$TickPhaseUs") }
+    Write-Host "Tick scheduling: FRAME-LOCKED PLL, $TickFrames frames/tick (~101.7253 Hz), phase trim $TickPhaseUs us" -ForegroundColor Cyan
 }
 
 if ($Sim) {
