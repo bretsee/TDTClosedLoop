@@ -21,7 +21,7 @@ function outPath = export_plant_lti(outPath, modelIndex)
     if nargin < 1 || isempty(outPath),    outPath = 'plant.lti'; end
     if nargin < 2 || isempty(modelIndex), modelIndex = 10;       end
 
-    Ts = 0.01;   % must match mpc_test's P.controlFs = 100 Hz
+    Ts = 0.01;   % fallback; the model's own Ts (stamped by fit_sysid) wins
 
     if evalin('base', 'exist(''AllModels'', ''var'')')
         AllModels = evalin('base', 'AllModels');
@@ -48,12 +48,17 @@ function outPath = export_plant_lti(outPath, modelIndex)
         % Only reachable if the Control System Toolbox is installed; on this
         % machine it is not, and models are stored as plain structs.
         [A, B, C, D] = ssdata(sys);
+        if sys.Ts > 0
+            Ts = double(sys.Ts);
+        end
     elseif isstruct(sys) && all(isfield(sys, {'A', 'B', 'C', 'D'}))
         A = double(sys.A); B = double(sys.B);
         C = double(sys.C); D = double(sys.D);
-        if isfield(sys, 'Ts') && ~isempty(sys.Ts) && sys.Ts ~= 0 && abs(sys.Ts - Ts) > 1e-12
-            error('export_plant_lti:RateMismatch', ...
-                  'Model Ts=%g s but the controller runs at %g s.', sys.Ts, Ts);
+        % The model's Ts is authoritative (fit_sysid stamps the measured tick
+        % period: 10 ms wall-clock or 9.8304 ms frame-locked). The .lti carries
+        % it through so both controllers run the identical plant AND rate.
+        if isfield(sys, 'Ts') && ~isempty(sys.Ts) && sys.Ts ~= 0
+            Ts = double(sys.Ts);
         end
     else
         error('export_plant_lti:UnsupportedModel', ...

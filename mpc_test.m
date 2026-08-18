@@ -124,13 +124,27 @@ function P = init_controller(ny_feat)
     % -----------------------------
     % EDIT THESE FIRST
     % -----------------------------
-    P.controlFs = 100;          % desired control/update rate (Hz)
+    P.controlFs = 100;          % nominal control rate; the MODEL's Ts wins below
 
     % Load the controller assets from the base workspace or local .mat file.
     assets = load_controller_assets();
     sys = get_model_entry(assets.AllModels);
 
+    % The model's sample time is the source of truth: fit_sysid_from_capture
+    % stamps the MEASURED tick period of the capture it was fit from (10 ms
+    % wall-clock, or 9.8304 ms frame-locked / --tick-frames 6). The controller
+    % steps once per tick either way; Ts only labels physical time, so it must
+    % never be "resampled" between the two rates.
     Ts = 1 / P.controlFs;
+    modelTs = get_model_ts(sys);
+    if ~isnan(modelTs) && modelTs > 0
+        if abs(modelTs - Ts) / Ts > 0.05
+            warning('mpc_test:UnusualTs', ...
+                    'Model Ts = %g s is >5%% from the nominal %g s -- check the model.', ...
+                    modelTs, Ts);
+        end
+        Ts = modelTs;
+    end
     [A, B, C, D] = unpack_model(sys, Ts);
 
     P.A = full(A);
@@ -418,6 +432,18 @@ function sys = get_model_entry(AllModels)
     if isempty(sys)
         error('mpc_test:EmptyModel', ...
               'AllModels(10).sys is empty.');
+    end
+end
+
+function ts = get_model_ts(sys)
+    % Sample time carried by the model itself, NaN if it has none.
+    ts = NaN;
+    if isa(sys, 'ss')
+        if sys.Ts > 0
+            ts = double(sys.Ts);
+        end
+    elseif isstruct(sys) && isfield(sys, 'Ts') && ~isempty(sys.Ts)
+        ts = double(sys.Ts);
     end
 end
 

@@ -72,10 +72,29 @@ function result = fit_sysid_from_capture(captureFile, opts)
     % mpc_test. Set to 0 to always take the outright best fit.
     opts = set_default(opts, 'parsimonyTolerance', 1.0);
 
-    Ts = 0.01;   % 100 Hz control rate; must match mpc_test's P.controlFs
+    % Ts is MEASURED from the capture below, not assumed: wall-clock runs tick
+    % at ~10 ms, frame-locked runs (--tick-frames 6) at 9.8304 ms. The model
+    % carries the rate its data was collected at, and mpc_test /
+    % export_plant_lti follow the model's Ts. Never resample between the two
+    % rates -- the controller steps once per tick regardless; Ts only labels
+    % physical time (time constants, settle estimates).
+    Ts = 0.01;   % fallback when the capture has no t_ms column
 
     % ---- load -------------------------------------------------------------
     T = readtable(captureFile);
+    if any(strcmp(T.Properties.VariableNames, 't_ms')) && height(T) > 10
+        TsMeas = median(diff(T.t_ms)) / 1000;
+        % Snap to the two known rates when within 2% so labels stay exact.
+        known = [0.01, 6 / 610.3515625];
+        [dev, ki] = min(abs(TsMeas - known) ./ known);
+        if dev < 0.02
+            TsMeas = known(ki);
+        end
+        if TsMeas > 0 && isfinite(TsMeas)
+            Ts = TsMeas;
+        end
+        fprintf('Control period measured from capture: Ts = %.7g s (%.4f Hz)\n', Ts, 1 / Ts);
+    end
     uCols = find_cols(T.Properties.VariableNames, 'u');
     yCols = find_cols(T.Properties.VariableNames, 'y');
     if isempty(uCols) || isempty(yCols)

@@ -151,6 +151,30 @@ function bench_test_reference_mpc
         isequal(size(loaded), [4 1]) && max(abs(loaded - vals)) < 1e-12, ...
         sprintf('4 ticks, max err %.2g', max(abs(loaded - vals))));
 
+    % ---- 6. model Ts is the source of truth (frame-locked alignment) ------
+    % A model stamped with the frame-locked tick period (9.8304 ms) must load
+    % without resampling or error, and the controller must still step. Before
+    % 2026-08-18 a struct model with Ts ~= 0.01 was a hard error.
+    ok = true;
+    detail = '';
+    try
+        M = struct('sys', struct('A', 0.9512, 'B', 0.00975, 'C', 1, 'D', 0, ...
+                                 'Ts', 6 / 610.3515625));
+        AM = repmat(struct('sys', []), 1, 10);
+        AM(10) = M;
+        assignin('base', 'AllModels', AM);
+        mpc_test([]);
+        uT = mpc_test(0, 0.5);
+        ok = ~isempty(uT) && all(isfinite(uT));
+        detail = sprintf('Ts=9.8304 ms model accepted, u = %.4g', uT(1));
+    catch err
+        ok = false;
+        detail = err.message;
+    end
+    evalin('base', 'clear AllModels');
+    mpc_test([]);   % restore the file model for anything running after us
+    fails = fails + report('model-Ts source of truth', ok, detail);
+
     fprintf('\n%s\n', ternary(fails == 0, 'ALL BENCH TESTS PASS', ...
                               sprintf('%d BENCH TEST(S) FAILED', fails)));
     if fails > 0

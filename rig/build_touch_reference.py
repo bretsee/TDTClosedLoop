@@ -14,9 +14,15 @@ The controller does NOT see microvolt waveforms -- it sees the C++ feature:
 mean|v| over the newest 6 acquisition samples, in VOLTS, once per 10 ms tick.
 So the honest biomimetic target is the template pushed through THAT SAME
 transformation: |template| -> 6-sample bins -> mean -> volts. That is what this
-script emits: `tick,r1[,r2,...]` rows at 100 Hz, with a measured baseline added
+script emits: `tick,r1[,r2,...]` rows, with a measured baseline added
 (features are positive with a noise floor; a reference below the floor is
 unreachable and just pins the command at a bound).
+
+TICK-RATE NOTE: each row is 6 acquisition samples = 9.8304 ms of template =
+exactly ONE frame-locked control tick (--tick-frames 6). Played frame-locked,
+the template timing is EXACT. Played at the wall-clock 100 Hz tick, the
+template stretches by 1.7% (harmless, but frame-locked is the more faithful
+playback once mpc Ts alignment is in place).
 
 TWO NUMBERS MUST COME FROM THE PREP ON THE DAY (there are no valid defaults):
   --baseline  the resting feature value, in volts, measured with stim OFF
@@ -113,6 +119,9 @@ def main():
         "total_secs": traj.shape[0] / CONTROL_RATE_HZ,
         "event_peak_delta_volts": [float(np.max(events[:, j])) for j in range(p)],
         "feature_window_samples": FEATURE_WINDOW_SAMPLES,
+        # each row = 6 acquisition samples = one 101.7253 Hz frame-locked tick;
+        # at the 100 Hz wall-clock tick the template plays 1.7% slow
+        "tick_native_hz": 101.7253,
     }
     meta_path = args.out.rsplit(".", 1)[0] + "_meta.json"
     with open(meta_path, "w") as f:

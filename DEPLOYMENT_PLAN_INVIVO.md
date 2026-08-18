@@ -256,6 +256,35 @@ MPC tracks the reference reactively (~1-tick lag on event onsets), so the
 MATLAB server (`4_mpc_server.ps1`) stays the PRIMARY tracking path; this is
 the fallback if MATLAB misbehaves on the day.
 
+### Ts alignment DONE (2026-08-18 night) — frame-locked closed loop unlocked
+
+The model's Ts is now the single source of truth: `fit_sysid_from_capture`
+stamps the MEASURED tick period from the capture's t_ms (snapping to 10 ms or
+9.8304 ms), `mpc_test` follows the model's Ts (no resampling — a tick is a
+tick), `export_plant_lti` carries it into the .lti for the C++ backup. Bench
+13/13 incl. a 9.8304 ms-model check. Reference CSVs were already frame-native
+(each row = 6 acquisition samples = one frame-locked tick; wall-clock playback
+stretches 1.7%). **Procedure for frame-locked closed loop: capture with
+`-TickFrames 6` → fit (Ts auto-stamped) → deploy with `-TickFrames 6`.** Keep
+capture and deploy in the SAME tick mode — the fitter prints the measured rate
+so a mismatch is visible.
+
+## Pre-deployment saline checklist (added 2026-08-18 night)
+
+1. 30 s quiet capture (recording on, no stim) → per-channel resting baseline +
+   noise-floor characterization (saline Wav1 measured ~10 mV RMS on 08-18 —
+   ~100x the expected in-vivo floor; check bath contact/grounding).
+2. Emergency stim-zero, Synapse half: Ctrl+C mid live run → `Scle` → 0 in block.
+3. Closed-loop dress rehearsal on hardware (4_mpc_server -Reference -RWeight
+   1e-3 -Pairs + live loop, recording on) → banks MPC-on-hardware + the saline
+   timing number.
+4. **Artifact-amplitude test**: 08-18 artifacts were only 1.2-1.3x the saline
+   noise floor at amp 25 — likely the arrays in the bath, not the system. Rerun
+   with a setup that produces resolvable artifacts (higher amplitude and/or
+   different array/contact arrangement) to verify the 6-sample feature window's
+   artifact cancellation BEFORE deployment; else first verification happens in
+   tissue.
+
 ## Known watch items going in
 - 5–8% localhost timeouts at `-TimeoutMs 5` (fix: 10 ms, above).
 - Occasional 16–23 mV feature transients in saline runs c05–c09, uncorrelated with
