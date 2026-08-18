@@ -185,6 +185,18 @@ All-8-pairs jittered impulse probe, amps [5 10 18 25]. Audited with
   across 8 pairs the median spacing is 59 ms with a designed 30 ms guard;
   that is intentional, per-pair analysis is unaffected.
 
+### CLOSED 2026-08-18 evening: carrier sync PERFECT on hardware
+
+Sequential run (block `ClosedLoopTest_LD-260818-173226`, PLL scheduler v2,
+`-TickFrames 6`, no phase trim needed): **476/476 probes delivered exactly one
+carrier pulse — 0 missed, 0 doubled** (vs 1.9%/4.2% wall-clock, 21.6%/21.0%
+arrival-fired v1). Wire == design, pair mapping exact, 28000/28000 ticks,
+0 dropped, PLL phaseErr avg 0.65 ms, 0 resyncs. Phase landed at 6.14 ms of the
+9.830 ms period (safe); `-TickPhaseUs 1229` would center it exactly — optional
+polish, session-stable. **Probe delivery is now bit-perfect end to end.**
+History of the fix (v1 arrival-fired regression → v2 PLL + counter-quantized
+phase): see `--tick-frames` docs in the .cpp and commits d9d1fcf/689f9c9.
+
 ### Resolved 2026-08-18 PM: frame-locked ticking + two probe protocols
 
 - **Carrier beat FIXED loop-side** (`--tick-frames 6` / `2_loop.ps1 -TickFrames 6`):
