@@ -161,11 +161,19 @@ def main():
         period_s = np.median(np.diff(carrier)) if len(carrier) > 2 else 1.0 / 101.7253
         dmed = float(np.median(latch_delays))
         trim = (dmed - period_s / 2.0) * 1e6
+        margin = min(dmed, period_s - dmed)
         print("\ncarrier phase: median command->latch delay %.2f ms (period %.3f ms; "
-              "mid-period target %.2f ms)" % (1e3 * dmed, 1e3 * period_s, 500.0 * period_s))
-        print("  frame-locked runs: pass  -TickPhaseUs %.0f  to 2_loop.ps1 to center "
-              "commands mid-latch-period (grid is counter-quantized, so this value "
-              "is stable for the Synapse session)" % trim)
+              "mid-period target %.2f ms; boundary margin %.2f ms)"
+              % (1e3 * dmed, 1e3 * period_s, 500.0 * period_s, 1e3 * margin))
+        print("  centering trim for THIS phase: -TickPhaseUs %.0f. CAUTION: the "
+              "PO8e counter zeroes at recording start, so the phase re-randomizes "
+              "per recording (measured 6.14 vs 1.97 ms across 2026-08-18 blocks) -- "
+              "treat this as a per-run diagnostic, not a set-once calibration, "
+              "unless a cross-recording test shows otherwise." % trim)
+        if margin < 0.0025:
+            print("  note: margin under 2.5 ms -- this run was in the racing regime; "
+              "doubled/missed probes above are phase, not a fault. Rerunning "
+              "re-rolls the phase.")
 
     # ---- sSig bipolar mapping ----------------------------------------------
     G, fsG = d.streams.sSig.data, d.streams.sSig.fs
