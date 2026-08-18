@@ -77,16 +77,71 @@ struct Options {
     std::string model_path;             // .lti for mpc, .nnw for nn
     std::string capture_file;
     std::string log_file;
+    std::string play_file;              // openloop: replay a designed u CSV verbatim
+    std::string reference_file;         // mpc: per-tick target trajectory CSV (r1..rp)
 
     double target = 0.0;
     std::string target_file;            // re-read live, mirrors MATLAB's MPC_TARGET
     std::vector<int> feature_map;
+    std::vector<int> stim_pairs;        // controller output i -> wire slot pairs[i]
 
     MpcConfig mpc;
     NnConfig  nn;
     ExcitationConfig exc;
     bool selftest = false;
 };
+
+// Load the columns of a CSV whose header names start with `prefix` followed by
+// a digit (u1..uM for designed commands, r1..rp for reference trajectories).
+// This is how a MATLAB-designed, validator-audited sequence gets replayed with
+// no MATLAB in the real-time path: design offline, play verbatim here.
+static std::vector<std::vector<double>> load_csv_prefix(const std::string& path,
+                                                        const std::string& prefix) {
+    std::ifstream f(path);
+    if (!f) throw std::runtime_error("cannot open " + path);
+    std::string line;
+    if (!std::getline(f, line)) throw std::runtime_error("empty CSV " + path);
+
+    std::vector<int> cols;
+    {
+        std::string cur;
+        int idx = 0;
+        for (char c : line + ",") {
+            if (c == ',') {
+                if (!cur.empty() && cur.back() == '\r') cur.pop_back();
+                if (cur.size() > prefix.size() && cur.compare(0, prefix.size(), prefix) == 0 &&
+                    std::isdigit((unsigned char)cur[prefix.size()]))
+                    cols.push_back(idx);
+                ++idx;
+                cur.clear();
+            } else cur += c;
+        }
+    }
+    if (cols.empty())
+        throw std::runtime_error("no '" + prefix + "N' columns in " + path);
+
+    std::vector<std::vector<double>> rows;
+    while (std::getline(f, line)) {
+        if (line.empty() || line == "\r") continue;
+        std::vector<double> vals;
+        std::string cur;
+        for (char c : line + ",") {
+            if (c == ',') { vals.push_back(std::atof(cur.c_str())); cur.clear(); }
+            else cur += c;
+        }
+        std::vector<double> row;
+        row.reserve(cols.size());
+        for (int ci : cols) {
+            if (ci >= (int)vals.size())
+                throw std::runtime_error("short row " + std::to_string(rows.size() + 2) +
+                                         " in " + path);
+            row.push_back(vals[(size_t)ci]);
+        }
+        rows.push_back(std::move(row));
+    }
+    if (rows.empty()) throw std::runtime_error("no data rows in " + path);
+    return rows;
+}
 
 static bool parse_int_list(const std::string& s, std::vector<int>& out) {
     out.clear();
@@ -109,9 +164,22 @@ static void usage() {
         "  --model PATH              .lti plant (mpc) or .nnw weights (nn)\n"
         "  --capture PATH            write (u,y) CSV, openloop mode\n"
         "  --log PATH                per-packet timing CSV\n"
+        "  --play PATH               openloop: replay u1..uM columns of a designed\n"
+        "                            CSV verbatim (design in MATLAB, validate with\n"
+        "                            validate_impulse_design.py, play here -- no\n"
+        "                            MATLAB in the real-time path). Zeros after the\n"
+        "                            last row. max-packets defaults to the row count.\n"
         "  --target V                MPC setpoint\n"
         "  --target-file PATH        re-read setpoint live from a text file\n"
+        "  --reference PATH          mpc: per-tick target from r1..rp columns of a\n"
+        "                            reference CSV (build_touch_reference.py output).\n"
+        "                            NO horizon preview -- the MATLAB server remains\n"
+        "                            the primary tracking path; this is the backup.\n"
+        "                            Holds the last row after the trajectory ends.\n"
         "  --feature-map 7,3         which feature indices are the model outputs (1-based)\n"
+        "  --pairs 3                 map controller output k to bipolar pair slot k\n"
+        "                            (1-based; word k on the wire drives pair k). A\n"
+        "                            1-output model with no --pairs drives pair 1.\n"
         "  --horizon N (20)  --control-horizon N (2)\n"
         "  --q-weight V (1)  --r-weight V (1)  --q-scale V (0.01)\n"
         "  --umin V (0)      --umax V (40)     --max-rate V (0 = no slew limit)\n"
@@ -137,9 +205,12 @@ static bool parse_args(int argc, char** argv, Options& o) {
         else if (a == "--model")           o.model_path = next("--model");
         else if (a == "--capture")         o.capture_file = next("--capture");
         else if (a == "--log")             o.log_file = next("--log");
+        else if (a == "--play")            o.play_file = next("--play");
+        else if (a == "--reference")       o.reference_file = next("--reference");
         else if (a == "--target")          o.target = std::atof(next("--target").c_str());
         else if (a == "--target-file")     o.target_file = next("--target-file");
         else if (a == "--feature-map")     parse_int_list(next("--feature-map"), o.feature_map);
+        else if (a == "--pairs")           parse_int_list(next("--pairs"), o.stim_pairs);
         else if (a == "--horizon")         o.mpc.N = std::atoi(next("--horizon").c_str());
         else if (a == "--control-horizon") o.mpc.Nu = std::atoi(next("--control-horizon").c_str());
         else if (a == "--q-weight")        o.mpc.q_weight = std::atof(next("--q-weight").c_str());
@@ -316,6 +387,31 @@ static int selftest() {
               "|pole| " + std::to_string(mpc.observer_pole()));
     }
 
+    // ---- CSV replay loader (--play / --reference) ------------------------
+    {
+        const char* tmp = "cpp_ctl_selftest_tmp.csv";
+        {
+            std::ofstream f(tmp);
+            f << "tick,u1,u2,y1\n1,0,5.5,9\n2,25,0,9\n3,0,0,9\n";
+        }
+        bool ok = false;
+        std::string detail;
+        try {
+            const auto rows = load_csv_prefix(tmp, "u");
+            ok = rows.size() == 3 && rows[0].size() == 2 &&
+                 rows[0][1] == 5.5 && rows[1][0] == 25.0 && rows[2][0] == 0.0;
+            detail = "3 rows x 2 u-cols, values exact";
+            // header without the prefix must throw, not misload
+            bool threw = false;
+            try { load_csv_prefix(tmp, "r"); } catch (const std::exception&) { threw = true; }
+            ok = ok && threw;
+        } catch (const std::exception& e) {
+            detail = e.what();
+        }
+        std::remove(tmp);
+        check("CSV replay loader (--play/--reference)", ok, detail);
+    }
+
     // ---- excitation ------------------------------------------------------
     {
         ExcitationConfig ec;
@@ -367,10 +463,30 @@ int main(int argc, char** argv) {
     std::unique_ptr<IController> controller;
     std::unique_ptr<Excitation> excitation;
     MpcController* mpc_ptr = nullptr;
+    std::vector<std::vector<double>> playU;    // openloop --play rows
+    std::vector<std::vector<double>> refRows;  // mpc --reference rows
 
     try {
         if (o.mode == "constant") {
             controller.reset(new ConstantController(o.constant_value, o.output_count));
+        } else if (o.mode == "openloop" && !o.play_file.empty()) {
+            playU = load_csv_prefix(o.play_file, "u");
+            double lo = 1e300, hi = -1e300;
+            for (const auto& r : playU)
+                for (double v : r) { lo = std::min(lo, v); hi = std::max(hi, v); }
+            if (o.max_packets <= 0) o.max_packets = (long long)playU.size();
+            std::printf("openloop: replaying %s verbatim -- %zu ticks (%.1f s), "
+                        "%zu u columns, u in [%g %g], zeros after the last row\n",
+                        o.play_file.c_str(), playU.size(), playU.size() / 100.0,
+                        playU[0].size(), lo, hi);
+            if ((int)playU[0].size() != o.output_count)
+                std::printf("WARNING: design has %zu u columns but output-count is %d; "
+                            "rows will be %s\n", playU[0].size(), o.output_count,
+                            (int)playU[0].size() < o.output_count ? "zero-padded" : "truncated");
+            if (o.capture_file.empty()) {
+                o.capture_file = "capture_openloop_cpp.csv";
+                std::printf("openloop: capture defaulted to %s\n", o.capture_file.c_str());
+            }
         } else if (o.mode == "openloop") {
             const int ticks = (int)(o.max_packets > 0 ? o.max_packets : 6000);
             if (o.max_packets <= 0) {
@@ -413,6 +529,26 @@ int main(int argc, char** argv) {
                             "Do not trust closed-loop behaviour.\n");
             mpc_ptr = mpc.get();
             controller.reset(mpc.release());
+            if (!o.reference_file.empty()) {
+                refRows = load_csv_prefix(o.reference_file, "r");
+                if (o.max_packets <= 0) o.max_packets = (long long)refRows.size();
+                double lo = 1e300, hi = -1e300;
+                for (const auto& r : refRows)
+                    for (double v : r) { lo = std::min(lo, v); hi = std::max(hi, v); }
+                std::printf("mpc: reference %s -- %zu ticks (%.1f s), %zu output(s), "
+                            "range [%g %g]. Per-tick target, NO horizon preview "
+                            "(backup path; MATLAB server previews).\n",
+                            o.reference_file.c_str(), refRows.size(),
+                            refRows.size() / 100.0, refRows[0].size(), lo, hi);
+            }
+            if (!o.stim_pairs.empty()) {
+                std::printf("mpc: controller output(s) mapped to stim pair slot(s) [");
+                for (size_t i = 0; i < o.stim_pairs.size(); ++i)
+                    std::printf("%s%d", i ? " " : "", o.stim_pairs[i]);
+                std::printf("]; all other slots 0.\n");
+            } else {
+                std::printf("NOTE: no --pairs given; a 1-output model drives PAIR 1 only.\n");
+            }
         } else if (o.mode == "nn") {
             if (o.model_path.empty()) { std::printf("--mode nn requires --model <file.nnw>\n"); return 2; }
             const NnModel M = load_nnw(o.model_path);
@@ -508,17 +644,41 @@ int main(int argc, char** argv) {
 
         const double t_compute0 = now_ms();
         std::vector<double> u;
-        if (excitation) {
+        if (!playU.empty()) {
+            // Verbatim replay, indexed by packet count (same convention as the
+            // generated excitation: a dropped request must not skip a slice of
+            // the design). Past the last row the output is zero -- probe over.
+            if (packets - 1 < (long long)playU.size())
+                u = playU[(size_t)(packets - 1)];
+            u.resize((size_t)o.output_count, 0.0);
+        } else if (excitation) {
             // Indexed by packet count, not seq -- a dropped request must not skip
             // a slice of the designed sequence.
             u = excitation->at((int)(packets - 1));
             if ((int)u.size() != o.output_count) u.resize((size_t)o.output_count, 0.0);
         } else {
-            if (mpc_ptr && !o.target_file.empty() && (packets % 25 == 0)) {
+            if (mpc_ptr && !refRows.empty()) {
+                // Per-tick reference: hold the final row after the trajectory
+                // ends (a touch reference ends at baseline, so holding = idle).
+                const size_t k = std::min((size_t)(packets - 1), refRows.size() - 1);
+                mpc_ptr->set_target(refRows[k]);
+            } else if (mpc_ptr && !o.target_file.empty() && (packets % 25 == 0)) {
                 double tv2;
                 if (read_target_file(o.target_file, tv2)) mpc_ptr->set_target({tv2});
             }
             u = controller->step(rq.features);
+            if (!o.stim_pairs.empty()) {
+                // Route controller output i to its physical bipolar pair slot
+                // (matches matlab_controller_server's cfg.stimPairs). Without
+                // this, a model identified on pair 3 would stimulate pair 1.
+                std::vector<double> mapped((size_t)o.output_count, 0.0);
+                for (size_t i = 0; i < o.stim_pairs.size() && i < u.size(); ++i) {
+                    const int slot = o.stim_pairs[i] - 1;
+                    if (slot >= 0 && slot < o.output_count)
+                        mapped[(size_t)slot] = u[i];
+                }
+                u = mapped;
+            }
         }
         const double compute_ms = now_ms() - t_compute0;
 
@@ -541,7 +701,8 @@ int main(int argc, char** argv) {
             // there is no IController to ask for status, only a precomputed
             // excitation sequence.
             const std::string status =
-                controller ? controller->status() : std::string("excitation");
+                controller ? controller->status()
+                           : std::string(playU.empty() ? "excitation" : "replay");
             std::printf("Reply #%lld seq=%u feature0=%.6f out0=%.6f compute=%.3fms turnaround=%.3fms %s\n",
                         packets, rq.seq,
                         rq.features.empty() ? 0.0 : rq.features[0],

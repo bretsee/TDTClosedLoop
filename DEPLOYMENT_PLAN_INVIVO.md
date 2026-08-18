@@ -153,14 +153,34 @@ All-8-pairs jittered impulse probe, amps [5 10 18 25]. Audited with
 - **Stim rate is STILL base/100 = 244.141 Hz** (Plse, 19,681 pulses) = 2.5
   acquisition samples per stim period, non-integer → for closed-loop runs use
   `-FeatureWindow 30` (= 12.0 periods) unless the circuit is changed to base/240.
-- **OPEN: hold-last stretches probes.** MATLAB-server ~100 ms stalls made the loop
-  repeat the last command: 12 designed single-tick pulses went out as 7–9-tick
-  (70–90 ms) bursts. Analysis is safe (fit_impulse_model's isolation filter drops
-  them) but the charge IS delivered — in tissue prefer `cpp_controller.exe`
-  openloop (no stalls, 0.02 ms) for probe runs, or add a stale-policy-zero flag.
-- **OPEN: 5.1% of designed pulses (46/901) never reached the wire**
-  (stale-dropped/overwritten replies, same stall mechanism; same mitigation).
-  Harmless for saline; mildly uneven trial counts if unmitigated.
+- ~~OPEN: hold-last stretches probes / 5.1% pulse loss~~ **RESOLVED same night:
+  probe runs now go through the C++ replay server** (`rig\1c_server.ps1` →
+  `cpp_controller.exe --play`), which serves the MATLAB-designed, validator-audited
+  CSV verbatim with no MATLAB in the real-time path. Sim-verified: capture ==
+  design EXACTLY (max diff 0.0 over 7000×8), 0 lost, 0 stretched, 0 timeouts,
+  turnaround avg 0.011 ms / max 0.101 ms (vs MATLAB's ~300 timeouts + 100 ms stalls).
+
+### MATLAB-free probe path (preferred for probes from 2026-08-18 on)
+
+```powershell
+# Terminal A (design once offline in MATLAB, validate, then C++ serves):
+.\rig\1c_server.ps1 -Run sal2 -Seed 777          # amps 5,10,18,25 + 80ms jitter defaults
+# Terminal B, unchanged:
+.\rig\2_loop.ps1 -Run sal2 -RZ2 10.1.0.100 -TimeoutMs 10 -Ticks 7000
+# post-run, unchanged: validate_impulse_design.py + check_impulse_delivery.py
+```
+For tissue probing pass `-Channels <p>` (one pair) and the day's `-UMax`.
+
+### Full C++ backup for the CLOSED loop (if MATLAB must go entirely)
+
+`cpp_controller.exe --mode mpc --model <plant.lti> --reference ref_touch.csv
+--pairs <p> --r-weight 1e-3 --output-count 8 --capture <csv> --log <csv>`
+(plant via `export_plant_lti('<name>.lti', 10)` after `-Save`). Sim-verified:
+observer pole 0.892246 = MATLAB's exact value, per-tick reference + pair
+mapping work, turnaround 0.014 ms. **Known gap: NO horizon preview** — the C++
+MPC tracks the reference reactively (~1-tick lag on event onsets), so the
+MATLAB server (`4_mpc_server.ps1`) stays the PRIMARY tracking path; this is
+the fallback if MATLAB misbehaves on the day.
 
 ## Known watch items going in
 - 5–8% localhost timeouts at `-TimeoutMs 5` (fix: 10 ms, above).
