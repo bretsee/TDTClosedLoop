@@ -185,6 +185,19 @@ All-8-pairs jittered impulse probe, amps [5 10 18 25]. Audited with
   across 8 pairs the median spacing is 59 ms with a designed 30 ms guard;
   that is intentional, per-pair analysis is unaffected.
 
+### Phase-trim verdict (decisive test, block `LD-260818-180721`)
+
+`-TickPhaseUs` does NOT calibrate across recordings: with −2949 applied, a
+preserved phase would have measured 4.92 ms; it measured 7.91 ms (the PO8e
+counter zeroes at recording start, re-rolling the grid-vs-carrier phase every
+block). **Policy: leave the trim unset.** Per-run audit is the control:
+empirically (3 PLL runs, margins 3.7/1.97/1.93 ms → races 0/2/0) only
+boundary margins under ~1.5 ms race at all, so ~70% of runs are perfect and
+the rest lose ~0.2% of trials, which `check_impulse_delivery.py` counts and
+`fit_impulse_model.py` auto-excludes. Rerunning a block re-rolls the phase.
+The flag stays available (harmless) in case a future circuit ties the counter
+origin to the carrier.
+
 ### CLOSED 2026-08-18 evening: carrier sync PERFECT on hardware
 
 Sequential run (block `ClosedLoopTest_LD-260818-173226`, PLL scheduler v2,
