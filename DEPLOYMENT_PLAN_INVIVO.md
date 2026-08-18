@@ -160,6 +160,31 @@ All-8-pairs jittered impulse probe, amps [5 10 18 25]. Audited with
   design EXACTLY (max diff 0.0 over 7000×8), 0 lost, 0 stretched, 0 timeouts,
   turnaround avg 0.011 ms / max 0.101 ms (vs MATLAB's ~300 timeouts + 100 ms stalls).
 
+### Saline sal2, 2026-08-18 (first C++-replay run on the rig)
+
+- **Stim rate FIXED and verified: 101.7253 Hz = base/240 exactly** (8,805 Plse
+  pulses), **6.000 acquisition samples per period** → the default
+  `-FeatureWindow 6` is now correct; the `-FeatureWindow 30` fallback is obsolete.
+- **C++ replay path perfect on the wire on real hardware**: 925/925 designed
+  pulses in UDP1, 0 lost, 0 stretched. Pair mapping re-confirmed.
+- **Carrier-latch beat (the remaining, now-quantified physicality):** the
+  command clock (~99.24 Hz effective, 10.076 ms) free-runs against the 101.73 Hz
+  carrier (9.830 ms), phases sliding through each other every ~0.4 s. Each
+  single-tick probe therefore gates **1 pulse 93.8%** of the time, **2 pulses
+  4.2%** (phase-aligned), **0 pulses 1.9%** (window falls between latches —
+  silent physical miss despite perfect UDP/Scle delivery).
+  `check_impulse_delivery.py` now measures this per run. Analysis handling:
+  missed probes = no-stim trials (dilute the trial average ~2%), doubles = 2×
+  charge 9.8 ms apart (within the 23 ms settle). Acceptable and quantified for
+  probing; the DURABLE fix is circuit-side — one-shot/triggered StimGen instead
+  of a free-running carrier — or pacing the loop tick off the PO8e frame clock
+  (6 frames = exactly one carrier period, RZ2-crystal-locked). Ask the circuit
+  owner alongside the watchdog request.
+- Same-word spacing held the design (min 518 ms ≈ the 52-tick floor; median
+  581 ms). Pulses that "look closer" are DIFFERENT pairs interleaving — pooled
+  across 8 pairs the median spacing is 59 ms with a designed 30 ms guard;
+  that is intentional, per-pair analysis is unaffected.
+
 ### MATLAB-free probe path (preferred for probes from 2026-08-18 on)
 
 ```powershell

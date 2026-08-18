@@ -99,32 +99,57 @@ def main():
              "probe during a server stall; excluded automatically by "
              "fit_impulse_model's isolation filter, but the extra charge WAS "
              "delivered" % tot_multi)
-    if designed:
+    if designed and tot_d > tot_w:
         pct = 100.0 * (tot_d - tot_w) / max(1, tot_d)
         sev = "warn" if pct < 8 else "FAIL"
         note(sev, "%d/%d designed pulses (%.1f%%) never reached the wire "
              "(stale-dropped/overwritten replies)" % (tot_d - tot_w, tot_d, pct))
+    elif designed:
+        print("  wire == design: every designed pulse reached the RZ2")
 
-    # ---- Scle ---------------------------------------------------------------
+    # ---- Scle + carrier: pulses actually DELIVERED per commanded probe ------
+    # The scale value latches on the free-running stim carrier, and the command
+    # clock (~99.2 Hz effective) is NOT synchronous with it, so the two phases
+    # slide through each other (beat ~0.4 s at 101.7 Hz carrier). A single-tick
+    # probe window therefore gates 1 carrier pulse usually, 2 when the phases
+    # align, and 0 when the window falls between latches -- a silent physical
+    # miss even though UDP1 and Scle software delivery are perfect. Count it.
     S, fsS = d.streams.Scle.data, d.streams.Scle.fs
-    print("\nUDP word -> Scle channel (onset match, transport delay):")
+    P, fsP = d.streams.Plse.data, d.streams.Plse.fs
+    pk = np.max(np.abs(P))
+    carrier = (np.flatnonzero((P[1:] > 0.5 * pk) & (P[:-1] <= 0.5 * pk)) + 1) / fsP \
+        if pk > 0 else np.array([])
+    print("\nper-probe delivered-pulse audit (carrier ticks inside each probe's Scle-high span):")
+    n_miss = n_single = n_double = n_probe = 0
     for w in range(min(n_words, S.shape[0])):
         onU = np.flatnonzero((U[w][1:] > 1e-9) & (U[w][:-1] <= 1e-9)) + 1
-        tU = ts[onU]
-        onS = np.flatnonzero((S[w][1:] > 1e-9) & (S[w][:-1] <= 1e-9)) + 1
-        tS = onS / fsS
-        dts, j = [], 0
-        for t in tU:
-            while j < len(tS) and tS[j] < t - 0.002:
-                j += 1
-            if j < len(tS):
-                dts.append(tS[j] - t)
-        med = 1e3 * np.median(dts) if dts else float("nan")
-        flag = "" if len(tU) == len(onS) else "  <-- onset count mismatch"
-        print("  word %d: UDP %d vs Scle %d onsets, delay median %.2f ms%s"
-              % (w + 1, len(tU), len(onS), med, flag))
-        if len(tU) != len(onS):
-            note("FAIL", "word %d: UDP1 %d onsets but Scle %d" % (w + 1, len(tU), len(onS)))
+        hi = S[w] > 1e-9
+        counts = []
+        for t in ts[onU]:
+            i0 = int(max(0.0, t - 0.001) * fsS)
+            i1 = min(len(hi), int((t + 0.022) * fsS))
+            seg = hi[i0:i1]
+            if not seg.any():
+                counts.append(0)
+                continue
+            t0 = (i0 + np.argmax(seg)) / fsS
+            t1 = (i0 + len(seg) - np.argmax(seg[::-1])) / fsS
+            counts.append(int(np.sum((carrier >= t0) & (carrier < t1))))
+        c = np.bincount(np.array(counts) if counts else np.zeros(0, int), minlength=3)
+        n_probe += len(counts)
+        n_miss += int(c[0]); n_single += int(c[1]); n_double += int(c[2:].sum())
+        print("  word %d: %3d probes -> missed %2d, single %3d, double+ %2d"
+              % (w + 1, len(counts), c[0], c[1], c[2:].sum()))
+    if n_probe:
+        pm, pd = 100.0 * n_miss / n_probe, 100.0 * n_double / n_probe
+        print("  TOTAL %d probes: missed %d (%.1f%%), single %d (%.1f%%), double+ %d (%.1f%%)"
+              % (n_probe, n_miss, pm, n_single, 100.0 * n_single / n_probe, n_double, pd))
+        if n_miss or n_double:
+            note("FAIL" if pm > 5 else "warn",
+                 "carrier-latch beat: %.1f%% probes delivered 0 pulses, %.1f%% "
+                 "delivered 2 -- expected while the command clock free-runs "
+                 "against the stim carrier; excluded trials are measurable, "
+                 "kernel amplitudes carry ~this much spread" % (pm, pd))
 
     # ---- sSig bipolar mapping ----------------------------------------------
     G, fsG = d.streams.sSig.data, d.streams.sSig.fs
