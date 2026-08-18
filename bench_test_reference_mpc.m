@@ -27,6 +27,43 @@ function bench_test_reference_mpc
     iso = all(U(max(pulses - 1, 1), 1) == 0) && all(U(min(pulses + 1, 600), 1) == 0);
     fails = fails + report('impulse isolation', iso, 'all pulses single-tick');
 
+    % ---- 1b. jittered all-channel impulse (2026-08-17 additions) ---------
+    % The saline-validation configuration: all 8 pairs, amps [5 10 18 25],
+    % geometric gap jitter mean 8 ticks (80 ms) on the 50-tick base gap.
+    optsJ = struct('pulseAmps', {[5 10 18 25]}, 'gapJitterMeanTicks', 8, ...
+                   'uMax', 25, 'seed', 424242);
+    UJ  = make_excitation('impulse', 7000, 8, optsJ);
+    UJ2 = make_excitation('impulse', 7000, 8, optsJ);
+    allJit = [];
+    perChOk = true;
+    for ch = 1:8
+        pj = find(UJ(:, ch) > 0);
+        isoJ = all(UJ(max(pj - 1, 1), ch) == 0) && all(UJ(min(pj + 1, 7000), ch) == 0);
+        ampsJ = unique(UJ(pj, ch))';
+        jit = diff(pj) - 51;                       % jitter = interval - (gap+1)
+        perChOk = perChOk && isoJ && isequal(ampsJ, [5 10 18 25]) && ...
+                  numel(pj) >= 60 && all(jit >= 1);
+        allJit = [allJit; jit]; %#ok<AGROW>
+    end
+    fails = fails + report('impulse jitter per-chan', perChOk, ...
+        sprintf('8 channels isolated, amps [5 10 18 25], all jitter >= 1 tick (n=%d)', ...
+                numel(allJit)));
+
+    % pooled jitter mean must sit near the requested 8 ticks (geometric std is
+    % ~7.5 ticks, n ~ 800, so +/-1 tick is a ~4-sigma band), and the same seed
+    % must reproduce the record exactly.
+    mj = mean(allJit);
+    fails = fails + report('impulse jitter stats', ...
+        mj > 7 && mj < 9 && isequal(UJ, UJ2), ...
+        sprintf('mean jitter %.2f ticks (target 8), same-seed reproducible', mj));
+
+    % cross-channel guard: no two pulses on ANY channels within 2 ticks
+    rowPulses = sum(UJ > 0, 2);
+    spacing = diff(find(rowPulses > 0));
+    fails = fails + report('impulse cross-chan guard', ...
+        all(rowPulses <= 1) && all(spacing >= 3), ...
+        sprintf('no collisions, min cross-channel spacing %d ticks', min(spacing)));
+
     % ---- 2. one-arg call (legacy path) ----------------------------------
     evalin('base', 'clear MPC_OPTS MPC_TARGET');
     mpc_test([]);

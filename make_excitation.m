@@ -34,6 +34,16 @@ function U = make_excitation(kind, nTicks, m, opts)
 %     f0, f1      chirp start/end frequency in Hz            (default 0.2, 20)
 %     pulseAmps   amplitudes cycled through for 'impulse'    (default [10 20 30 40])
 %     gapTicks    quiet ticks between pulses for 'impulse'   (default 50)
+%     gapJitterMeanTicks  extra RANDOM gap added after every impulse pulse,
+%                 drawn per pulse from a geometric distribution on {1,2,...}
+%                 with this mean (0 = off, the legacy strictly periodic train).
+%                 Geometric = the discrete memoryless distribution: flat hazard,
+%                 so the train has no rhythm to entrain to and no spectral comb,
+%                 while staying strictly positive and integer-tick by
+%                 construction. Generation is one uniform + one log per pulse
+%                 (inversion), the cheapest strictly-positive draw available
+%                 without a toolbox. Mean pulse period becomes
+%                 (gapTicks + 1 + gapJitterMeanTicks) ticks.        (default 0)
 %     seed        RNG seed for reproducibility               (default 12345)
 %     decorrelate shift channels apart so inputs are not collinear (default true)
 %     activeChannels  channel indices allowed to move; every other channel is
@@ -72,6 +82,7 @@ function U = make_excitation(kind, nTicks, m, opts)
     opts = set_default(opts, 'f1', 20);
     opts = set_default(opts, 'pulseAmps', [10 20 30 40]);
     opts = set_default(opts, 'gapTicks', 50);
+    opts = set_default(opts, 'gapJitterMeanTicks', 0);
     opts = set_default(opts, 'seed', 12345);
     opts = set_default(opts, 'decorrelate', true);
     opts = set_default(opts, 'activeChannels', []);
@@ -212,39 +223,91 @@ end
 
 function U = build_impulse(nTicks, m, opts)
     % Single-tick pulses at cycling amplitudes, gapTicks of uMin between them.
-    % Pulse k lands at tick k*(gapTicks+1) with amplitude
-    % pulseAmps(mod(k-1, numel(pulseAmps))+1), so every amplitude is visited
-    % equally and drift affects all amplitudes the same on average. With the
-    % defaults, 6000 ticks gives ~117 pulses = ~29 trials per amplitude.
+    % Amplitude of pulse k is pulseAmps(mod(k-1, numel(pulseAmps))+1), so every
+    % amplitude is visited equally and drift affects all amplitudes the same on
+    % average. With gapJitterMeanTicks = 0 the train is strictly periodic
+    % (period gapTicks+1, the pre-2026-08-17 behaviour, byte-identical). With
+    % gapJitterMeanTicks > 0 each inter-pulse gap is gapTicks plus an
+    % independent geometric draw on {1,2,...} with that mean, per channel from
+    % its own seeded substream -- memoryless, so the train carries no rhythm.
+    %
+    % Cross-channel guard: when several channels are active, no two pulses on
+    % ANY pair of channels may land within crossGuard ticks of each other; a
+    % conflicting pulse is shifted forward tick by tick until clear. This keeps
+    % every pulse attributable to exactly one pair in the recording (the +1-tick
+    % transport delay stays inside the guard). Channels are built in order, so
+    % the whole record is reproducible from opts.seed alone.
     amps = opts.pulseAmps(:)';
     if isempty(amps)
         amps = opts.uMax;
     end
     gap = max(1, round(opts.gapTicks));
     period = gap + 1;
+    jitterMean = max(0, round(opts.gapJitterMeanTicks));
+    crossGuard = 2;
+
+    if isempty(opts.activeChannels)
+        activeSet = 1:m;
+    else
+        activeSet = unique(round(opts.activeChannels(:)'));
+        activeSet = activeSet(activeSet >= 1 & activeSet <= m);
+    end
 
     U = opts.uMin * ones(nTicks, m);
-    for ch = 1:m
-        % decorrelate staggers channels so two active pairs never pulse on the
-        % same tick; with one active channel (the recommended probe) it is a no-op.
+    claimed = false(nTicks, 1);
+    counts = zeros(1, m);
+    for ch = activeSet
+        % decorrelate staggers channel start times; the claimed-tick guard above
+        % is what actually forbids collisions once jitter makes trains drift.
         offset = 0;
         if opts.decorrelate && m > 1
             offset = round((ch - 1) * period / m);
         end
+        if jitterMean > 0
+            % Independent per-channel substream; 7919 (a prime) spreads the
+            % seeds so channels do not share LCG trajectories.
+            rs = local_rng(opts.seed + 7919 * ch);
+            p = 1 / jitterMean;
+        end
         pulseIdx = 0;
-        for k = (1 + gap):period:nTicks    % leading gap = clean pre-pulse baseline
-            tick = k + offset;
-            if tick > nTicks
+        tick = 1 + gap + offset;           % leading gap = clean pre-pulse baseline
+        while tick <= nTicks
+            t = tick;
+            while t <= nTicks && any(claimed(max(1, t - crossGuard):min(nTicks, t + crossGuard)))
+                t = t + 1;
+            end
+            if t > nTicks
                 break;
             end
             pulseIdx = pulseIdx + 1;
-            U(tick, ch) = amps(mod(pulseIdx - 1, numel(amps)) + 1);
+            U(t, ch) = amps(mod(pulseIdx - 1, numel(amps)) + 1);
+            claimed(t) = true;
+            if jitterMean > 0
+                if p >= 1
+                    jit = 1;
+                else
+                    [rs, r] = local_rand(rs);
+                    r = min(max(r, 1e-12), 1 - 1e-12);
+                    jit = ceil(log(1 - r) / log(1 - p));   % geometric on {1,2,...}, mean = jitterMean
+                end
+            else
+                jit = 0;
+            end
+            tick = t + period + jit;
         end
+        counts(ch) = pulseIdx;
     end
-    nPulses = numel((1 + gap):period:nTicks);
-    fprintf('impulse: %d pulses/channel (~%.0f per amplitude of [%s]), gap %d ticks (%.0f ms).\n', ...
-            nPulses, nPulses / max(1, numel(amps)), strtrim(sprintf('%g ', amps)), ...
-            gap, gap * 10);
+    if jitterMean > 0
+        jitterDesc = sprintf(' + geometric jitter mean %d ticks (%.0f ms)', ...
+                             jitterMean, jitterMean * 10);
+    else
+        jitterDesc = '';
+    end
+    nPulses = mean(counts(activeSet));
+    fprintf(['impulse: %.0f pulses/channel on %d channel(s) (~%.0f per amplitude ' ...
+             'of [%s]), gap %d ticks (%.0f ms)%s.\n'], ...
+            nPulses, numel(activeSet), nPulses / max(1, numel(amps)), ...
+            strtrim(sprintf('%g ', amps)), gap, gap * 10, jitterDesc);
 end
 
 % =========================================================================
