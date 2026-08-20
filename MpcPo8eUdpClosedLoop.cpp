@@ -578,9 +578,15 @@ struct SampleRingBuffer
     // exactly 6 samples per stim period, so any multiple of 6 spans a whole number
     // of artifact cycles and the artifact becomes a constant offset rather than a
     // tick-to-tick wobble that would look like signal.
+    // signedMean = false (default): mean(|x|), the validated rectified feature.
+    // signedMean = true (--feature-signed, 2026-08-20): plain mean(x) -- a
+    // block-averaged decimation of the signed LFP, matching Choi 2016's use of
+    // the signed 5-200 Hz LFP as the controlled variable. Same window, same
+    // carrier alignment; only the rectification differs.
     std::vector<double> computeMeanAbsSamples(size_t inputCount,
                                               size_t nSamples,
-                                              size_t* samplesUsed = NULL) const
+                                              size_t* samplesUsed = NULL,
+                                              bool signedMean = false) const
     {
         std::vector<double> out(inputCount, 0.0);
         const size_t take = std::min(nSamples, size);
@@ -594,7 +600,10 @@ struct SampleRingBuffer
         {
             const size_t idx = (writeIndex + capacity - 1 - k) % capacity;
             for (size_t ch = 0; ch < n; ++ch)
-                out[ch] += std::fabs((double)channelValues[ch][idx]);
+            {
+                const double v = (double)channelValues[ch][idx];
+                out[ch] += signedMean ? v : std::fabs(v);
+            }
         }
 
         for (size_t ch = 0; ch < n; ++ch)
@@ -887,6 +896,11 @@ int main(int argc, char** argv)
     //                            (default 6 = one 101.7253 Hz stim period at the
     //                            610.3516 Hz acquisition rate). Prefer multiples
     //                            of 6 so the stim artifact spans whole cycles.
+    //   --feature-signed         feature = mean(x) instead of mean(|x|): the
+    //                            signed block-averaged LFP (Choi 2016 controls
+    //                            the signed 5-200 Hz LFP). Default remains the
+    //                            rectified mean; models/references fitted in
+    //                            one mode are NOT valid in the other.
     //   --tick-frames N          0 (default) = wall-clock 10 ms scheduling.
     //                            N>0 = FRAME-LOCKED via a software PLL: ticks fire
     //                            on the smooth PC clock, with period/phase steered
@@ -948,6 +962,9 @@ int main(int argc, char** argv)
     // 101.7253 Hz against 610.3516 Hz acquisition; multiples of 6 keep the stim
     // artifact contribution constant tick to tick.
     size_t featureWindowSamples = 6;
+    // false = rectified mean(|x|) (validated default); true = signed mean(x),
+    // the Choi-2016-style signed LFP feature (--feature-signed, 2026-08-20).
+    bool featureSigned = false;
     // 0 = wall-clock 10 ms ticks; N>0 = tick every N ingested frames (see docs).
     size_t tickFrames = 0;
     // Frame-locked grid phase trim in us (may be negative). The tick grid is
@@ -987,6 +1004,10 @@ int main(int argc, char** argv)
         {
             featureWindowSamples = static_cast<size_t>(std::max(1, std::atoi(argv[i + 1])));
             ++i;
+        }
+        else if (arg == "--feature-signed")
+        {
+            featureSigned = true;
         }
         else if (arg == "--tick-frames" && (i + 1) < argc)
         {
@@ -1248,8 +1269,9 @@ int main(int argc, char** argv)
             : DEFAULT_UDP_OUTPUT_COUNT;
         activeUdpOutputCount = udpOutputCount;
         std::printf("Output channels per UDP packet=%zu (bipolar stim pairs)\n", udpOutputCount);
-        std::printf("Feature window=%zu samples/channel (fixed count, not arrival time)\n",
-                    featureWindowSamples);
+        std::printf("Feature window=%zu samples/channel (fixed count, not arrival time), mode=%s\n",
+                    featureWindowSamples,
+                    featureSigned ? "SIGNED mean(x) [Choi-style LFP]" : "rectified mean(|x|)");
 
         // =====================================================================
         // SECTION 6: Open UDP path to RZ and register local sender IP
@@ -1500,7 +1522,8 @@ int main(int argc, char** argv)
 
             size_t preLoopWindowSamples = 0;
             const std::vector<double> preLoopFeatures =
-                ring.computeMeanAbsSamples(mpcInputCount, featureWindowSamples, &preLoopWindowSamples);
+                ring.computeMeanAbsSamples(mpcInputCount, featureWindowSamples, &preLoopWindowSamples,
+                                           featureSigned);
             std::vector<double> preLoopX =
                 build_mpc_input(preLoopFeatures, mpcInputCount, udpOutputCount);
             std::printf("Pre-loop live probe: buffered=%zu windowSamples=%zu feature0=%.6f\n",
@@ -1622,7 +1645,8 @@ int main(int argc, char** argv)
                 const int64_t t_in_us = clock.now_us();
                 size_t windowSamplesSeen = 0;
                 const std::vector<double> features =
-                    ring.computeMeanAbsSamples(mpcInputCount, featureWindowSamples, &windowSamplesSeen);
+                    ring.computeMeanAbsSamples(mpcInputCount, featureWindowSamples, &windowSamplesSeen,
+                                               featureSigned);
                 const int64_t t_features_done_us = clock.now_us();
                 if (tickIndex <= VERBOSE_CONTROL_TICKS)
                 {

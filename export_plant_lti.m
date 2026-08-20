@@ -70,6 +70,26 @@ function outPath = export_plant_lti(outPath, modelIndex)
        size(D,1) ~= p || size(D,2) ~= m
         error('export_plant_lti:Inconsistent', 'A/B/C/D dimensions are inconsistent.');
     end
+
+    % Operating point (capture means stored by fit_sysid_from_capture). Zeros
+    % when absent. Appended AFTER the D block: both existing parsers
+    % (model_io.hpp, closed_loop_sim.py) stop reading after D and ignore
+    % trailing tokens, so archived binaries stay compatible.
+    uOff = zeros(1, m); yOff = zeros(1, p);
+    if isstruct(sys) && isfield(sys, 'uOffset') && ~isempty(sys.uOffset)
+        v = double(sys.uOffset(:)).';
+        if numel(v) ~= m || any(~isfinite(v))
+            error('export_plant_lti:BadUOffset', 'sys.uOffset must have m=%d finite entries.', m);
+        end
+        uOff = v;
+    end
+    if isstruct(sys) && isfield(sys, 'yOffset') && ~isempty(sys.yOffset)
+        v = double(sys.yOffset(:)).';
+        if numel(v) ~= p || any(~isfinite(v))
+            error('export_plant_lti:BadYOffset', 'sys.yOffset must have p=%d finite entries.', p);
+        end
+        yOff = v;
+    end
     if ~all(isfinite([A(:); B(:); C(:); D(:)]))
         error('export_plant_lti:NonFinite', 'Model contains non-finite entries.');
     end
@@ -88,8 +108,11 @@ function outPath = export_plant_lti(outPath, modelIndex)
     write_block(fid, 'B', B);
     write_block(fid, 'C', C);
     write_block(fid, 'D', D);
+    write_block(fid, 'uOffset', uOff);
+    write_block(fid, 'yOffset', yOff);
 
-    fprintf('Wrote %s  (n=%d m=%d p=%d Ts=%g)\n', outPath, n, m, p, Ts);
+    fprintf('Wrote %s  (n=%d m=%d p=%d Ts=%g uOff=%s yOff=%s)\n', ...
+            outPath, n, m, p, Ts, mat2str(uOff, 4), mat2str(yOff, 4));
     fprintf('Check the native controller agrees on this model:\n');
     fprintf('  cpp_controller.exe --mode mpc --model %s --target 0\n', outPath);
 end

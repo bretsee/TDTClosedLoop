@@ -41,12 +41,19 @@ Context for this revision:
 Net: **nothing already banked is lost.** Every environment-referenced number was either never
 banked or already scheduled for retest. The engineering validations all carry.
 
-### 60 Hz line noise — audit result (2026-08-19 code audit)
+### 60 Hz line noise — audit result (2026-08-19 code audit; framing CORRECTED 2026-08-20)
 
-**There is no filtering anywhere in the system.** Not a notch, not a highpass, not a detrend —
-C++ or fitting scripts. The chain is raw sample -> |x| -> 6-sample mean -> UDP. Conditioning in
-the fitters is mean/baseline subtraction only (`fit_sysid_from_capture.m:149-152`,
-`fit_impulse_model.py:66`, `timing_check.py:59-60`).
+**Correction (user, 2026-08-20): the RZ2's onboard DSPs filter the streamed signal BEFORE it
+reaches this PC** — roughly the Choi 2016 LFP chain (their published numbers: broadband
+0.2-8.5 kHz at 24.4 kHz -> 480 us sample-and-hold blanking -> 5-200 Hz band-pass -> 610 Hz).
+So the audit statement below applies to the **PC-side chain only**: from the PO8e onward there
+is no filtering — not a notch, not a highpass, not a detrend, in C++ or fitting scripts. The
+PC chain is (already-filtered) sample -> |x| (or signed mean, --feature-signed) -> 6-sample
+mean -> UDP. Conditioning in the fitters is mean/baseline subtraction only
+(`fit_sysid_from_capture.m:149-152`, `fit_impulse_model.py:66`, `timing_check.py:59-60`).
+Note 60 Hz sits INSIDE a 5-200 Hz LFP passband, so upstream filtering does not remove line
+noise unless the RZ2 circuit also has a notch — the suite quiet capture answers that
+empirically either way.
 
 Consequences:
 - The 6-sample MAV window (9.83 ms) spans 0.59 of a 60 Hz cycle — line noise does NOT average

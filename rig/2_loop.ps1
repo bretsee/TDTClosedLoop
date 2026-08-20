@@ -37,6 +37,11 @@ param(
     # the stim artifact spans whole cycles.
     [int]    $FeatureWindow = 6,
 
+    # Feature = signed mean(x) instead of rectified mean(|x|) (Choi-2016-style
+    # signed LFP). Models/references fitted in one mode are NOT valid in the
+    # other -- capture and deploy must agree, like -TickFrames.
+    [switch] $FeatureSigned,
+
     # 0 = wall-clock 10 ms ticks (legacy). 6 = FRAME-LOCKED: tick every 6 ingested
     # frames = exactly one 101.7253 Hz stim-carrier period on the RZ2's own clock,
     # eliminating the carrier beat (1.9% missed / 4.2% doubled probe pulses under
@@ -69,6 +74,10 @@ $args = @(
     '--udp-output-count',"$OutputCount",
     '--feature-window-samples',"$FeatureWindow"
 )
+if ($FeatureSigned) {
+    $args += '--feature-signed'
+    Write-Host "Feature mode: SIGNED mean(x) (Choi-style LFP). Models fitted on rectified captures do NOT apply." -ForegroundColor Yellow
+}
 if ($TickFrames -gt 0) {
     $args += @('--tick-frames',"$TickFrames")
     if ($TickPhaseUs -ne 0) { $args += @('--tick-phase-us',"$TickPhaseUs") }
@@ -100,11 +109,12 @@ Write-Host "Binary: $Exe" -ForegroundColor Gray
 # Archived builds predate --feature-window-samples / --tick-frames; drop flags
 # they cannot parse so the A/B actually runs instead of failing on an unknown arg.
 $exeArgs = $args
-if ($Exe -match 'jul23|aug1[45]') {
+if ($Exe -match 'jul23|aug1[458]') {
     $exeArgs = @()
     for ($i = 0; $i -lt $args.Count; $i++) {
         if ($args[$i] -eq '--feature-window-samples' -and $Exe -match 'jul23') { $i++; continue }
-        if ($args[$i] -eq '--tick-frames') { $i++; continue }
+        if ($args[$i] -eq '--tick-frames' -and $Exe -match 'jul23|aug1[45]') { $i++; continue }
+        if ($args[$i] -eq '--feature-signed') { continue }   # pre-aug20 builds
         $exeArgs += $args[$i]
     }
     Write-Host "  (dropped flags not present in this archived build)" -ForegroundColor Gray

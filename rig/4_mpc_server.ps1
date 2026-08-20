@@ -41,7 +41,18 @@ param(
     # this, a 1-output model's command lands on pair 1 only.
     [int[]]  $Pairs = @(),
     # Stim outputs = BIPOLAR PAIRS (8 pairs = 16 electrodes; gizmo width is 8).
-    [int]    $Outputs = 8
+    [int]    $Outputs = 8,
+    # MPC tuning pass-throughs (NaN = leave at mpc_test defaults 20/2/1/40).
+    # All land in MPC_OPTS; mpc_test prints the values that took effect.
+    [double] $Horizon        = [double]::NaN,   # MPC_OPTS.N (prediction, ticks)
+    [double] $ControlHorizon = [double]::NaN,   # MPC_OPTS.Nu (moves)
+    [double] $QWeight        = [double]::NaN,   # MPC_OPTS.qWeight
+    [double] $UMax           = [double]::NaN,   # MPC_OPTS.umax (charge ceiling)
+    # Feature channel the model's output was identified on (replaces the old
+    # "hand-edit feature_map in mpc_test.m" step). 0 = legacy first-p mapping.
+    [int]    $FeatureChannel = 0,
+    # Which AllModels slot to control from (default 10).
+    [int]    $ModelIndex     = 0
 )
 
 $repo = Split-Path -Parent $PSScriptRoot
@@ -82,8 +93,9 @@ Write-Host "  ticks      = $Ticks" -ForegroundColor Cyan
 Write-Host "  log        -> $srvlog" -ForegroundColor Cyan
 Write-Host "  capture    -> $capfile" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "  Confirm you have already: saved the fitted model into AllModels(10).sys," -ForegroundColor Yellow
-Write-Host "  and set feature_map in mpc_test.m to the channel you identified." -ForegroundColor Yellow
+Write-Host "  Confirm you have already saved the fitted model (3_fit -Save), and pass" -ForegroundColor Yellow
+Write-Host "  -FeatureChannel <k> for the channel it was identified on (no more" -ForegroundColor Yellow
+Write-Host "  hand-editing feature_map in mpc_test.m)." -ForegroundColor Yellow
 Write-Host ""
 
 # mpc_test([]) resets persistent state so the run starts clean and picks up the
@@ -93,9 +105,24 @@ $targetLine = ''
 if (-not [double]::IsNaN($Target)) {
     $targetLine = "assignin('base','MPC_TARGET',$Target);"
 }
+$modelLine = ''
+if ($ModelIndex -gt 0) {
+    $modelLine = "assignin('base','MPC_MODEL_INDEX',$ModelIndex);"
+    Write-Host "  model slot = AllModels($ModelIndex)" -ForegroundColor Cyan
+}
+# Accumulate every non-NaN tuning override into ONE cfg.mpcOpts struct.
+# Names must match the mpc_test whitelist (N/Nu/qWeight/rWeight/umax/
+# featureChannel) or they are silently dropped there.
+$optPairs = @()
+if (-not [double]::IsNaN($RWeight))        { $optPairs += "'rWeight',$RWeight" }
+if (-not [double]::IsNaN($Horizon))        { $optPairs += "'N',$Horizon";  Write-Host "  horizon    = $Horizon ticks" -ForegroundColor Cyan }
+if (-not [double]::IsNaN($ControlHorizon)) { $optPairs += "'Nu',$ControlHorizon"; Write-Host "  ctrl horiz = $ControlHorizon moves" -ForegroundColor Cyan }
+if (-not [double]::IsNaN($QWeight))        { $optPairs += "'qWeight',$QWeight"; Write-Host "  qWeight    = $QWeight" -ForegroundColor Cyan }
+if (-not [double]::IsNaN($UMax))           { $optPairs += "'umax',$UMax";   Write-Host "  uMax       = $UMax" -ForegroundColor Cyan }
+if ($FeatureChannel -gt 0)                 { $optPairs += "'featureChannel',$FeatureChannel"; Write-Host "  feat chan  = $FeatureChannel" -ForegroundColor Cyan }
 $optsLine = ''
-if (-not [double]::IsNaN($RWeight)) {
-    $optsLine = "cfg.mpcOpts = struct('rWeight',$RWeight);"
+if ($optPairs.Count -gt 0) {
+    $optsLine = "cfg.mpcOpts = struct($($optPairs -join ','));"
 }
 $refLine = ''
 if (-not [string]::IsNullOrWhiteSpace($Reference)) {
@@ -112,6 +139,7 @@ $code = @"
 cd('$($repo -replace '\\','/')');
 mpc_test([]);
 $targetLine
+$modelLine
 cfg = struct('mode','mpc','requestPort',31000,'replyPort',31001, ...
              'outputCount',$Outputs,'maxPackets',$Ticks,'logFile','mpc_lat_$stamp.csv', ...
              'captureFile','$capfile');

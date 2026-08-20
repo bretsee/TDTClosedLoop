@@ -39,3 +39,6 @@ ref_touch_test*
 # specific one becomes canonical
 ref_touch.csv
 ref_touch_meta.json
+
+__pycache__/
+*.pyc

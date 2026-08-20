@@ -22,9 +22,20 @@ function u = mpc_test(y_feat, r_now)
 % Tuning (optional): a struct MPC_OPTS in the base workspace or saved inside
 % AllModels.mat, read once at init (call mpc_test([]) after changing it):
 %   .N .Nu .qWeight .rWeight .umin .umax   (defaults 20, 2, 1, 1, 0, 40)
+%   .featureChannel (default 0 = first-p mapping; k>0 = model output is
+%                    feature channel k -- replaces hand-editing feature_map)
+%   .useObserver    (default 1; 0 = pure feedforward on the model, LOUD warning)
 % rWeight matters: the cost penalises ABSOLUTE u with no integral action, so
 % with rWeight=1 the loop deliberately settles SHORT of the target at
 % u* = r*g/(g^2 + rWeight/qWeight). Use rWeight ~1e-3..1e-4 for tracking.
+%
+% Model slot (optional): MPC_MODEL_INDEX (base workspace or in AllModels.mat)
+% selects which AllModels(k).sys to control from; default 10.
+%
+% Operating point: if the model struct carries uOffset/yOffset (stored by
+% fit_sysid_from_capture, which fits on mean-removed data), the controller
+% runs its observer/QP in centered coordinates and converts at the measurement
+% and command boundaries. Models without offsets behave exactly as before.
 %
 % Reset:
 %   mpc_test([])
@@ -67,14 +78,20 @@ y_feat = fit_length(y_feat, P.ny_feat);
 yk = feature_map(y_feat, P);   % size = [p x 1]
 yk = sanitize_vector(yk, 1e4);
 
+% The model was fitted on mean-removed data (fit_sysid_from_capture), so the
+% observer, prediction and QP all work in CENTERED coordinates. yk stays raw
+% for the debug log; P.u_last stays raw (so zeros always mean "stim off") and
+% is re-centered here at the point of use.
+yk_c = yk - P.yOff;
+
 % State estimate update using last applied input
-x_pred = P.A * P.xhat + P.B * P.u_last;
+x_pred = P.A * P.xhat + P.B * (P.u_last - P.uOff);
 x_pred = sanitize_vector(x_pred, 1e6);
 
 if P.useObserver
-    y_pred = P.C * x_pred + P.D * P.u_last;
+    y_pred = P.C * x_pred + P.D * (P.u_last - P.uOff);
     y_pred = sanitize_vector(y_pred, 1e6);
-    P.xhat = x_pred + P.L * (yk - y_pred);
+    P.xhat = x_pred + P.L * (yk_c - y_pred);
 else
     P.xhat = x_pred;
 end
@@ -88,6 +105,10 @@ else
     r  = repmat(r0, P.N, 1);  % size = [pN x 1]
 end
 r = sanitize_vector(r, 1e6);
+% References arrive in RAW feature units from all three sources (MPC_TARGET is
+% re-read live every tick; preview rows come from raw-unit CSVs), so center
+% here, per tick -- centering targetDefault at init would make them disagree.
+r = r - P.rOffStack;
 
 % Linear term for condensed QP
 fx = P.F * P.xhat;
@@ -103,16 +124,22 @@ P.prob.update('q', full(q));
 res = P.prob.solve();
 
 if isempty(res.x) || any(~isfinite(res.x))
-    % Fail-safe: hold previous command
+    % Fail-safe: hold previous command (P.u_last is RAW -- no offset math)
     u = P.u_last;
 else
     z = res.x;
-    u = z(1:P.m);
+    u = z(1:P.m);          % centered first move
+    if P.hasOffsets
+        u = u + P.uOff;    % -> raw command units (guarded: x+0 can flip -0)
+    end
 end
 
-% Clamp and store
+% Clamp (OSQP tolerance net -- the QP box already maps onto [umin,umax] after
+% un-centering, so this cannot double-clip an exact solution) and kill solver
+% dust: sub-1e-8 magnitudes are ADMM residue, not commands.
 u = min(max(u, P.umin), P.umax);
-P.u_last = u;
+u(abs(u) < 1e-8) = 0;
+P.u_last = u;              % RAW applied command; re-centered at next tick's use
 end
 
 
@@ -128,7 +155,7 @@ function P = init_controller(ny_feat)
 
     % Load the controller assets from the base workspace or local .mat file.
     assets = load_controller_assets();
-    sys = get_model_entry(assets.AllModels);
+    sys = get_model_entry(assets.AllModels, get_model_index(assets));
 
     % The model's sample time is the source of truth: fit_sysid_from_capture
     % stamps the MEASURED tick period of the capture it was fit from (10 ms
@@ -156,10 +183,18 @@ function P = init_controller(ny_feat)
     P.m = size(P.B,2);
     P.p = size(P.C,1);
 
+    % Operating point: fit_sysid_from_capture stores the capture means WITH the
+    % model (sys.uOffset / sys.yOffset). Zeros when absent -> every centering
+    % below is a bit-exact no-op and legacy models behave identically.
+    [P.uOff, P.yOff] = get_model_offsets(sys, P.m, P.p);
+    P.hasOffsets = any(P.uOff ~= 0) || any(P.yOff ~= 0);
+
     % MPC horizons / weights / bounds, overridable via MPC_OPTS (see header).
     mpcOpts = get_mpc_opts(assets);
     P.N  = mpcOpts.N;
     P.Nu = mpcOpts.Nu;
+    P.featureChannel = mpcOpts.featureChannel;   % 0 = legacy first-p mapping
+    P.rOffStack = [];   % filled after P.N is final (below)
 
     Q = mpcOpts.qWeight * eye(P.p);
     R = mpcOpts.rWeight * eye(P.m);
@@ -182,9 +217,11 @@ function P = init_controller(ny_feat)
     H = (P.GS.' * P.Qbar * P.GS) + (S.' * Rbar * S);
     P.H = sparse((H + H.') / 2);
 
-    % Bound constraints on z = [u0; u1; ...; u_{Nu-1}]
-    lb = repmat(P.umin, P.Nu, 1);
-    ub = repmat(P.umax, P.Nu, 1);
+    % Bound constraints on z = [u0; u1; ...; u_{Nu-1}]. z is CENTERED, so the
+    % box shifts by -uOff; adding uOff back after the solve maps it exactly
+    % onto [umin, umax] (the raw clamp downstream is only a tolerance net).
+    lb = repmat(P.umin - P.uOff, P.Nu, 1);
+    ub = repmat(P.umax - P.uOff, P.Nu, 1);
 
     if exist('osqp', 'class') ~= 8 && exist('osqp', 'file') == 0
         error('mpc_test:MissingOsqp', ...
@@ -193,15 +230,36 @@ function P = init_controller(ny_feat)
     end
 
     P.prob = osqp;
-    P.prob.setup(P.H, zeros(P.m * P.Nu, 1), speye(P.m * P.Nu), lb, ub, ...
-                 'verbose', false);
+    % Tight tolerances + polishing: at the defaults (eps 1e-3, no polish) OSQP
+    % returns ~1e-3-scale residue on components that are exactly zero at the
+    % optimum -- which looks like real sub-threshold stim commands downstream.
+    % OSQP renamed 'polish' to 'polishing' at v1.0; support both.
+    osqpSettings = {'verbose', false, 'eps_abs', 1e-6, 'eps_rel', 1e-6};
+    try
+        P.prob.setup(P.H, zeros(P.m * P.Nu, 1), speye(P.m * P.Nu), lb, ub, ...
+                     osqpSettings{:}, 'polish', true);
+    catch
+        P.prob = osqp;
+        P.prob.setup(P.H, zeros(P.m * P.Nu, 1), speye(P.m * P.Nu), lb, ub, ...
+                     osqpSettings{:}, 'polishing', true);
+    end
 
-    % Controller state
+    % Reference centering stack (per-tick subtract; see step path)
+    P.rOffStack = repmat(P.yOff, P.N, 1);
+
+    % Controller state (RAW u frame: zeros = stim off)
     P.xhat      = zeros(P.n,1);
     P.u_last    = zeros(P.m,1);
 
-    % Observer
-    P.useObserver = true;
+    % Observer. MPC_OPTS.useObserver = 0 gives pure model rollout (feedforward)
+    % -- the historical silent-open-loop defect, so make it LOUD when chosen.
+    P.useObserver = mpcOpts.useObserver ~= 0;
+    if ~P.useObserver
+        warning('mpc_test:ObserverDisabled', ...
+                ['MPC_OPTS.useObserver = 0: the controller will IGNORE its ' ...
+                 'measurement and run PURE FEEDFORWARD on the model. This is ' ...
+                 'only valid for a deliberate open-loop experiment arm.']);
+    end
     P.L = design_observer_gain(P.A, P.C);
     P.targetDefault = zeros(P.p, 1);
     P.tick = 0;
@@ -220,7 +278,9 @@ function opts = get_mpc_opts(assets)
 % AllModels.mat > defaults. Defaults reproduce the pre-2026-08-15 behaviour
 % exactly, so existing bench validations are unchanged.
     opts = struct('N', 20, 'Nu', 2, 'qWeight', 1, 'rWeight', 1, ...
-                  'umin', 0, 'umax', 40);
+                  'umin', 0, 'umax', 40, ...
+                  'featureChannel', 0, ...   % 0 = legacy first-p mapping
+                  'useObserver', 1);         % 0 = pure feedforward (loud warning)
 
     src = struct();
     if isfield(assets, 'MPC_OPTS') && isstruct(assets.MPC_OPTS)
@@ -245,8 +305,10 @@ function opts = get_mpc_opts(assets)
     end
     opts.N  = max(1, round(opts.N));
     opts.Nu = max(1, min(round(opts.Nu), opts.N));
-    fprintf('mpc_test: N=%d Nu=%d qWeight=%g rWeight=%g u in [%g %g]\n', ...
-            opts.N, opts.Nu, opts.qWeight, opts.rWeight, opts.umin, opts.umax);
+    opts.featureChannel = max(0, round(opts.featureChannel));
+    fprintf('mpc_test: N=%d Nu=%d qWeight=%g rWeight=%g u in [%g %g] featureChannel=%d observer=%d\n', ...
+            opts.N, opts.Nu, opts.qWeight, opts.rWeight, opts.umin, opts.umax, ...
+            opts.featureChannel, opts.useObserver ~= 0);
 end
 
 function s = merge_struct(s, over)
@@ -298,13 +360,23 @@ end
 % Measurement mapping
 % =========================================================================
 function yk = feature_map(y_feat, P)
-% Default mapping:
-%   take the first p entries of the preprocessed feature vector and interpret them
-%   as the measured outputs for the model.
-%
-% Change this function once you know your real preprocessing/features.
+% Measurement mapping, configurable via MPC_OPTS.featureChannel:
+%   featureChannel = 0 (default): legacy -- first p entries of the feature
+%     vector are the measured outputs.
+%   featureChannel = k > 0: the model's (single) output is feature channel k.
+%     This replaces the old "hand-edit this function at the rig" step
+%     (3_fit.ps1 used to instruct exactly that).
 
     yk = zeros(P.p,1);
+    if P.featureChannel > 0
+        if P.featureChannel > numel(y_feat)
+            error('mpc_test:BadFeatureChannel', ...
+                  'MPC_OPTS.featureChannel = %d but only %d features arrive.', ...
+                  P.featureChannel, numel(y_feat));
+        end
+        yk(1) = y_feat(P.featureChannel);
+        return;
+    end
     n = min(P.p, numel(y_feat));
     yk(1:n) = y_feat(1:n);
 end
@@ -406,9 +478,9 @@ function assets = load_controller_assets()
         end
 
         % Load only the variables that exist: load() warns on missing names,
-        % and MPC_TARGET / MPC_OPTS are both optional.
+        % and MPC_TARGET / MPC_OPTS / MPC_MODEL_INDEX are all optional.
         inFile = who('-file', matPath);
-        wanted = intersect({'AllModels', 'MPC_TARGET', 'MPC_OPTS'}, inFile);
+        wanted = intersect({'AllModels', 'MPC_TARGET', 'MPC_OPTS', 'MPC_MODEL_INDEX'}, inFile);
         loaded = load(matPath, wanted{:});
         if ~isfield(loaded, 'AllModels')
             error('mpc_test:MissingAllModelsVar', ...
@@ -420,18 +492,69 @@ function assets = load_controller_assets()
     if evalin('base', 'exist(''MPC_TARGET'', ''var'')')
         assets.MPC_TARGET = evalin('base', 'MPC_TARGET');
     end
+    if evalin('base', 'exist(''MPC_MODEL_INDEX'', ''var'')')
+        assets.MPC_MODEL_INDEX = evalin('base', 'MPC_MODEL_INDEX');
+    end
 end
 
-function sys = get_model_entry(AllModels)
-    if numel(AllModels) < 10 || ~isfield(AllModels, 'sys')
+function idx = get_model_index(assets)
+% Which AllModels slot to control from. Optional MPC_MODEL_INDEX (base
+% workspace, or saved inside AllModels.mat) selects it; default 10 preserves
+% the historical behaviour. NOTE: MPC_TARGET is the reference VALUE, not a
+% model selector -- do not overload it.
+    idx = 10;
+    if isfield(assets, 'MPC_MODEL_INDEX') && ~isempty(assets.MPC_MODEL_INDEX)
+        v = double(assets.MPC_MODEL_INDEX(1));
+        if isfinite(v) && v >= 1 && v == round(v)
+            idx = v;
+        else
+            error('mpc_test:BadModelIndex', ...
+                  'MPC_MODEL_INDEX must be a positive integer (got %g).', v);
+        end
+    end
+end
+
+function sys = get_model_entry(AllModels, idx)
+    if numel(AllModels) < idx || ~isfield(AllModels, 'sys')
         error('mpc_test:BadAllModels', ...
-              'AllModels must contain at least 10 entries with a .sys field.');
+              'AllModels must contain at least %d entries with a .sys field.', idx);
     end
 
-    sys = AllModels(10).sys;
+    sys = AllModels(idx).sys;
     if isempty(sys)
         error('mpc_test:EmptyModel', ...
-              'AllModels(10).sys is empty.');
+              'AllModels(%d).sys is empty.', idx);
+    end
+    fprintf('mpc_test: controlling from AllModels(%d).sys\n', idx);
+end
+
+function [uOff, yOff] = get_model_offsets(sys, m, p)
+% Operating point stored with the model by fit_sysid_from_capture (capture
+% means, raw units). Zeros when absent (toy/legacy/ss models).
+    uOff = zeros(m,1);
+    yOff = zeros(p,1);
+    if ~isstruct(sys)
+        return;
+    end
+    if isfield(sys, 'uOffset') && ~isempty(sys.uOffset)
+        v = double(sys.uOffset(:));
+        if numel(v) ~= m || any(~isfinite(v))
+            error('mpc_test:BadUOffset', ...
+                  'sys.uOffset has %d entries; model has m=%d inputs.', numel(v), m);
+        end
+        uOff = v;
+    end
+    if isfield(sys, 'yOffset') && ~isempty(sys.yOffset)
+        v = double(sys.yOffset(:));
+        if numel(v) ~= p || any(~isfinite(v))
+            error('mpc_test:BadYOffset', ...
+                  'sys.yOffset has %d entries; model has p=%d outputs.', numel(v), p);
+        end
+        yOff = v;
+    end
+    if any(uOff ~= 0) || any(yOff ~= 0)
+        fprintf('mpc_test: operating point uOffset=%s yOffset=%s\n', ...
+                mat2str(uOff.', 4), mat2str(yOff.', 4));
     end
 end
 

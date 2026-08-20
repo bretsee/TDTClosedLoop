@@ -31,13 +31,21 @@ def _fmt(values: np.ndarray) -> str:
 
 
 def export_nnw(model: torch.nn.Module, dataset, out_path: str | Path,
-               out_min: float = 0.0, out_max: float = 40.0) -> Path:
+               out_min: float = 0.0, out_max: float = 40.0,
+               mode: str = "inverse") -> Path:
     out_path = Path(out_path)
     model = model.eval().cpu()
 
     layers = model.export_layers()
     lines: list[str] = []
     lines.append("NNW 1")
+    # Comment form so every existing parser (model_io.hpp strips '#' tokens)
+    # stays compatible. Only an 'inverse' model (features -> stim) is a
+    # controller; deploying a 'forward' model in cpp_controller --mode nn
+    # would send predicted FEATURES as stim commands. rig/check_nnw_mode.py
+    # enforces this before deployment; a C++-side refusal is queued for the
+    # next cpp_controller rebuild.
+    lines.append(f"# mode: {mode}")
     lines.append(f"arch {model.arch_name}")
     lines.append(f"input {dataset.per_step_input_dim}")
     lines.append(f"output {dataset.Y.shape[1]}")

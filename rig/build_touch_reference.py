@@ -45,9 +45,18 @@ CONTROL_RATE_HZ = 100.0
 FEATURE_WINDOW_SAMPLES = 6
 
 
-def template_to_feature_ticks(template_uv, window=FEATURE_WINDOW_SAMPLES):
-    """|uV| -> consecutive `window`-sample bins -> mean -> volts. [n_ticks]"""
-    v = np.abs(template_uv.astype(float)) * 1e-6
+def template_to_feature_ticks(template_uv, window=FEATURE_WINDOW_SAMPLES,
+                              signed=False):
+    """uV -> consecutive `window`-sample bins -> mean -> volts. [n_ticks]
+
+    signed=False: rectify first (matches the loop's default mean(|x|) feature).
+    signed=True:  plain mean (matches --feature-signed, the Choi-style signed
+    LFP feature). The reference MUST live in the same space as the deployed
+    feature -- pass --signed if and only if the loop runs --feature-signed.
+    """
+    v = template_uv.astype(float) * 1e-6
+    if not signed:
+        v = np.abs(v)
     n_bins = len(v) // window
     if n_bins == 0:
         raise SystemExit("FAIL: template shorter than one feature window")
@@ -71,10 +80,13 @@ def main():
                     help="baseline seconds between events (default 2)")
     ap.add_argument("--lead-secs", type=float, default=2.0,
                     help="baseline seconds before the first event (default 2)")
+    ap.add_argument("--signed", action="store_true",
+                    help="build the reference in SIGNED feature space (loop "
+                         "running --feature-signed). Default is rectified.")
     ap.add_argument("--out", default="ref_touch.csv", help="output reference CSV")
     args = ap.parse_args()
 
-    if args.baseline < 0:
+    if not args.signed and args.baseline < 0:
         raise SystemExit("FAIL: --baseline must be >= 0 (it is a mean-abs feature)")
 
     d = np.load(args.npz, allow_pickle=True)
@@ -87,7 +99,8 @@ def main():
     # Per-requested-channel event trace in feature units (volts).
     events = []
     for ch in args.channel:
-        events.append(args.scale * template_to_feature_ticks(template[ch - 1]))
+        events.append(args.scale * template_to_feature_ticks(template[ch - 1],
+                                                             signed=args.signed))
     events = np.stack(events, axis=1)          # [event_ticks x p]
     event_ticks = events.shape[0]
 

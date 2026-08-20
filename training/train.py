@@ -203,7 +203,7 @@ def main():
               "      --use-channels to train on just the channels that respond.")
 
     out = Path(args.out) if args.out else Path("models") / f"{args.arch}_{args.mode}_h{args.history}.nnw"
-    export_nnw(model, ds, out, out_min=args.umin, out_max=args.umax)
+    export_nnw(model, ds, out, out_min=args.umin, out_max=args.umax, mode=args.mode)
     print(f"\nExported {out}")
 
     meta = {

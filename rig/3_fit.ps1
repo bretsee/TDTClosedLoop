@@ -84,8 +84,8 @@ Write-Host "  4. time constant   sanity-check against the evoked response you kn
 
 if ($Save) {
     Write-Host ""
-    Write-Host "SAVED. NOW SET feature_map IN mpc_test.m TO CHANNEL $Channel." -ForegroundColor Yellow
-    Write-Host "It currently takes the first p entries of the feature vector. If the" -ForegroundColor Yellow
-    Write-Host "channel you identified is not channel 1, the MPC will otherwise control" -ForegroundColor Yellow
-    Write-Host "a channel it has no model of." -ForegroundColor Yellow
+    Write-Host "SAVED. Start the server with: 4_mpc_server.ps1 -FeatureChannel $Channel ..." -ForegroundColor Yellow
+    Write-Host "(passes MPC_OPTS.featureChannel; no more hand-editing feature_map in" -ForegroundColor Yellow
+    Write-Host "mpc_test.m. Without it the MPC controls feature 1, a channel it may" -ForegroundColor Yellow
+    Write-Host "have no model of.)" -ForegroundColor Yellow
 }

@@ -220,6 +220,14 @@ function result = fit_sysid_from_capture(captureFile, opts)
         end
     end
 
+    % Operating point travels WITH the model: mpc_test un-centers using these.
+    % Must attach AFTER the parsimony block ('best = c' above reassigns the
+    % whole struct and would discard fields attached earlier).
+    best.sys.uOffset = uOffset;   % 1 x m, raw command units, useInputs order
+    best.sys.yOffset = yOffset;   % 1 x p, raw feature units (volts)
+    fprintf('Offsets stored in sys: uOffset=%s yOffset=%s\n', ...
+            mat2str(uOffset, 4), mat2str(yOffset, 4));
+
     fprintf('\nChosen: order %d, validation fit %.2f%%\n', best.order, best.valFit);
     describe_model(best.sys, Ts);
 

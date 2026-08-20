@@ -175,6 +175,100 @@ function bench_test_reference_mpc
     mpc_test([]);   % restore the file model for anything running after us
     fails = fails + report('model-Ts source of truth', ok, detail);
 
+    % ---- 7. solver hygiene: zero target from rest -> u is EXACTLY zero ----
+    % (2026-08-20: OSQP polish + tight eps + dust clamp. At the old defaults,
+    % ADMM residue ~1e-3 leaked out as phantom sub-threshold stim commands.)
+    evalin('base', 'clear MPC_OPTS MPC_TARGET');
+    mpc_test([]);
+    uZ = run_settled(zeros(8, 1), 0);
+    fails = fails + report('exact zero at zero target', all(uZ == 0), ...
+        sprintf('u = %s (must be exactly 0)', mat2str(uZ')));
+
+    % ---- 8. MPC_MODEL_INDEX selects the model slot ------------------------
+    ok = true;
+    detail = '';
+    try
+        AM = repmat(struct('sys', []), 1, 3);
+        AM(3).sys = struct('A', 0.5, 'B', 0.1, 'C', 1, 'D', 0, 'Ts', 0.01);
+        assignin('base', 'AllModels', AM);
+        assignin('base', 'MPC_MODEL_INDEX', 3);
+        mpc_test([]);
+        u3 = mpc_test(zeros(8, 1), 0.5);
+        ok = ~isempty(u3) && all(isfinite(u3));
+        detail = sprintf('slot-3 model (no slot 10 present) accepted, u = %.4g', u3(1));
+    catch err
+        ok = false;
+        detail = err.message;
+    end
+    evalin('base', 'clear AllModels MPC_MODEL_INDEX');
+    mpc_test([]);
+    fails = fails + report('MPC_MODEL_INDEX slot', ok, detail);
+
+    % ---- 9. featureChannel maps the measurement ---------------------------
+    % With featureChannel = 5, feature 5 must drive the observer and feature 1
+    % must not.
+    assignin('base', 'MPC_OPTS', struct('featureChannel', 5));
+    mpc_test([]);
+    yA = zeros(8, 1); yA(5) = 0.5;
+    uCh5 = run_settled(yA, 0.5);
+    mpc_test('state');
+    yB = zeros(8, 1); yB(1) = 0.5;   % channel 1 loaded, channel 5 silent
+    uCh1 = run_settled(yB, 0.5);
+    evalin('base', 'clear MPC_OPTS');
+    mpc_test([]);
+    fails = fails + report('featureChannel mapping', ...
+        abs(uCh5(1) - uCh1(1)) > 1e-9, ...
+        sprintf('u(ch5 loaded) = %.4g, u(ch1 loaded) = %.4g (must differ)', ...
+                uCh5(1), uCh1(1)));
+
+    % ---- 10. offset model: closed-loop tracking at the true operating point
+    % Toy dynamics + uOffset 5, yOffset 0.5. Plant simulated in RAW frame:
+    % y = yOff + C x, x+ = A x + B (u - uOff). With rWeight 1e-4 the loop must
+    % settle near u* = uOff + (r - yOff) * g / (g^2 + rWeight) and y near r.
+    ok = true;
+    detail = '';
+    try
+        sysO = struct('A', 0.9512, 'B', 0.00975, 'C', 1, 'D', 0, 'Ts', 0.01, ...
+                      'uOffset', 5, 'yOffset', 0.5);
+        AM = repmat(struct('sys', []), 1, 10);
+        AM(10).sys = sysO;
+        assignin('base', 'AllModels', AM);
+        assignin('base', 'MPC_OPTS', struct('rWeight', 1e-4));
+        mpc_test([]);
+        g = 0.00975 / (1 - 0.9512);
+        rTar = 1.0;
+        uStar = 5 + (rTar - 0.5) * g / (g^2 + 1e-4);
+        x = 0; y = 0.5; u = 0;
+        for k = 1:400
+            u = mpc_test([y; zeros(7, 1)], rTar);
+            x = 0.9512 * x + 0.00975 * (u(1) - 5);
+            y = 0.5 + x;
+        end
+        ok = abs(y - rTar) < 0.01 && abs(u(1) - uStar) < 0.1;
+        detail = sprintf('settled y = %.4f (target %.2f), u = %.3f (u* = %.3f)', ...
+                         y, rTar, u(1), uStar);
+    catch err
+        ok = false;
+        detail = err.message;
+    end
+    evalin('base', 'clear AllModels MPC_OPTS');
+    mpc_test([]);
+    fails = fails + report('offset operating point', ok, detail);
+
+    % ---- 11. useObserver = 0 ignores the measurement (pure feedforward) ---
+    assignin('base', 'MPC_OPTS', struct('useObserver', 0));
+    lastwarn('');
+    mpc_test([]);
+    uFF1 = mpc_test(zeros(8, 1), 0.5);
+    [~, warnId] = lastwarn;
+    mpc_test('state');
+    uFF2 = mpc_test(100 * ones(8, 1), 0.5);   % wildly different measurement
+    evalin('base', 'clear MPC_OPTS');
+    mpc_test([]);
+    fails = fails + report('useObserver=0 feedforward', ...
+        isequal(uFF1, uFF2) && strcmp(warnId, 'mpc_test:ObserverDisabled'), ...
+        sprintf('u identical under y=0 and y=100; warning %s', warnId));
+
     fprintf('\n%s\n', ternary(fails == 0, 'ALL BENCH TESTS PASS', ...
                               sprintf('%d BENCH TEST(S) FAILED', fails)));
     if fails > 0

@@ -27,7 +27,11 @@ It matters more than any hyperparameter.
 `inverse` is the learned counterpart of the box-constrained inversion in the
 biomimetic analysis. `forward` produces something comparable to the ARX fit.
 
-Only an `inverse` model can be dropped into `cpp_controller --mode nn`.
+Only an `inverse` model can be dropped into `cpp_controller --mode nn`. Since
+2026-08-20 the exporter stamps `# mode: inverse|forward` into the `.nnw`, and
+`python rig\check_nnw_mode.py model.nnw` refuses a forward model (exit 1) —
+run it before every nn deployment. Files exported earlier carry no stamp and
+are warned about rather than passed.
 
 ## Architectures
 

@@ -40,8 +40,14 @@ REPO = Path(__file__).resolve().parents[1]
 
 
 def load_lti(path: Path):
-    """Parse the .lti text format written by export_plant_lti.m."""
-    toks, skip = [], False
+    """Parse the .lti text format written by export_plant_lti.m.
+
+    Files written since 2026-08-20 append optional uOffset/yOffset rows after
+    the D block (the capture means the model was centered on). Older files
+    simply end after D; both are accepted, and unknown trailing keys are left
+    alone (the C++ parser ignores them the same way).
+    """
+    toks = []
     for raw in Path(path).read_text().splitlines():
         line = raw.split("#", 1)[0]
         toks.extend(line.split())
@@ -65,7 +71,17 @@ def load_lti(path: Path):
 
     A = block("A", n, n); B = block("B", n, m)
     C = block("C", p, n); D = block("D", p, m)
-    return A, B, C, D, Ts
+
+    uOff, yOff = np.zeros(m), np.zeros(p)
+    while i < len(toks):
+        key = nxt()
+        if key == "uOffset":
+            uOff = np.array([float(nxt()) for _ in range(m)])
+        elif key == "yOffset":
+            yOff = np.array([float(nxt()) for _ in range(p)])
+        else:
+            break   # unknown trailing key: stop, mirroring the C++ parser
+    return A, B, C, D, Ts, uOff, yOff
 
 
 def main() -> int:
@@ -76,17 +92,26 @@ def main() -> int:
     ap.add_argument("--target", type=float, default=5.0)
     ap.add_argument("--request-port", type=int, default=31000)
     ap.add_argument("--reply-port", type=int, default=31001)
-    ap.add_argument("--output-count", type=int, default=16)
+    ap.add_argument("--output-count", type=int, default=8,
+                    help="reply width; the rig is 8 bipolar pairs")
     ap.add_argument("--noise", type=float, default=0.0, help="measurement noise std")
+    ap.add_argument("--dump-u", default="",
+                    help="write the commanded u trajectory to this CSV "
+                         "(tick,u1..uM design format, replayable via "
+                         "cpp_controller --mode openloop --play)")
     ap.add_argument("--launch", action="store_true",
                     help="start cpp_controller in mpc mode automatically")
     ap.add_argument("--launch-args", nargs=argparse.REMAINDER, default=[],
                     help="extra args passed through to cpp_controller")
     args = ap.parse_args()
 
-    A, B, C, D, Ts = load_lti(Path(args.plant))
+    A, B, C, D, Ts, uOff, yOff = load_lti(Path(args.plant))
     n, m, p = A.shape[0], B.shape[1], C.shape[0]
     print(f"Plant {args.plant}: n={n} m={m} p={p} Ts={Ts}")
+    if np.any(uOff != 0) or np.any(yOff != 0):
+        # The model is fitted on centered data; the PLANT here must live in the
+        # raw frame or steady-state numbers are wrong for offset models.
+        print(f"Operating point: uOffset={uOff} yOffset={yOff} (raw-frame sim)")
 
     proc = None
     if args.launch:
@@ -109,9 +134,12 @@ def main() -> int:
     rng = np.random.default_rng(0)
     ys, us, rtts, timeouts = [], [], [], 0
 
+    U_hist = []
     try:
         for k in range(args.ticks):
-            y = (C @ x + D @ u).ravel()
+            # Raw-frame plant: y = yOffset + C x + D (u - uOffset),
+            # x+ = A x + B (u - uOffset). Zero offsets = the legacy sim exactly.
+            y = (yOff + C @ x + D @ (u - uOff)).ravel()
             if args.noise > 0:
                 y = y + rng.normal(0, args.noise, y.shape)
 
@@ -141,9 +169,10 @@ def main() -> int:
             # One-tick command lag, matching the real localhost path: the command
             # computed from y(k) is not applied until k+1. Omitting this would
             # make the simulation optimistic relative to the rig.
-            x = (A @ x + B @ u).ravel()
+            x = (A @ x + B @ (u - uOff)).ravel()
             ys.append(float(y[0]))
             us.append(float(u[0]))
+            U_hist.append(u.copy())
     finally:
         rx.close(); tx.close()
         if proc:
@@ -155,6 +184,20 @@ def main() -> int:
     if not ys:
         print("no data collected")
         return 1
+
+    if args.dump_u:
+        # Design-CSV format (tick,u1..uM, 1-based, %.9g) -- byte-compatible with
+        # write_excitation_csv.m, so validate_impulse_design.py and
+        # cpp_controller --play consume it unchanged. This is the open-loop-
+        # optimal trajectory pipeline: run this sim against the MODEL plant,
+        # dump u, replay on hardware. (Certainty-equivalent optimum: the sim
+        # plant IS the model, so the closed-loop u sequence is the open-loop
+        # optimum for that model.)
+        with open(args.dump_u, "w", newline="") as f:
+            f.write("tick," + ",".join(f"u{i+1}" for i in range(m)) + "\n")
+            for t, uv in enumerate(U_hist, start=1):
+                f.write(str(t) + "," + ",".join(f"{v:.9g}" for v in uv) + "\n")
+        print(f"Dumped {len(U_hist)} commanded ticks -> {args.dump_u}")
 
     ys_a, us_a = np.array(ys), np.array(us)
     tail = slice(max(0, len(ys_a) - 200), None)
