@@ -105,6 +105,177 @@ def fig_delivery() -> Path:
     return out
 
 
+def fig_heap(cs) -> Path:
+    """Left: the buffer-contract violation (int16 assumed, float32 delivered).
+    Right: crash outcome before/after the fix, recomputed from the ledger."""
+    plt = _mpl()
+    FIG_DIR.mkdir(parents=True, exist_ok=True)
+    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(11.6, 3.3),
+                                  gridspec_kw={"width_ratios": [1.6, 1.0]})
+    # -- mechanism panel --
+    ax.barh(1, 32, color="#3F7A4E", height=0.55)
+    ax.barh(0, 32, color="#3F7A4E", height=0.55)
+    ax.barh(0, 32, left=32, color="#B3413A", height=0.55, hatch="//",
+            edgecolor="white")
+    ax.text(16, 1, "allocated: 16 ch x int16 = 32 B", ha="center", va="center",
+            color="white", fontsize=10)
+    ax.text(16, 0, "written: 16 ch x float32", ha="center", va="center",
+            color="white", fontsize=10)
+    ax.text(48, 0, "32 B SPILL into the\nadjacent heap block", ha="center",
+            va="center", color="white", fontsize=9)
+    ax.set_yticks([1, 0], ["temp buffer\n(as coded)", "PO8e readBlock\n(actual)"])
+    ax.set_xlabel("bytes per frame")
+    ax.set_xlim(0, 66)
+    ax.set_title("The contract: nSamples x numChannels x dataSampleSize() "
+                 "(PO8e.h) -- dataSampleSize() was never called",
+                 fontsize=10.5, color="black")
+    for sp in ("left",):
+        ax.spines[sp].set_visible(False)
+    # -- outcome panel (ledger-recomputed) --
+    pre_n, pre_crash = 3, cs["crashed"]          # c01-c03
+    post_n = cs["clean6000"]                     # c04-c09
+    ax2.bar([0, 1], [100.0 * pre_crash / pre_n, 0.0],
+            color=["#B3413A", "#3F7A4E"], width=0.55)
+    ax2.set_xticks([0, 1], [f"pre-fix\n(c01-c03, n={pre_n})",
+                            f"post-fix\n(c04-c09, n={post_n})"])
+    ax2.set_ylabel("runs crashed (%)")
+    ax2.set_ylim(0, 110)
+    ax2.text(0, 103, f"{pre_crash}/{pre_n}", ha="center", fontsize=10)
+    ax2.text(1, 5, f"0/{post_n} (all 6000/6000)", ha="center", fontsize=10)
+    ax2.set_title("Identical conditions, same rig, same day", fontsize=10.5,
+                  color="black")
+    out = FIG_DIR / "weekly_heap_fix.png"
+    fig.tight_layout()
+    fig.savefig(out, dpi=200, bbox_inches="tight")
+    plt.close(fig)
+    return out
+
+
+def fig_window() -> Path:
+    """Feature-window determinism: arrival-time window vs fixed sample count.
+    Quoted hardware numbers (A/B measured back-to-back on the rig 2026-08-14:
+    jul23 build reported windows of 4444 then 4291 samples, range 3-5439
+    across runs; the fixed-count build reported exactly 6 on every tick)."""
+    plt = _mpl()
+    FIG_DIR.mkdir(parents=True, exist_ok=True)
+    fig, ax = plt.subplots(figsize=(7.6, 3.1))
+    ax.bar(0, 5439 - 3, bottom=3, width=0.5, color="#B3413A", alpha=0.85)
+    ax.bar(1, 0.9, bottom=5.6, width=0.5, color="#3F7A4E")
+    ax.set_yscale("log")
+    ax.set_xlim(-0.55, 1.55)
+    ax.set_ylim(2, 4000)
+    ax.axhline(6, color="#444A52", lw=0.8, ls=":")
+    ax.text(0, 130, "3 .. 5,439 samples\nper 'window'\n(~5 ms .. ~9 s\nof signal)",
+            ha="center", va="center", fontsize=9.5, color="white")
+    ax.text(1, 11, "exactly 6, every tick\n(6/6/0 in every run since)",
+            ha="center", fontsize=9.5)
+    ax.set_xticks([0, 1], ["arrival-time window (pre 08-13)\n10 ms of ARRIVAL time",
+                           "fixed-count window\n--feature-window-samples 6"])
+    ax.set_ylabel("samples in the feature window (log)")
+    ax.set_title("Feature determinism: bursty PO8e delivery made the old window\n"
+                 "average up to ~9 s of signal, washing out the 15-28 ms evoked response",
+                 fontsize=10.5, color="black")
+    out = FIG_DIR / "weekly_window_fix.png"
+    fig.tight_layout()
+    fig.savefig(out, dpi=200, bbox_inches="tight")
+    plt.close(fig)
+    return out
+
+
+def fig_ts() -> Path:
+    """Why the Ts snap picked the wrong rate: recomputed live from the pre1
+    frame-locked capture (PLL fire jitter biases the median; the span mean is
+    exact). Returns None if the capture is not on disk."""
+    import numpy as np
+    cap = REPO / "capture_rig_runpre1.csv"
+    if not cap.is_file():
+        print("NOTE: capture_rig_runpre1.csv missing -- skipping Ts figure")
+        return None
+    rows = cap.read_text().strip().splitlines()
+    ti = rows[0].split(",").index("t_ms")
+    t = np.array([float(r.split(",")[ti]) for r in rows[1:]])
+    dif = np.diff(t)
+    med, mean = float(np.median(dif)), float((t[-1] - t[0]) / (len(t) - 1))
+    plt = _mpl()
+    FIG_DIR.mkdir(parents=True, exist_ok=True)
+    fig, ax = plt.subplots(figsize=(7.6, 3.1))
+    ax.hist(dif[(dif > 6) & (dif < 14)], bins=80, color="#5B6470", alpha=0.85)
+    for x, lab, c, ls in (
+            (9.8304, "true rate 9.8304 ms", "#3F7A4E", "--"),
+            (10.0, "wrong candidate 10.0 ms", "#B3413A", "--"),
+            (med, f"median(diff) = {med:.3f} ms  (OLD estimator)", "#A8642A", "-"),
+            (mean, f"span/(N-1) = {mean:.4f} ms  (NEW estimator)", "#3F7A4E", "-")):
+        ax.axvline(x, color=c, lw=1.6, ls=ls, label=lab)
+    ax.legend(loc="upper left", frameon=False, fontsize=9)
+    ax.set_xlabel("tick interval (ms) -- pre1 capture, 28,000 frame-locked ticks")
+    ax.set_ylabel("count")
+    ax.set_title("Ts-snap bug (found+fixed 08-20): PLL fire jitter biases the "
+                 "MEDIAN interval to 9.997 ms, inside the 2% snap band of the "
+                 "WRONG rate; the span mean is exact", fontsize=10.5, color="black")
+    out = FIG_DIR / "weekly_ts_fix.png"
+    fig.tight_layout()
+    fig.savefig(out, dpi=200, bbox_inches="tight")
+    plt.close(fig)
+    return out
+
+
+def fig_ctrlc() -> Path:
+    """Emergency-zeroing verification, read straight from the block: |Scle|
+    envelope across the whole recording plus a zoom at the interrupt.
+    Returns None if the block (Desktop) is unavailable."""
+    import numpy as np
+    BLOCK = (r"C:\Users\brets\Desktop\Data\ClosedLoopTest_LD-260820-183738"
+             r"\ClosedLoopTest_LD-260820-183738")
+    try:
+        import tdt
+        d = tdt.read_block(BLOCK, evtype=["streams"])
+        S = np.asarray(d.streams.Scle.data)
+        fs = float(d.streams.Scle.fs)
+    except Exception as e:
+        print(f"NOTE: Ctrl+C block unavailable ({e}) -- skipping figure")
+        return None
+    if S.ndim == 1:
+        S = S[None, :]
+    amp = np.max(np.abs(S), axis=0)
+    # 10 ms max-pool envelope for the full-record panel
+    bin_n = int(round(fs * 0.010))
+    nb = len(amp) // bin_n
+    env = amp[: nb * bin_n].reshape(nb, bin_n).max(axis=1)
+    tenv = (np.arange(nb) + 0.5) * 0.010
+    nzi = np.flatnonzero(amp > 0)
+    t_off = nzi[-1] / fs
+    plt = _mpl()
+    FIG_DIR.mkdir(parents=True, exist_ok=True)
+    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(11.6, 3.1),
+                                  gridspec_kw={"width_ratios": [1.7, 1.0]})
+    ax.fill_between(tenv, env, color="#5B6470", step="mid")
+    ax.axvline(t_off, color="#B3413A", lw=1.2)
+    ax.annotate("Ctrl+C", (t_off, env.max() * 0.9), xytext=(t_off + 4, env.max() * 0.9),
+                fontsize=10, color="#B3413A",
+                arrowprops=dict(arrowstyle="->", color="#B3413A"))
+    ax.text(t_off + 4, env.max() * 0.55,
+            f"tail: {tenv[-1]-t_off:.1f} s recorded,\nScle exactly zero throughout\n"
+            f"(08-14 failure mode: held 41.5 s)", fontsize=9)
+    ax.set_xlabel("recording time (s)")
+    ax.set_ylabel("max |Scle| across pairs")
+    ax.set_title("Live stim at full amplitude, interrupted mid-run "
+                 "(block LD-260820-183738)", fontsize=10.5, color="black")
+    # zoom panel
+    w0, w1 = t_off - 0.15, t_off + 0.25
+    i0, i1 = int(w0 * fs), int(w1 * fs)
+    tz = np.arange(i0, i1) / fs
+    ax2.plot(tz, amp[i0:i1], color="#5B6470", lw=0.7)
+    ax2.axvline(t_off, color="#B3413A", lw=1.2)
+    ax2.set_xlabel("time (s)")
+    ax2.set_title("Zoom: silent within ~12 ms of the last\nnonzero command",
+                  fontsize=10.5, color="black")
+    out = FIG_DIR / "weekly_ctrlc_zero.png"
+    fig.tight_layout()
+    fig.savefig(out, dpi=200, bbox_inches="tight")
+    plt.close(fig)
+    return out
+
+
 def fig_campaign(cs) -> Path:
     plt = _mpl()
     FIG_DIR.mkdir(parents=True, exist_ok=True)
@@ -237,6 +408,16 @@ def build(cs, st, figs):
     ], top=1.55)
     pic(s, figs["campaign"], 0.9, 5.3, 11.3)
 
+    # -- heap corruption figure slide ---------------------------------------
+    s = new("Heap corruption: mechanism and outcome",
+            "Every readBlock wrote 2x the allocated buffer; whether it crashed was allocation-order luck")
+    pic(s, figs["heap"], 0.85, 1.6, 11.6)
+    bullets(s, [
+        (0, "Same-day A/B under identical conditions: 3/3 crashes before the sample-size-aware "
+            "decode, 0/6 after -- with the deeper harm being that every pre-fix 'feature' was "
+            "reinterpreted garbage bytes, voiding all feature-based conclusions from that era."),
+    ], top=5.5)
+
     # -- carrier sync --------------------------------------------------------
     s = new("Carrier synchronization: from 6% errors to bit-perfect",
             "The command clock (99.24 Hz) free-ran against the 101.725 Hz stim carrier")
@@ -266,6 +447,19 @@ def build(cs, st, figs):
         (0, "Pair mapping re-confirmed exact in every run: word k -> electrodes (2k-1, 2k), "
             "inversion corr -1.000000."),
     ], top=4.6)
+
+    # -- acquisition-path fixes figure slide --------------------------------
+    s = new("Acquisition-path determinism: two fixes, measured",
+            "Left: quoted hardware A/B (2026-08-14). Right: recomputed live from the pre1 capture")
+    if figs.get("window"):
+        pic(s, figs["window"], 0.55, 1.75, 6.2)
+    if figs.get("ts"):
+        pic(s, figs["ts"], 6.95, 1.75, 6.0)
+    bullets(s, [
+        (0, "Both defects shared a root pattern: statistics that look right on smooth simulated "
+            "timing break on real hardware delivery (bursty PO8e arrivals; PLL fire jitter). "
+            "Both fixes were verified with back-to-back measurements on the rig."),
+    ], top=5.6)
 
     # -- Ts + saline ---------------------------------------------------------
     s = new("Ts alignment and saline negative controls")
@@ -364,6 +558,18 @@ def build(cs, st, figs):
             "(-ControlHorizon); step-reference and Nu=20 runs queued for morning."),
     ])
 
+    # -- safety verification figure slide -----------------------------------
+    if figs.get("ctrlc"):
+        s = new("Safety verification: emergency zeroing on hardware",
+                "The last untested safety item, closed at the rig 2026-08-20")
+        pic(s, figs["ctrlc"], 0.85, 1.7, 11.6)
+        bullets(s, [
+            (0, "Ctrl+C during live full-amplitude stim: 7 all-zero packets on the wire, Scle "
+                "silent within 12 ms, and exactly zero for the entire 24 s recorded tail. "
+                "Remaining exposure: a hard process kill bypasses the handler -- the RZ2-side "
+                "watchdog stays on the ask list."),
+        ], top=5.4)
+
     # -- readiness -----------------------------------------------------------
     s = new("Readiness: surgical-suite session")
     table(s, [
@@ -421,7 +627,9 @@ def main():
     st = suite_tallies()
     print("Recomputed campaign stats:", cs)
     print("Suite tallies (parsed from test sources):", st)
-    figs = {"delivery": fig_delivery(), "campaign": fig_campaign(cs)}
+    figs = {"delivery": fig_delivery(), "campaign": fig_campaign(cs),
+            "heap": fig_heap(cs), "window": fig_window(),
+            "ts": fig_ts(), "ctrlc": fig_ctrlc()}
     out = build(cs, st, figs)
     print(f"Wrote {out}")
 
