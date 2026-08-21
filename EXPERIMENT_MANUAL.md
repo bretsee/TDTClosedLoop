@@ -242,6 +242,19 @@ after the last row):
   without it the command lands on pair 1.
 - Defaults: N=20 (~200 ms), Nu=2, preview 20 ticks. The horizon should cover
   the observed settle: from the fitted dominant pole, N >= 4*tau/Ts.
+- **Control horizon vs reference speed (measured on hardware, cl3
+  2026-08-20): Nu=2 holds one value for N-1 of the N horizon ticks, so a
+  reference transient w ticks wide is diluted to ~w/N of its amplitude — a
+  2-3-tick rectified touch spike came through at ~2-3% instead of 18%.**
+  For touch-template tracking set `-ControlHorizon` >= the event width in
+  ticks (Nu=N=20 is fine; the QP is still tiny). Slow plateau references
+  (>= ~1 s) track fully at Nu=2. Choi's offline synthesis optimizes every
+  tick's amplitude independently — the closed-loop arm should be given the
+  same freedom via Nu when comparing.
+- Fractional amplitudes are delivered exactly: 5310 distinct float commands
+  reproduced bit-for-bit at Scle (cl2, 2026-08-20). Do NOT round commands to
+  integers; any IZ2-internal DAC quantization is invisible to the command
+  path and assessed only via artifact amplitude.
 - Watch the server: **out0 must vary with feature0** (constant out0 = the
   historical open-loop defect); saturation at a bound = unreachable target.
 - MATLAB is the primary tracking server (the C++ mpc has no preview).
@@ -259,9 +272,10 @@ trial-averaged evoked vs natural responses (his: 0.78 all / 0.90 first
   Anything that exits without zeroing leaves stim ON (measured: 41.5 s at
   full amplitude, 2026-08-14).
 - The loop zeroes all 8 outputs (5 packets) on: normal exit, caught errors,
-  **Ctrl+C / console close / unhandled SEH** (`emergency_zero_now`). Verified
-  off-rig 2026-08-17; the on-rig `Scle->0` confirmation is a pending checklist
-  item. A hard kill (`Stop-Process`) BYPASSES all of it.
+  **Ctrl+C / console close / unhandled SEH** (`emergency_zero_now`).
+  **HARDWARE-VERIFIED 2026-08-20 (block LD-260820-183738): Ctrl+C during live
+  full-amplitude stim -> Scle silent within 12 ms and zero for the entire
+  24 s recorded tail.** A hard kill (`Stop-Process`) BYPASSES all of it.
 - After ANY crash: `python rig\send_envelope.py --kind const --umax 0` zeroes
   the wire (this is also what `7_campaign.ps1` does automatically).
 - Ultimate fallback: Synapse stim safety button / stimulator power.
@@ -310,7 +324,11 @@ and re-tune mu/lam per animal (Choi hand-tuned per animal too).
 | server "Unable to bind" 31000 | stale MATLAB holding the port | kill matlab/MATLAB pair |
 | `Skipping N to position M` then death | card backlog (recording started too early) | recording-LAST order |
 | out0 constant while feature0 moves | controller ignoring measurement | check observer warnings; branch E1 |
+| out0 constant AT the model's uOffset | model has ~zero gain (e.g. saline junk fit) — "do nothing" IS optimal; E1's 1e-6 threshold false-alarms | prove closure with a known-gain model (toy at another slot, -ModelIndex) |
+| reference DC tracks but transients don't | Nu too small: hold-last dilutes a w-tick event by ~w/N | raise -ControlHorizon to >= event width (Section 9) |
+| server-log out0 max exceeds wire max | startup-transient replies superseded before the next send (newest-reply-wins) | normal; the wire (UDP1) is the ground truth |
 | u pinned at 0 or uMax | unreachable target | pick target from the capture's printed range |
+| 3_fit stamps 10 ms on a frame-locked capture | pre-2026-08-20 median(diff) Ts estimator biased by PLL fire jitter | fixed (span/(N-1)); update the repo if you see it |
 | `Scle`/`Plse`/`sSig` all zero | safety button OR battery OR routing | check in that order |
 | ~0.2-2% doubled carrier pulses | unlucky per-recording carrier phase | rerun (re-rolls phase); fitter auto-excludes |
 | timeouts ~5% at `-TimeoutMs 5` | MATLAB server turnaround spikes | `-TimeoutMs 10`; freshTicks >= 99% is fine |

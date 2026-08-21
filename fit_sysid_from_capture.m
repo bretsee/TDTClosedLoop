@@ -83,7 +83,13 @@ function result = fit_sysid_from_capture(captureFile, opts)
     % ---- load -------------------------------------------------------------
     T = readtable(captureFile);
     if any(strcmp(T.Properties.VariableNames, 't_ms')) && height(T) > 10
-        TsMeas = median(diff(T.t_ms)) / 1000;
+        % RATE from total span, not median(diff): per-tick timestamps carry
+        % the PLL's ~+/-1 ms fire jitter, and the MEDIAN of those diffs biases
+        % toward 10 ms even when the true rate is exactly 9.8304 ms -- measured
+        % on run pre1 2026-08-20 (median 9.997, span/N 9.8306) it snapped a
+        % frame-locked capture to the WRONG rate. Span/(N-1) cancels zero-sum
+        % jitter telescopically and is exact for a paced clock.
+        TsMeas = (T.t_ms(end) - T.t_ms(1)) / (height(T) - 1) / 1000;
         % Snap to the two known rates when within 2% so labels stay exact.
         known = [0.01, 6 / 610.3515625];
         [dev, ki] = min(abs(TsMeas - known) ./ known);

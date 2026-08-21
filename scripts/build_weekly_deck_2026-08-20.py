@@ -339,23 +339,49 @@ def build(cs, st, figs):
             "(rectified mean 635.3 = historical 636; signed mean 1.7 on a zero-mean sine)."),
     ])
 
+    # -- evening rig session -------------------------------------------------
+    s = new("Evening rig session 2026-08-20: pre-suite validation banked",
+            "All environment-independent items completed at the rig before the move")
+    bullets(s, [
+        (0, "New binary hardware-validated (pre1): 28000/28000 ticks, 471/471 probes = exactly "
+            "one carrier pulse, 0 missed / 0 doubled, wire == design, all 8 pair mappings "
+            "exact. DELIVERY VERIFIED, 0 warnings."),
+        (0, "Ctrl+C emergency zeroing HARDWARE-VERIFIED: stim live at full amplitude, Scle "
+            "silent within 12 ms of the interrupt and zero for the entire 24 s recorded tail "
+            "(the 2026-08-14 failure mode held 41.5 s). Last untested safety item closed."),
+        (0, "Bug found and fixed by the rehearsal: the Ts estimator (median of jittery tick "
+            "diffs) snapped a frame-locked capture to the wrong rate (10 ms vs 9.8304 ms, "
+            "only 1.7% apart). Now measured from total span; refit stamps 101.7253 Hz."),
+        (0, "First MPC on hardware (cl1/cl2): loop closed and RESPONSIVE with a known-gain "
+            "model (out0 tracks the measurement), and correctly quiet on the zero-gain saline "
+            "fit (command sits exactly at the stored operating point -- the offset path's "
+            "first hardware exercise)."),
+        (0, "Amplitude resolution PROVEN: 5310 distinct fractional commands reproduced "
+            "bit-for-bit at Scle; finest step 1e-9 survives. No integer rounding needed."),
+        (0, "Moving-target rehearsal (cl3): DC tracks exactly; fast touch-spike modulation is "
+            "diluted ~w/N by the Nu=2 hold-last structure (measured ~2-3% vs 18% commanded) "
+            "-- the control-horizon question answered with data. Fix is one flag "
+            "(-ControlHorizon); step-reference and Nu=20 runs queued for morning."),
+    ])
+
     # -- readiness -----------------------------------------------------------
-    s = new("Readiness: first surgical-suite session")
+    s = new("Readiness: surgical-suite session")
     table(s, [
         ["#", "Item", "Purpose", "Status"],
         ["1", "Quiet capture ~60 s", "baseline, noise floor, 60 Hz decision", "pending (suite)"],
-        ["2", "Ctrl+C mid live run", "last untested safety item: Scle -> 0 in block", "pending (suite)"],
+        ["2", "Ctrl+C mid live run", "safety: Scle -> 0 in block", "DONE at rig 08-20 -- PASS"],
         ["3", "Artifact-amplitude retest", "settle MAV cancellation question", "pending (suite)"],
-        ["4", "Sequential probe run", "suite detection floor; saline refusal re-check", "pending (suite)"],
-        ["5", "Closed-loop dress rehearsal", "frame-locked fit->MPC->loop; banks timing number", "pending (suite)"],
-        ["6", "Open-vs-closed A/B", "same reference, choi_synthesis vs 4_mpc_server", "tooling ready"],
-    ], 0.72, 1.7, 11.9, 3.2)
+        ["4", "Sequential probe run", "suite detection floor; refusal re-check", "rig-validated; repeat in suite"],
+        ["5", "Closed-loop dress rehearsal", "fit->MPC->loop on hardware", "engineering PASS at rig (cl1-cl3); suite re-banks numbers"],
+        ["6", "cl4/cl5: step tracking + Nu=20 template", "moving-target validation; Nu standard", "queued for morning (refs staged)"],
+        ["7", "Open-vs-closed A/B", "same reference, choi_synthesis vs MPC", "tooling ready"],
+    ], 0.72, 1.7, 11.9, 3.5)
     bullets(s, [
         (0, "Standing rules: recording starts LAST; capture/deploy share tick AND feature mode; "
             "phase trim unset; archive binaries before rebuilds."),
         (0, "Everything is committed and pushed; EXPERIMENT_MANUAL.md is the step-by-step "
             "reference with failure branches."),
-    ], top=5.15)
+    ], top=5.45)
 
     # -- risks ---------------------------------------------------------------
     s = new("Watch items / open risks")

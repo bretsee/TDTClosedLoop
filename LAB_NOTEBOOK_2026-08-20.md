@@ -138,13 +138,104 @@ cpp_controller rebuild.
 | Offset chain fit→AllModels→.lti→python parsers | round-trips exactly |
 | 4_mpc_server opts propagation | banner confirms N/qWeight/featureChannel |
 
+---
+
+# EVENING RIG SESSION (same day) — pre-suite validation runs
+
+User at the rig; goal = bank everything environment-independent before the
+suite move. Preflight + UDP selftest all PASS (E1 live RZ2 ACK; E2 correctly
+gated).
+
+## Run pre1 — new binary hardware-validated (block LD-260820-181210)
+
+Sequential probe, frame-locked, 28000/28000 ticks, 0 dropped, window 6/6/0
+(ring wrap at 65536/65536 is expected on a 275 s run — nothing reads old
+samples). Delivery audit: **471/471 probes = exactly one carrier pulse, 0
+missed, 0 doubled, wire == design, all 8 pair mappings exact (inversion
+EXACT), carrier 101.725 Hz, 6.000 samples/period, margin 4.01 ms, VERDICT
+DELIVERY VERIFIED, 0 warnings.** The aug20-signedfeat rebuild reproduces the
+bit-perfect record on hardware.
+
+## Ctrl+C emergency zeroing — HARDWARE-VERIFIED (block LD-260820-183738)
+
+The last untested safety item is closed. Stim live at full amplitude
+(|Scle| = 25) when Ctrl+C hit the loop mid-run: 7 all-zero packets on the wire
+(≥ the 5 the handler sends), **Scle silent 12 ms after the last nonzero
+command and exactly zero for the entire 24.27 s recorded tail** (sSig zero
+too). Direct disproof of the 2026-08-14 failure mode (41.5 s of held
+amplitude).
+
+## BUG FOUND AND FIXED: Ts snap picked the wrong rate on jittery captures
+
+3_fit stamped the frame-locked pre1 capture Ts = 10 ms. Cause: the 08-18 Ts
+alignment used `median(diff(t_ms))`; per-tick timestamps carry the PLL's
+~±1 ms fire jitter (p5 8.0 / p95 10.6 ms) and the MEDIAN biased to 9.997 ms →
+snapped to 10 ms, while the true rate (span/(N−1)) was 9.8306 ms. The two
+nominal rates are only 1.7% apart, inside the 2% snap tolerance, so the biased
+median crossed the decision boundary. Fixed: rate from total span (jitter
+cancels telescopically); refit stamps **101.7253 Hz** correctly. Sim never
+caught it because sim timestamps are smooth.
+
+## Saline fit + first MPC-on-hardware (cl1, block LD-260820-185232)
+
+3_fit on pre1: correct saline refusal (|corr| ≤ 0.02, valFit −2.89%) but a
+stable order-3 junk model — saved deliberately for the rehearsal. Offsets on
+real data for the first time: yOffset = 1.442e-3 V (the saline feature
+baseline), uOffset ≈ 0.03.
+
+cl1 (target 0.0016, rWeight 1e-3): 6000/6000, 0 dropped. **out0 constant at
+0.030233 = uOffset(1) exactly** — with a ~zero-gain model the optimal command
+is the operating point; the E1 "loop NOT closed" verdict is a false alarm in
+this configuration (its 1e-6 range threshold assumes usable plant gain).
+Documented as a new failure-branch row in the manual.
+
+## Amplitude resolution PROVEN — no integer conversion needed (cl2 block)
+
+User question answered from data: cl2 commanded **5310 distinct fractional
+values; Scle reproduced 5309 bit-for-bit** (per-packet 5820/5899 exact to
+1e-6; the rest are probe-straddles-edge sampling), finest distinct step 1e-9
+preserved. The server-log max (0.0552) exceeding the wire max (0.0103) is the
+first 8 observer/QP startup-transient replies being superseded before the next
+send (newest-reply-wins) plus one mid-run overwrite — not amplitude loss.
+Caveat: IZ2 DAC granularity downstream is unobservable from the PC; folds
+into the artifact retest.
+
+## Loop closure PROVEN on hardware (cl2, block LD-260820-190439)
+
+Toy plant staged at AllModels(9) (slot 10 keeps the saline fit);
+`-ModelIndex 9`: **out0 varies with the measurement** (range 0.0476 over
+logged replies) — first genuine closed-loop-responsive MPC run on hardware.
+Together cl1+cl2 show the loop is closed and correctly quiet when the model
+says there is nothing to do.
+
+## Moving-target rehearsal (cl3, block LD-260820-191520) — machinery OK,
+## control horizon is the binding constraint
+
+Touch-template reference (5 events, baseline 1.442e-3 measured today, 5x
+scale). DC tracks exactly (u mean 0.00722 vs predicted 0.00703) but the AC
+modulation is statistically absent (slope −0.4 ± 0.5 vs predicted 4.9).
+Diagnosis, not a plumbing bug (bench preview test passes): **Nu = 2 hold-last
+dilutes a 2-3-tick rectified touch spike by ~3/20 (~2-3% command modulation,
+exactly what per-event windows show), and saline feature noise (std 21% of
+baseline → ±20% command jitter) buries that in 5 events.** This is the item-C
+horizon discussion materialized on hardware — the user's instinct was right.
+
+## QUEUED FOR MORNING (references staged, commands in the manual/chat)
+
+- **cl4**: `ref_steps.csv` (built — 2 s plateaus, +30%) with the same flags →
+  unambiguous moving-target validation at Nu = 2.
+- **cl5**: `ref_rehearsal.csv` with `-ControlHorizon 20` → quantify how much
+  transient fidelity the control horizon buys; sets the Nu standard for touch
+  templates in tissue.
+- Then the surgical-suite session proper.
+
 ## Next session (surgical suite)
 
 1. Quiet capture ~60 s → baseline + noise floor + 60 Hz quantification (notch
    decision rule in VALIDATION_PLAN §1).
-2. Ctrl+C mid live run → `Scle` → 0 in the block (last untested safety item).
+2. ~~Ctrl+C mid live run~~ **DONE at the rig 2026-08-20 evening — PASS.**
 3. Artifact-amplitude retest (better arrays/contact — pre-deployment gate).
 4. Sequential probe run → suite detection floor.
-5. Closed-loop dress rehearsal, frame-locked end to end → banks
-   MPC-on-hardware + timing number. Then the first open-vs-closed A/B on the
-   same reference.
+5. Closed-loop dress rehearsal → **engineering pass banked at the rig
+   (cl1-cl3); suite session re-banks the environment-referenced numbers** and
+   runs the first open-vs-closed A/B on the same reference.
