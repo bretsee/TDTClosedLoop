@@ -42,10 +42,16 @@ import sys
 import numpy as np
 
 CONTROL_RATE_HZ = 100.0
-FEATURE_WINDOW_SAMPLES = 6
+# TEMPLATE samples per control tick: the touch npz is sampled at 610.352 Hz and
+# one 9.8304 ms tick spans 6 of ITS samples. This is a property of the stored
+# template, NOT the loop's --feature-window-samples: do NOT bump it to 12 for
+# the 2x --stream-fs option -- the tick rate is unchanged, so the reference CSV
+# is identical at either stream rate (doubling this would play the template 2x
+# slow). (Renamed from FEATURE_WINDOW_SAMPLES, 2026-08-25.)
+TEMPLATE_SAMPLES_PER_TICK = 6
 
 
-def template_to_feature_ticks(template_uv, window=FEATURE_WINDOW_SAMPLES,
+def template_to_feature_ticks(template_uv, window=TEMPLATE_SAMPLES_PER_TICK,
                               signed=False):
     """uV -> consecutive `window`-sample bins -> mean -> volts. [n_ticks]
 
@@ -131,8 +137,12 @@ def main():
         "total_ticks": int(traj.shape[0]),
         "total_secs": traj.shape[0] / CONTROL_RATE_HZ,
         "event_peak_delta_volts": [float(np.max(events[:, j])) for j in range(p)],
-        "feature_window_samples": FEATURE_WINDOW_SAMPLES,
-        # each row = 6 acquisition samples = one 101.7253 Hz frame-locked tick;
+        # legacy key name kept for downstream compat; the value is TEMPLATE
+        # samples per tick (a property of the 610 Hz npz), not the loop flag
+        "feature_window_samples": TEMPLATE_SAMPLES_PER_TICK,
+        "template_samples_per_tick": TEMPLATE_SAMPLES_PER_TICK,
+        # each row = one 101.7253 Hz frame-locked tick (= 6 template samples),
+        # whatever --tick-frames/--stream-fs the loop runs;
         # at the 100 Hz wall-clock tick the template plays 1.7% slow
         "tick_native_hz": 101.7253,
     }

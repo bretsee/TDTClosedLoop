@@ -34,6 +34,18 @@ Key rates: acquisition 610.3516 Hz (base/40); stim carrier 101.7253 Hz
 (base/240) = exactly 6 samples/period; control tick 10 ms wall-clock or
 9.8304 ms frame-locked (`-TickFrames 6`, PLL onto the RZ2 crystal).
 
+**2x-LFP-rate option (2026-08-25, saline-gated):** if the Synapse circuit
+streams Wav at base/20 = 1220.703125 Hz, run the loop with
+`-StreamFs 1220.703125 -TickFrames 12 -FeatureWindow 12` (control tick and
+carrier UNCHANGED; window still = one carrier period). The exe cross-checks
+`--stream-fs` against the learned offset stride (step 20 vs 40) and warns
+loudly on mismatch. MATLAB/fitting need nothing (Ts is measured from data;
+12/1220.703125 == 6/610.3515625). Reference CSVs are unchanged (rows are
+ticks). Caveat: rectified mean(|x|) at 12@1220.7 is not numerically identical
+to 6@610.35 for the same LFP -- models/references must be fitted at the rate
+they deploy at (same rule as the tick mode). Use on tissue ONLY after a clean
+saline validation at 2x.
+
 **Feature** = per-channel mean over the newest 6 samples, one value per tick:
 rectified `mean(|x|)` by default, or signed `mean(x)` with `--feature-signed`
 (Choi-style signed LFP; added 2026-08-20). Windows are contiguous and
@@ -97,11 +109,20 @@ is by the C++ replay server (bit-perfect: 925/925, 476/476, 923/923 across
 sal2/seq1/int1 — the MATLAB server stretched probes and lost 5.1%).
 
 ```powershell
-# Terminal A: design + validate + serve (sequential = per-pair blocks, clean
-# baseline; interleaved = default, cross-pair interaction probe)
-.\rig\1c_server.ps1 -Run seq2 -Schedule sequential          # ~28000 ticks, 4.6 min
+# Terminal A: design + validate + serve.
+#   random     = THE TISSUE PROTOCOL (2026-08-25): one global train, every
+#                probe's (pair, amplitude) drawn from a balanced shuffled deck;
+#                genuinely randomized channel order, counts even to +/-1, and
+#                with -GapTicks >= 36 every epoch is contamination-free by
+#                construction. 7-amp ladder spans threshold->max so the SAME
+#                run yields gate thresholds (Section 6) and model data.
+#   sequential = per-pair blocks, clean baseline;  interleaved = legacy default.
+.\rig\1c_server.ps1 -Run rnd1 -Schedule random `
+    -PulseAmps 2,4,6,9,13,18,25 -GapTicks 36 -GapJitterMs 60 -Ticks 183000
+#   -> 56 conditions, ~76 trials/condition, ~30 min. Adjust -PulseAmps to the
+#      prep (ladder should straddle the expected 4-10 uA threshold; top = I_max).
 # Terminal B: the loop, frame-locked; recording still NOT started
-.\rig\2_loop.ps1 -Run seq2 -RZ2 10.1.0.100 -TimeoutMs 10 -Ticks 28000 -TickFrames 6
+.\rig\2_loop.ps1 -Run rnd1 -RZ2 10.1.0.100 -TimeoutMs 10 -Ticks 183000 -TickFrames 6
 #   ... wait at the 'go' prompt; START THE SYNAPSE RECORDING NOW; type 'go'
 ```
 
@@ -222,6 +243,20 @@ after the last row):
 # recording LAST, then 'go'
 ```
 
+**8c. NN policy tape (the open-loop arm for a learned policy, 2026-08-25):**
+feed the reference through a trained INVERSE policy offline and replay:
+
+```powershell
+python training\synthesize_openloop_nn.py --nnw models\inv_seq2.nnw `
+    --ref ref_touch.csv --input-channels <k> --umax 25 [--max-rate 2] `
+    --out design_nntape1.csv --parity
+# --parity drives the real cpp_controller --mode nn over the wire and requires
+# tape == live to <= 1e-4. Give the SAME --umin/--umax/--max-rate as the
+# closed-loop NN arm or the arms are not comparable. Refuses forward models.
+.\cpp_controller.exe --mode openloop --play design_nntape1.csv --output-count 8 `
+    --capture capture_nntape1.csv --max-packets <rows>
+```
+
 ## 9. Closed-loop arm (real-time MPC)
 
 ```powershell
@@ -287,11 +322,16 @@ trial-averaged evoked vs natural responses (his: 0.78 all / 0.90 first
 | Question | Command |
 |---|---|
 | Did commands reach the RZ2? | read `UDP1` from the block (the wire record; `sSig` is downstream) |
-| Probe delivery quality | `python rig\check_impulse_delivery.py` |
+| Probe delivery quality | `python rig\check_impulse_delivery.py` (`--fs-acq 1220.703125` on a 2x-rate block) |
 | u->y timing/coupling | `python rig\timing_check.py` (empirical floor; refuses chance) |
 | Which channel responds | `sweep_channels.m` |
 | Model transfer | `crossval_model.m` |
 | Kernels per pair | `python rig\fit_impulse_model.py --input <k>` |
+| **Did the run TRACK its reference?** | `python rig\tracking_metrics.py --ref <ref.csv> --capture <capture.csv> --y-channels <k> --label <arm> --json tracking_<arm>.json --png tracking_<arm>.png` -- RMSE/corr/slope/lag/ETA + TRACKING verdict; run after EVERY open- or closed-loop arm (2026-08-25) |
+| How bad is the stim artifact? | `python rig\assess_artifact.py --block <block> [--events pulse] [--store sOut]` -- per-channel peak/width/feature-fraction, own-pair channels excluded from the verdict (2026-08-25) |
+
+Run `--self-test` once on any new rig's first capture:
+`python rig\tracking_metrics.py --self-test --capture <any capture> --y-channels 1`.
 
 ## 12. Choi 2016 correspondence
 
@@ -303,7 +343,7 @@ trial-averaged evoked vs natural responses (his: 0.78 all / 0.90 first
 | Input parameterization | amplitude envelope on a constant-rate carrier | same (101.7 Hz carrier) | match (rate differs) |
 | Carrier / bin | 610 Hz, 1.63 ms bins | 101.7253 Hz, 9.83 ms ticks | DIVERGENCE (user decision) |
 | Controlled signal | signed 5-200 Hz LFP @610 Hz (or 12-15 PCs) | 6-sample mean; rectified default, signed via `--feature-signed` | match available (signed mode) |
-| Blanking | 480 us sample-and-hold pre-filter | RZ2 DSP chain (verify on circuit) | assumed match — confirm |
+| Blanking | 480 us sample-and-hold pre-filter | **NONE found (2026-08-25 assessment): artifact spans ms-scale in recorded stores, no hardware blanking evident.** Mitigations: whole-period window + DC removal (adequate in saline: off-pair artifact 0.8-2.7x noise); optional `--feature-trim K` drops the K largest-\|x\| samples/window | DIVERGENCE — assess per prep with `rig/assess_artifact.py`; ask TDT about circuit-side blanking |
 | System ID | N4SID subspace, n=50 | ARX LS 1..8 + parsimony | DIVERGENCE (deliberate, toolbox-free) |
 | Optimization | offline QP, T = hold+50 ms, box 0..I_max | `choi_synthesis.py`, same form | match |
 | Effort penalties | mu*\|\|u\|\|^2 + lam*v^2 (tau_lp 100 ms), hand-tuned | same terms, same alpha formula | match |

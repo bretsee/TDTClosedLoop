@@ -583,10 +583,18 @@ struct SampleRingBuffer
     // block-averaged decimation of the signed LFP, matching Choi 2016's use of
     // the signed 5-200 Hz LFP as the controlled variable. Same window, same
     // carrier alignment; only the rectification differs.
+    // trimLargest = K (--feature-trim, 2026-08-25): per channel, drop the K
+    // largest-|x| samples from the window before averaging. The stim artifact
+    // occupies the 1-2 samples nearest the carrier latch whatever the phase, so
+    // a magnitude trim removes it without knowing where it landed. Trim is
+    // always BY MAGNITUDE; the averaging of the survivors respects signedMean.
+    // Same compatibility rule as signedMean: models/references fitted untrimmed
+    // are NOT valid trimmed, and vice versa.
     std::vector<double> computeMeanAbsSamples(size_t inputCount,
                                               size_t nSamples,
                                               size_t* samplesUsed = NULL,
-                                              bool signedMean = false) const
+                                              bool signedMean = false,
+                                              size_t trimLargest = 0) const
     {
         std::vector<double> out(inputCount, 0.0);
         const size_t take = std::min(nSamples, size);
@@ -596,19 +604,47 @@ struct SampleRingBuffer
             return out;
 
         const size_t n = std::min(inputCount, channelValues.size());
-        for (size_t k = 0; k < take; ++k)
+        if (trimLargest == 0)
         {
-            const size_t idx = (writeIndex + capacity - 1 - k) % capacity;
-            for (size_t ch = 0; ch < n; ++ch)
+            for (size_t k = 0; k < take; ++k)
             {
-                const double v = (double)channelValues[ch][idx];
-                out[ch] += signedMean ? v : std::fabs(v);
+                const size_t idx = (writeIndex + capacity - 1 - k) % capacity;
+                for (size_t ch = 0; ch < n; ++ch)
+                {
+                    const double v = (double)channelValues[ch][idx];
+                    out[ch] += signedMean ? v : std::fabs(v);
+                }
             }
+            for (size_t ch = 0; ch < n; ++ch)
+                out[ch] /= (double)take;
+            return out;
         }
 
+        const size_t trim = std::min(trimLargest, take - 1);
+        std::vector<double> vals(take);
         for (size_t ch = 0; ch < n; ++ch)
-            out[ch] /= (double)take;
-
+        {
+            for (size_t k = 0; k < take; ++k)
+            {
+                const size_t idx = (writeIndex + capacity - 1 - k) % capacity;
+                vals[k] = (double)channelValues[ch][idx];
+            }
+            // K selection passes (K <= 2, window <= ~12: cheaper than a sort).
+            size_t kept = take;
+            for (size_t pass = 0; pass < trim; ++pass)
+            {
+                size_t iMax = 0;
+                for (size_t k = 1; k < kept; ++k)
+                    if (std::fabs(vals[k]) > std::fabs(vals[iMax]))
+                        iMax = k;
+                vals[iMax] = vals[kept - 1];
+                --kept;
+            }
+            double acc = 0.0;
+            for (size_t k = 0; k < kept; ++k)
+                acc += signedMean ? vals[k] : std::fabs(vals[k]);
+            out[ch] = acc / (double)kept;
+        }
         return out;
     }
 };
@@ -901,6 +937,19 @@ int main(int argc, char** argv)
     //                            the signed 5-200 Hz LFP). Default remains the
     //                            rectified mean; models/references fitted in
     //                            one mode are NOT valid in the other.
+    //   --feature-trim K         drop the K largest-|x| samples from each
+    //                            feature window before averaging (default 0 =
+    //                            off). Removes the stim-artifact sample(s)
+    //                            whatever the carrier phase. Same rule as
+    //                            --feature-signed: capture and deploy must
+    //                            share the trim mode.
+    //   --stream-fs <hz>         hardware PO8e stream rate (default 610.3515625
+    //                            = base 24414.0625/40; pass 1220.703125 =
+    //                            base/20 for the 2x Synapse circuit, with
+    //                            --tick-frames 12 --feature-window-samples 12).
+    //                            Ignored under --sim-input (which uses
+    //                            --sim-fs). Checked against the learned offset
+    //                            stride: streamFs * step must be ~24414.0625.
     //   --tick-frames N          0 (default) = wall-clock 10 ms scheduling.
     //                            N>0 = FRAME-LOCKED via a software PLL: ticks fire
     //                            on the smooth PC clock, with period/phase steered
@@ -965,6 +1014,13 @@ int main(int argc, char** argv)
     // false = rectified mean(|x|) (validated default); true = signed mean(x),
     // the Choi-2016-style signed LFP feature (--feature-signed, 2026-08-20).
     bool featureSigned = false;
+    // Drop the K largest-|x| samples per feature window (--feature-trim,
+    // 2026-08-25). 0 = off, byte-identical to the validated default path.
+    size_t featureTrim = 0;
+    // Hardware PO8e stream rate. The PLL and tick period derive from this, so
+    // it MUST match the Synapse circuit's Wav divisor (base/40 default;
+    // base/20 = 1220.703125 for the 2x-LFP-rate option, 2026-08-25).
+    double streamFsHardware = 610.3515625;
     // 0 = wall-clock 10 ms ticks; N>0 = tick every N ingested frames (see docs).
     size_t tickFrames = 0;
     // Frame-locked grid phase trim in us (may be negative). The tick grid is
@@ -1008,6 +1064,16 @@ int main(int argc, char** argv)
         else if (arg == "--feature-signed")
         {
             featureSigned = true;
+        }
+        else if (arg == "--feature-trim" && (i + 1) < argc)
+        {
+            featureTrim = static_cast<size_t>(std::max(0, std::atoi(argv[i + 1])));
+            ++i;
+        }
+        else if (arg == "--stream-fs" && (i + 1) < argc)
+        {
+            streamFsHardware = std::atof(argv[i + 1]);
+            ++i;
         }
         else if (arg == "--tick-frames" && (i + 1) < argc)
         {
@@ -1272,6 +1338,10 @@ int main(int argc, char** argv)
         std::printf("Feature window=%zu samples/channel (fixed count, not arrival time), mode=%s\n",
                     featureWindowSamples,
                     featureSigned ? "SIGNED mean(x) [Choi-style LFP]" : "rectified mean(|x|)");
+        if (featureTrim > 0)
+            std::printf("Feature TRIM: dropping the %zu largest-|x| sample(s) per window "
+                        "(artifact rejection). Models/references fitted UNTRIMMED do not apply.\n",
+                        featureTrim);
 
         // =====================================================================
         // SECTION 6: Open UDP path to RZ and register local sender IP
@@ -1403,7 +1473,7 @@ int main(int argc, char** argv)
         // stream. A stalled stream keeps ticking on the PC clock (PLL simply
         // stops updating), so the localhost zero policy stays alive with no
         // separate watchdog.
-        const double streamFsNominal = simInputEnabled ? simFs : 610.3515625;
+        const double streamFsNominal = simInputEnabled ? simFs : streamFsHardware;
         const double tickPeriodNomUs = (tickFrames > 0)
             ? 1e6 * (double)tickFrames / streamFsNominal
             : (double)CONTROL_INTERVAL_US;
@@ -1523,7 +1593,7 @@ int main(int argc, char** argv)
             size_t preLoopWindowSamples = 0;
             const std::vector<double> preLoopFeatures =
                 ring.computeMeanAbsSamples(mpcInputCount, featureWindowSamples, &preLoopWindowSamples,
-                                           featureSigned);
+                                           featureSigned, featureTrim);
             std::vector<double> preLoopX =
                 build_mpc_input(preLoopFeatures, mpcInputCount, udpOutputCount);
             std::printf("Pre-loop live probe: buffered=%zu windowSamples=%zu feature0=%.6f\n",
@@ -1541,7 +1611,7 @@ int main(int argc, char** argv)
 
         if (tickFrames > 0)
         {
-            const double streamFs = simInputEnabled ? simFs : 610.3516;
+            const double streamFs = simInputEnabled ? simFs : streamFsHardware;
             std::printf("Entering loop (MPC input size=%zu, UDP output count=%zu, control=FRAME-LOCKED %zu frames/tick (~%.4f Hz on the stream clock), ring capacity=%zu, matlabDelayTicks=%zu, maxControlTicks=%zu).\n",
                         mpcInputCount, udpOutputCount, tickFrames, streamFs / (double)tickFrames,
                         ringBufferCapacity, matlabStartDelayTicks, maxControlTicks);
@@ -1608,6 +1678,23 @@ int main(int argc, char** argv)
                         // Learn the normal stride from the first valid delta.
                         expectedStep = step;
                         std::printf("\nDetected PO8e offset step=%lld\n", (long long)expectedStep);
+                        // The offset counter runs at the 24414.0625 Hz base
+                        // rate, so streamFs * stride must recover it. A
+                        // mismatch means --stream-fs does not match the Synapse
+                        // circuit: tick period and PLL unitsPerUs are then
+                        // wrong by the same factor (a forgotten flag after the
+                        // 2x circuit change, or the flag used before it).
+                        if (!simInputEnabled)
+                        {
+                            const double base = streamFsNominal * (double)expectedStep;
+                            if (std::fabs(base - 24414.0625) > 1.0)
+                                std::printf("WARNING: --stream-fs %.4f Hz x offset step %lld = %.1f, "
+                                            "expected 24414.0625. The configured stream rate does NOT "
+                                            "match the hardware stream; feature timing, tick period and "
+                                            "the frame PLL are all wrong. Fix --stream-fs (610.3515625 "
+                                            "for base/40, 1220.703125 for base/20).\n",
+                                            streamFsNominal, (long long)expectedStep, base);
+                        }
                     }
                     else if (expectedStep > 0 && step > expectedStep)
                     {
@@ -1646,7 +1733,7 @@ int main(int argc, char** argv)
                 size_t windowSamplesSeen = 0;
                 const std::vector<double> features =
                     ring.computeMeanAbsSamples(mpcInputCount, featureWindowSamples, &windowSamplesSeen,
-                                               featureSigned);
+                                               featureSigned, featureTrim);
                 const int64_t t_features_done_us = clock.now_us();
                 if (tickIndex <= VERBOSE_CONTROL_TICKS)
                 {

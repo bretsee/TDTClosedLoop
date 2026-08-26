@@ -54,6 +54,14 @@ function U = make_excitation(kind, nTicks, m, opts)
 %                 cross-pair proximity at all, no guard shifting, jitter mean
 %                 exact). Costs numel(active)x the ticks for the same per-channel
 %                 trial count.
+%                 'random': ONE global probe train; every probe's (channel,
+%                 amplitude) condition is drawn without replacement from a
+%                 balanced block-shuffled deck (each condition once per block
+%                 of nCond probes), so the channel sequence is genuinely
+%                 randomized per pulse, counts stay even to +/-1, and -- with
+%                 gapTicks >= the analysis pre+post window -- every epoch is
+%                 contamination-free by construction. The probing protocol for
+%                 tissue (2026-08-25).
 %     crossGuardTicks  interleaved only: no two pulses on any channels within
 %                 this many ticks of each other (conflicts shift forward)
 %                                                                    (default 2)
@@ -332,9 +340,71 @@ function U = build_impulse(nTicks, m, opts)
             counts(ch) = pulseIdx;
         end
         schedDesc = sprintf(', interleaved (cross-guard %d ticks)', crossGuard);
+    elseif schedule == "random"
+        % ONE global probe train (single time base). Each probe draws its
+        % (channel, amplitude) condition WITHOUT replacement from a balanced
+        % block-shuffled deck: every condition appears exactly once per block
+        % of nCond probes, shuffled within the block (Fisher-Yates on the
+        % shared LCG stream). Counts therefore stay even to +/-1 even when the
+        % record ends mid-block, and no condition waits longer than ~2 blocks.
+        % Which channel fires each probe is genuinely randomized -- unlike
+        % 'interleaved', where the channel sequence is an emergent stagger.
+        % Global spacing >= period, so with gapTicks >= the fitter's
+        % pre+post window every epoch is contamination-free BY CONSTRUCTION
+        % (no other channel's pulse can land inside it). crossGuardTicks is
+        % irrelevant here: a single time base never places two pulses in one
+        % tick, and minimum spacing is the full period.
+        % Reproducibility: ONE global substream seeded opts.seed; deck
+        % shuffles and jitter draws interleave in a fixed order.
+        nAct = numel(activeSet);
+        nAmps = numel(amps);
+        nCond = nAct * nAmps;
+        rs = local_rng(opts.seed);
+        p = 0;
+        if jitterMean > 0
+            p = 1 / jitterMean;
+        end
+        deck = [];
+        condCounts = zeros(nAct, nAmps);
+        tick = 1 + gap;                % leading gap = clean pre-pulse baseline
+        while tick <= nTicks
+            if isempty(deck)
+                deck = 1:nCond;
+                for i = nCond:-1:2     % Fisher-Yates on the shared LCG stream
+                    [rs, r] = local_rand(rs);
+                    j = 1 + floor(r * i);
+                    tmp = deck(i); deck(i) = deck(j); deck(j) = tmp;
+                end
+            end
+            cond = deck(1);
+            deck(1) = [];
+            % condition index maps CHANNEL-FASTEST: cond = (a-1)*nAct + ci
+            ci = mod(cond - 1, nAct) + 1;
+            a = floor((cond - 1) / nAct) + 1;
+            ch = activeSet(ci);
+            U(tick, ch) = amps(a);
+            condCounts(ci, a) = condCounts(ci, a) + 1;
+            counts(ch) = counts(ch) + 1;
+            if jitterMean > 0
+                if p >= 1
+                    jit = 1;
+                else
+                    [rs, r] = local_rand(rs);
+                    r = min(max(r, 1e-12), 1 - 1e-12);
+                    jit = ceil(log(1 - r) / log(1 - p));   % geometric on {1,2,...}
+                end
+            else
+                jit = 0;
+            end
+            tick = tick + period + jit;
+        end
+        schedDesc = sprintf([', random balanced deck (%d cond = %d ch x %d amps, ' ...
+                             '~%.1f trials/cond, count spread %d)'], ...
+                            nCond, nAct, nAmps, sum(condCounts(:)) / max(1, nCond), ...
+                            max(condCounts(:)) - min(condCounts(:)));
     else
         error('make_excitation:UnknownSchedule', ...
-              'Unknown impulse schedule "%s". Use interleaved or sequential.', schedule);
+              'Unknown impulse schedule "%s". Use interleaved, sequential, or random.', schedule);
     end
 
     if jitterMean > 0

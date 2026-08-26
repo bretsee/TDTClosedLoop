@@ -85,6 +85,48 @@ function bench_test_reference_mpc
         sprintf('%d..%d pulses/block, confined + isolated, jitter >= 1', ...
                 min(seqCounts), max(seqCounts)));
 
+    % ---- 1d. random schedule: balanced (channel, amplitude) deck ---------
+    % The tissue probing protocol (2026-08-25): ONE global train, every
+    % probe's condition drawn from a block-shuffled deck.
+    optsR = optsJ;
+    optsR.schedule = 'random';
+    UR  = make_excitation('impulse', 20000, 8, optsR);
+    UR2 = make_excitation('impulse', 20000, 8, optsR);
+    gTicks = find(sum(UR > 0, 2) > 0);
+    fails = fails + report('impulse random reproducible+single', ...
+        isequal(UR, UR2) && all(sum(UR > 0, 2) <= 1), ...
+        sprintf('%d probes, same-seed identical, one pulse/tick', numel(gTicks)));
+
+    givR = diff(gTicks);
+    gjitR = givR - 51;
+    fails = fails + report('impulse random global spacing', ...
+        all(givR >= 52) && mean(gjitR) > 7 && mean(gjitR) < 9, ...
+        sprintf('min interval %d ticks (>= 52), mean jitter %.2f (target 8)', ...
+                min(givR), mean(gjitR)));
+
+    cntR = zeros(8, 4);
+    ampsR = [5 10 18 25];
+    isoR = true;
+    for ch = 1:8
+        pj = find(UR(:, ch) > 0);
+        isoR = isoR && all(UR(max(pj - 1, 1), ch) == 0) && ...
+               all(UR(min(pj + 1, 20000), ch) == 0);
+        for ai = 1:4
+            cntR(ch, ai) = sum(abs(UR(pj, ch) - ampsR(ai)) < 1e-9);
+        end
+    end
+    fails = fails + report('impulse random balance', ...
+        max(cntR(:)) - min(cntR(:)) <= 1 && all(cntR(:) > 0), ...
+        sprintf('per-condition counts %d..%d over 32 conditions (spread <= 1)', ...
+                min(cntR(:)), max(cntR(:))));
+
+    % legacy schedules untouched: regenerate 1b's interleaved design and
+    % re-assert its invariants byte-for-byte against the copy from above.
+    UJ3 = make_excitation('impulse', 7000, 8, optsJ);
+    fails = fails + report('impulse random leaves legacy intact', ...
+        isoR && isequal(UJ3, UJ), ...
+        'random pulses single-tick; interleaved regenerates byte-identical');
+
     % ---- 2. one-arg call (legacy path) ----------------------------------
     evalin('base', 'clear MPC_OPTS MPC_TARGET');
     mpc_test([]);

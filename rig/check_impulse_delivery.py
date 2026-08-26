@@ -30,8 +30,6 @@ import sys
 
 import numpy as np
 
-FS_ACQ = 610.3515625
-
 
 def pulse_events(x, thresh=1e-9):
     """(n_events, n_single, run_lengths>1, first_multi_indices) of a sample train."""
@@ -53,6 +51,9 @@ def main():
     ap.add_argument("--capture", default=None,
                     help="server capture CSV for designed-vs-delivered accounting")
     ap.add_argument("--amps", type=float, nargs="+", default=[5, 10, 18, 25])
+    ap.add_argument("--fs-acq", type=float, default=610.3515625,
+                    help="Wav acquisition rate the loop reads (default base/40 = "
+                         "610.3515625; pass 1220.703125 for the 2x circuit)")
     args = ap.parse_args()
 
     import tdt
@@ -211,15 +212,17 @@ def main():
     iv = iv[(iv > 1e-4) & (iv < 0.1)]
     if len(iv):
         rate = 1.0 / np.median(iv)
-        spp = FS_ACQ * np.median(iv)
+        spp = args.fs_acq * np.median(iv)
         print("\nPlse carrier: %.3f Hz (%d pulses; base/100 = 244.141, base/240 = 101.725)"
               % (rate, len(rise)))
-        print("  acquisition samples per stim period: %.3f" % spp)
+        print("  acquisition samples per stim period: %.3f (at --fs-acq %.4f)"
+              % (spp, args.fs_acq))
         if abs(spp - round(spp)) > 0.05:
+            fw = int(round(5 * spp))
             note("warn", "samples-per-stim-period %.2f is NOT an integer -- stim "
-                 "artifact does not cancel in a 6-sample feature window; use "
-                 "-FeatureWindow 30 (= %.1f periods) or change the circuit divisor"
-                 % (spp, 30 / spp))
+                 "artifact does not cancel in a whole-period feature window; use "
+                 "-FeatureWindow %d (= ~5 periods) or change the circuit divisor"
+                 % (spp, fw))
     else:
         note("warn", "no Plse pulses found -- stimulator off or safety button?")
 

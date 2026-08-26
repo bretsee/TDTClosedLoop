@@ -28,6 +28,7 @@ right after each run -- a difference between the two is a translation problem.
 
 import argparse
 import csv
+import json
 import sys
 
 import numpy as np
@@ -61,7 +62,32 @@ def main():
                     help="fit_impulse_model epoch post-window (default 30)")
     ap.add_argument("--guard-ticks", type=int, default=2,
                     help="cross-channel exclusion window the design promises (default 2)")
+    ap.add_argument("--schedule", choices=["legacy", "random"], default="legacy",
+                    help="'legacy' = interleaved/sequential audit (unchanged); "
+                         "'random' = single-global-train balanced-deck audit "
+                         "(per-channel interval checks move to the GLOBAL train, "
+                         "plus balance/uniformity/contamination-free checks)")
+    ap.add_argument("--meta", default=None,
+                    help="design_*_meta.json sidecar; when given, its pulseAmps/"
+                         "gapTicks/gapJitterMeanTicks/uMax/schedule OVERRIDE the "
+                         "corresponding flags")
     args = ap.parse_args()
+
+    if args.meta:
+        md = json.load(open(args.meta))
+        if "pulseAmps" in md:
+            args.amps = [float(a) for a in np.atleast_1d(md["pulseAmps"])]
+        if "gapTicks" in md:
+            args.gap_ticks = int(md["gapTicks"])
+        if "gapJitterMeanTicks" in md:
+            args.jitter_mean_ticks = int(md["gapJitterMeanTicks"])
+        if "uMax" in md:
+            args.umax = float(md["uMax"])
+        if str(md.get("schedule", "")).lower() == "random":
+            args.schedule = "random"
+        print("meta %s: amps %s, gap %d, jitter %d, umax %g, schedule %s"
+              % (args.meta, args.amps, args.gap_ticks, args.jitter_mean_ticks,
+                 args.umax, args.schedule))
 
     U = load_capture(args.capture)
     n_ticks, n_in = U.shape
@@ -109,7 +135,9 @@ def main():
         iv = np.diff(ticks)
         jit = iv - period
         lag1 = float("nan")
-        if len(iv) >= 3:
+        # In 'random' mode the per-channel spacing is ~nCond*period by design;
+        # interval-shape checks move to the GLOBAL train below.
+        if len(iv) >= 3 and args.schedule == "legacy":
             if np.any(jit < (1 if args.jitter_mean_ticks > 0 else 0)):
                 note(HARD, "input %d has interval(s) at/below the base period "
                            "(min %d ticks vs designed >= %d) -- jitter not strictly "
@@ -146,21 +174,110 @@ def main():
 
     # ---- cross-channel attribution -------------------------------------
     print()
-    if len(moved) > 1:
-        merged = np.zeros(n_ticks, dtype=int)
-        for ticks in all_pulse_ticks:
-            merged[ticks] += 1
-        if np.any(merged > 1):
-            note(HARD, "%d tick(s) carry pulses on more than one channel -- pulses "
-                       "not attributable per pair" % int(np.sum(merged > 1)))
-        spacing = np.diff(np.flatnonzero(merged > 0))
-        if len(spacing) and spacing.min() <= args.guard_ticks:
-            note(HARD, "cross-channel pulse spacing %d ticks <= guard %d -- "
-                       "attribution window violated" % (spacing.min(), args.guard_ticks))
-        elif len(spacing):
-            print("  cross-channel: no collisions; min spacing %d ticks (guard %d); "
-                  "total %d pulses across %d channels"
-                  % (spacing.min(), args.guard_ticks, int(merged.sum()), len(moved)))
+    merged = np.zeros(n_ticks, dtype=int)
+    for ticks in all_pulse_ticks:
+        merged[ticks] += 1
+    if len(moved) > 1 and np.any(merged > 1):
+        note(HARD, "%d tick(s) carry pulses on more than one channel -- pulses "
+                   "not attributable per pair" % int(np.sum(merged > 1)))
+    spacing = np.diff(np.flatnonzero(merged > 0))
+    if args.schedule == "legacy":
+        if len(moved) > 1:
+            if len(spacing) and spacing.min() <= args.guard_ticks:
+                note(HARD, "cross-channel pulse spacing %d ticks <= guard %d -- "
+                           "attribution window violated" % (spacing.min(), args.guard_ticks))
+            elif len(spacing):
+                print("  cross-channel: no collisions; min spacing %d ticks (guard %d); "
+                      "total %d pulses across %d channels"
+                      % (spacing.min(), args.guard_ticks, int(merged.sum()), len(moved)))
+    else:
+        # ---- 'random' schedule: single global train ---------------------
+        gticks = np.flatnonzero(merged > 0)
+        giv = np.diff(gticks)
+        min_ok = period + (1 if args.jitter_mean_ticks > 0 else 0)
+        if len(giv) and giv.min() < min_ok:
+            note(HARD, "global inter-probe spacing %d ticks < designed minimum %d"
+                       % (giv.min(), min_ok))
+        gjit = giv - period
+        if args.jitter_mean_ticks > 0 and len(gjit) >= 10:
+            mj, sj = gjit.mean(), gjit.std()
+            if abs(mj - args.jitter_mean_ticks) > max(2.0, 3 * sj / np.sqrt(len(gjit))):
+                note(WARN, "global mean jitter %.1f ticks vs designed %d"
+                           % (mj, args.jitter_mean_ticks))
+            a0 = gjit[:-1] - gjit[:-1].mean()
+            a1 = gjit[1:] - gjit[1:].mean()
+            denom = np.sqrt((a0 ** 2).sum() * (a1 ** 2).sum())
+            glag1 = float((a0 * a1).sum() / denom) if denom > 0 else 0.0
+            if abs(glag1) > 4.0 / np.sqrt(len(gjit)):
+                note(WARN, "global jitter lag-1 autocorr %.2f -- intervals not "
+                           "independent" % glag1)
+            modal = np.max(np.bincount(giv)) / len(giv)
+            if modal > 0.5:
+                note(WARN, "%d%% of global intervals share one value -- "
+                           "quasi-periodic, rhythm risk" % round(100 * modal))
+        # balance over (channel, amplitude) conditions
+        ch_of, amp_of = {}, {}
+        for j, ticks in zip(moved, all_pulse_ticks):
+            for t in ticks:
+                ch_of[t] = j
+                amp_of[t] = float(np.round(U[t, j], 6))
+        counts = np.zeros((len(moved), len(expected)), dtype=int)
+        ch_index = {j: i for i, j in enumerate(moved)}
+        amp_index = {np.round(a, 6): i for i, a in enumerate(expected)}
+        seq_ch, seq_amp = [], []
+        for t in gticks:
+            counts[ch_index[ch_of[t]], amp_index[amp_of[t]]] += 1
+            seq_ch.append(ch_index[ch_of[t]])
+            seq_amp.append(amp_index[amp_of[t]])
+        print("  random deck: %d probes over %d conditions (%d ch x %d amps); "
+              "per-condition counts %d..%d"
+              % (len(gticks), counts.size, len(moved), len(expected),
+                 counts.min(), counts.max()))
+        if counts.min() == 0:
+            note(HARD, "%d condition(s) never occur -- deck broken or record too "
+                       "short" % int(np.sum(counts == 0)))
+        elif counts.max() - counts.min() > 1:
+            note(HARD, "condition counts uneven (spread %d > 1) -- balanced deck "
+                       "violated" % int(counts.max() - counts.min()))
+        # per-condition longest wait (block shuffle bounds it near 2 blocks)
+        n_cond = counts.size
+        exp_wait = 2.0 * n_cond * (period + args.jitter_mean_ticks) + period
+        worst_wait, worst_cond = 0, None
+        for ci in range(len(moved)):
+            for ai in range(len(expected)):
+                tt = [t for t in gticks
+                      if ch_index[ch_of[t]] == ci and amp_index[amp_of[t]] == ai]
+                if len(tt) >= 2:
+                    wt = int(np.max(np.diff(tt)))
+                    if wt > worst_wait:
+                        worst_wait, worst_cond = wt, (moved[ci] + 1, expected[ai])
+        if worst_cond and worst_wait > exp_wait:
+            note(WARN, "condition (ch %d, amp %g) waits up to %d ticks between "
+                       "occurrences (> %.0f = 2 blocks) -- shuffle suspect"
+                       % (worst_cond[0], worst_cond[1], worst_wait, exp_wait))
+        elif worst_cond:
+            print("  worst per-condition wait %d ticks (bound %.0f)"
+                  % (worst_wait, exp_wait))
+        # channel-sequence uniformity: chi-square on transition counts
+        for name, seq, k in (("channel", seq_ch, len(moved)),
+                             ("amplitude", seq_amp, len(expected))):
+            if k < 2 or len(seq) < 10 * k * k:
+                continue
+            T = np.zeros((k, k))
+            for a, b in zip(seq[:-1], seq[1:]):
+                T[a, b] += 1
+            exp = T.sum() / (k * k)
+            chi2 = float(((T - exp) ** 2 / exp).sum())
+            df = k * k - 1
+            lim = df + 4.0 * np.sqrt(2.0 * df)
+            if chi2 > lim:
+                note(WARN, "%s-transition chi-square %.0f > %.0f (df %d) -- "
+                           "sequence order not uniform (deck shuffle is not iid, "
+                           "so mild excess is possible; investigate if large)"
+                           % (name, chi2, lim, df))
+            else:
+                print("  %s-transition uniformity: chi2 %.0f (limit %.0f, df %d) OK"
+                      % (name, chi2, lim, df))
 
     # ---- fit_impulse_model compatibility -------------------------------
     for j, ticks in zip(moved, all_pulse_ticks):
@@ -181,12 +298,19 @@ def main():
                        "significance floor will be shaky" % (j + 1, cand))
         if contaminated:
             pct = 100.0 * contaminated / max(1, len(ticks))
-            sev = WARN if pct > 60 else INFO
-            note(sev, "input %d: %d/%d epochs (%.0f%%) contain another channel's "
-                       "pulse inside the %d-tick window -- expected in a multi-pair "
-                       "record; responses average out across trials, but analyze "
-                       "per input" % (j + 1, contaminated, len(ticks), pct,
-                                      args.pre_ticks + args.post_ticks + 1))
+            if args.schedule == "random" and period > args.pre_ticks + args.post_ticks:
+                note(HARD, "input %d: %d/%d epochs contaminated -- the random "
+                           "schedule with gapTicks %d > pre+post %d promises ZERO "
+                           "contamination; design or translation broken"
+                           % (j + 1, contaminated, len(ticks), args.gap_ticks,
+                              args.pre_ticks + args.post_ticks))
+            else:
+                sev = WARN if pct > 60 else INFO
+                note(sev, "input %d: %d/%d epochs (%.0f%%) contain another channel's "
+                           "pulse inside the %d-tick window -- expected in a multi-pair "
+                           "record; responses average out across trials, but analyze "
+                           "per input" % (j + 1, contaminated, len(ticks), pct,
+                                          args.pre_ticks + args.post_ticks + 1))
     if len(moved) > 1:
         print("\n  fit_impulse_model.py auto-detect needs ONE moved input; with %d "
               "moved, run per input:" % len(moved))

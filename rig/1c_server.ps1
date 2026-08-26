@@ -36,7 +36,10 @@ param(
     # protocol (no cross-pair proximity at all). Costs ~8x the ticks for the same
     # per-pair statistics; with the sequential default of 28000 ticks (~4.6 min)
     # each pair gets ~57 pulses = ~15 trials/amplitude.
-    [ValidateSet('interleaved','sequential')]
+    # 'random': ONE global train, every probe's (pair, amplitude) drawn from a
+    # balanced shuffled deck -- the tissue probing protocol (2026-08-25). Use
+    # -GapTicks >= 36 so epochs are contamination-free by construction.
+    [ValidateSet('interleaved','sequential','random')]
     [string]   $Schedule    = 'interleaved',
 
     # Interleaved only: minimum spacing between pulses on ANY two pairs.
@@ -69,6 +72,29 @@ if ($Schedule -eq 'sequential' -and -not $PSBoundParameters.ContainsKey('Ticks')
     Write-Host "Sequential schedule: -Ticks defaulted to $Ticks (~$([math]::Round($Ticks/6000.0,1)) min)" -ForegroundColor Cyan
 }
 $guardTicks = [math]::Max(0, [math]::Round($CrossGuardMs / 10))
+
+if ($Schedule -eq 'random') {
+    # Trial math: one global train shares its probes across ALL conditions.
+    $nChan = $Outputs
+    if ($null -ne $Channels -and $Channels.Count -gt 0) { $nChan = $Channels.Count }
+    $nCond  = $nChan * $PulseAmps.Count
+    $jitT   = [math]::Max(1, [math]::Round($GapJitterMs / 10))
+    $probes = [math]::Floor(($Ticks - $GapTicks) / ($GapTicks + 1 + $jitT))
+    $tpc    = [math]::Round($probes / $nCond, 1)
+    Write-Host ("Random schedule: {0} conditions ({1} ch x {2} amps), ~{3} probes " -f `
+                $nCond, $nChan, $PulseAmps.Count, $probes) -NoNewline -ForegroundColor Cyan
+    Write-Host ("=> ~{0} trials/condition over ~{1} min" -f `
+                $tpc, [math]::Round($Ticks/6103.0,1)) -ForegroundColor Cyan
+    if ($tpc -lt 3) {
+        Write-Host ("WARNING: <3 trials/condition -- fit_impulse_model SKIPS such " +
+                    "amplitude levels. Need -Ticks >= " +
+                    [math]::Ceiling(3 * $nCond * ($GapTicks + 1 + $jitT) + $GapTicks)) -ForegroundColor Yellow
+    }
+    if ($GapTicks -lt 36) {
+        Write-Host ("WARNING: -GapTicks $GapTicks < 36 (pre 5 + post 30 + 1): epochs " +
+                    "will overlap neighbouring probes; contamination-free property lost.") -ForegroundColor Yellow
+    }
+}
 
 if ([string]::IsNullOrWhiteSpace($Design)) { $Design = "design_run$Run.csv" }
 $capture = "capture_rig_run$Run.csv"
@@ -111,9 +137,16 @@ write_excitation_csv('$Design','impulse',$Ticks,$Outputs, ...
 
 # --- 2. validate the design BEFORE anything is delivered --------------------
 Write-Host "Validating design..." -ForegroundColor Cyan
-& $py rig\validate_impulse_design.py --capture $Design --amps @($PulseAmps) `
-      --gap-ticks $GapTicks --jitter-mean-ticks ([math]::Max(1, [math]::Round($GapJitterMs / 10))) `
-      --umax $UMax --guard-ticks $guardTicks
+$valArgs = @('--capture', $Design, '--gap-ticks', $GapTicks,
+             '--jitter-mean-ticks', ([math]::Max(1, [math]::Round($GapJitterMs / 10))),
+             '--umax', $UMax, '--guard-ticks', $guardTicks)
+$valArgs += @('--amps'); $valArgs += $PulseAmps
+if ($Schedule -eq 'random') {
+    $valArgs += @('--schedule', 'random')
+    $metaFile = $Design -replace '\.csv$', '_meta.json'
+    if (Test-Path $metaFile) { $valArgs += @('--meta', $metaFile) }
+}
+& $py rig\validate_impulse_design.py @valArgs
 if ($LASTEXITCODE -ne 0) {
     Write-Host "FAIL: design validation failed -- not starting the server." -ForegroundColor Red
     exit 1

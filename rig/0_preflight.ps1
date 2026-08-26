@@ -50,9 +50,12 @@ if (-not (Test-Path $backup)) {
 }
 
 # --- Smoke test: does the loop still hold its budget? ------------------------
-Write-Host "  Running 300-tick smoke test (no hardware, ~5 s)..." -ForegroundColor Gray
+# $SimFs rehearses a non-default stream rate (e.g. 1220.703125 for the 2x
+# circuit); default stays the real base/40 rate.
+if (-not (Get-Variable -Name SimFs -ErrorAction SilentlyContinue)) { $SimFs = 610.3516 }
+Write-Host "  Running 300-tick smoke test (no hardware, ~5 s, sim-fs $SimFs)..." -ForegroundColor Gray
 $out = & .\MpcPo8eUdpClosedLoop.exe 127.0.0.1 . 16 --controller constant --constant-output 5 `
-        --sim-input sine --sim-fs 610.3516 --sim-channels 16 --skip-udp-send `
+        --sim-input sine --sim-fs $SimFs --sim-channels 16 --skip-udp-send `
         --max-control-ticks 300 --validate-log sim_smoke.csv 2>&1
 $exit = $LASTEXITCODE
 

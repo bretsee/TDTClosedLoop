@@ -31,4 +31,23 @@ function write_excitation_csv(outFile, kind, nTicks, m, opts)
     fclose(fid);
     fprintf('write_excitation_csv: wrote %s (%d ticks x %d channels)\n', ...
             outFile, size(U, 1), m);
+
+    % Metadata sidecar (NOT in-file comments: cpp_controller's load_csv_prefix
+    % parses every non-header line with atof, so a comment line would replay as
+    % a row of zeros). Records everything the validator and the lab notebook
+    % need to reconstruct the design's intent.
+    metaFile = regexprep(outFile, '\.csv$', '_meta.json');
+    meta = struct('kind', char(kind), 'nTicks', nTicks, 'm', m, ...
+                  'generated', datestr(now, 'yyyy-mm-dd HH:MM:SS'), ...
+                  'generator', 'make_excitation.m');
+    fn = fieldnames(opts);
+    for i = 1:numel(fn)
+        meta.(fn{i}) = opts.(fn{i});
+    end
+    fid = fopen(metaFile, 'w');
+    if fid >= 0
+        fprintf(fid, '%s\n', jsonencode(meta));
+        fclose(fid);
+        fprintf('write_excitation_csv: wrote %s\n', metaFile);
+    end
 end

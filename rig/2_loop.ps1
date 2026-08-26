@@ -54,6 +54,21 @@ param(
     # mid-latch-period, maximum margin against tick-fire jitter).
     [double] $TickPhaseUs = 0,
 
+    # Hardware PO8e stream rate. Default 610.3515625 (base/40). Pass
+    # 1220.703125 (base/20) with -TickFrames 12 -FeatureWindow 12 when the
+    # Synapse circuit streams Wav at 2x (the 2026-08-25 Choi-rate option).
+    # Only forwarded to the exe when explicitly given.
+    [double] $StreamFs = 610.3515625,
+
+    # Sim acquisition rate for -Sim runs (default = the real base/40 rate;
+    # 1220.703125 rehearses the 2x option with no hardware).
+    [double] $SimFs = 610.3516,
+
+    # Drop the K largest-|x| samples from each feature window (stim-artifact
+    # rejection, --feature-trim). Models/references fitted untrimmed are NOT
+    # valid trimmed -- capture and deploy must agree, like -FeatureSigned.
+    [int]    $FeatureTrim = 0,
+
     # Which binary to run. MpcPo8eUdpClosedLoop.jul23.exe is the archived Jul-23
     # build that completed 3000 ticks on rig day 1 -- use it to A/B whether a
     # crash is caused by the newer changes or by the card/environment.
@@ -78,6 +93,14 @@ if ($FeatureSigned) {
     $args += '--feature-signed'
     Write-Host "Feature mode: SIGNED mean(x) (Choi-style LFP). Models fitted on rectified captures do NOT apply." -ForegroundColor Yellow
 }
+if ($FeatureTrim -gt 0) {
+    $args += @('--feature-trim',"$FeatureTrim")
+    Write-Host "Feature TRIM: dropping $FeatureTrim largest-|x| sample(s)/window (artifact rejection). Models fitted untrimmed do NOT apply." -ForegroundColor Yellow
+}
+if ($PSBoundParameters.ContainsKey('StreamFs')) {
+    $args += @('--stream-fs',"$StreamFs")
+    Write-Host "Stream rate override: $StreamFs Hz (must match the Synapse Wav divisor; the exe cross-checks against the offset stride)" -ForegroundColor Cyan
+}
 if ($TickFrames -gt 0) {
     $args += @('--tick-frames',"$TickFrames")
     if ($TickPhaseUs -ne 0) { $args += @('--tick-phase-us',"$TickPhaseUs") }
@@ -88,7 +111,7 @@ if ($Sim) {
     $target = '127.0.0.1'
     # 610.3516 Hz is the REAL NPro1 rate. The old 24414 made sim run 40x faster
     # than hardware, hiding the arrival-time window defect entirely.
-    $args += @('--sim-input','sine','--sim-fs','610.3516','--sim-channels',"$InputChannels",'--skip-udp-send')
+    $args += @('--sim-input','sine','--sim-fs',"$SimFs",'--sim-channels',"$InputChannels",'--skip-udp-send')
     Write-Host "=== DRY RUN: sim input, UDP send suppressed. No stim will be delivered. ===" -ForegroundColor Green
 } else {
     if ([string]::IsNullOrWhiteSpace($RZ2)) {
@@ -109,12 +132,15 @@ Write-Host "Binary: $Exe" -ForegroundColor Gray
 # Archived builds predate --feature-window-samples / --tick-frames; drop flags
 # they cannot parse so the A/B actually runs instead of failing on an unknown arg.
 $exeArgs = $args
-if ($Exe -match 'jul23|aug1[458]') {
+if ($Exe -match 'jul23|aug1[458]|aug20|aug25-pre') {
     $exeArgs = @()
     for ($i = 0; $i -lt $args.Count; $i++) {
         if ($args[$i] -eq '--feature-window-samples' -and $Exe -match 'jul23') { $i++; continue }
         if ($args[$i] -eq '--tick-frames' -and $Exe -match 'jul23|aug1[45]') { $i++; continue }
-        if ($args[$i] -eq '--feature-signed') { continue }   # pre-aug20 builds
+        if ($args[$i] -eq '--feature-signed' -and $Exe -match 'jul23|aug1[458]') { continue }
+        # --stream-fs / --feature-trim exist only in builds from 2026-08-25 on.
+        if ($args[$i] -eq '--stream-fs' -and $Exe -match 'jul23|aug1[458]|aug20|aug25-pre') { $i++; continue }
+        if ($args[$i] -eq '--feature-trim' -and $Exe -match 'jul23|aug1[458]|aug20|aug25-pre') { $i++; continue }
         $exeArgs += $args[$i]
     }
     Write-Host "  (dropped flags not present in this archived build)" -ForegroundColor Gray
