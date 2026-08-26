@@ -84,12 +84,54 @@ approved today; this session implemented and verified the code half. Commit
   slower with TBPTT; see models/bench_*.nnw). Training 3–4 models between
   arms on Friday costs ~1–2 min plus the GRU. Never train during a live loop.
 
+## Evening rig session — cl4/cl5 BANKED (the last pre-suite validations)
+
+Both runs: frame-locked (`-TickFrames 6`), toy plant at `AllModels(9)`,
+`-RWeight 1e-3 -Pairs 1 -FeatureChannel 1`, 1300 ticks, recording-last order.
+Engineering clean on both: 1300/1300 ticks, `droppedControlTicks=0`, window
+6/6/0, server turnaround ~2 ms avg.
+
+**cl4 — moving-target tracking PROVEN** (`ref_steps.csv`, Nu=2;
+`capture_mpc_20260825_212708.csv`, scored by `tracking_metrics.py` →
+`tracking_cl4.{json,png}`):
+
+- u1 plateaus **0.00935 → 0.01355** locked to the reference steps
+  (r 0.001442 → 0.001875), std ~0.0011, corr(u1, r) = 0.886,
+  step gain Δu/Δr = **9.7**.
+- "Looked like all zeros" at the rig was pure scale: the reference is
+  feature-space volts (~0.0014), so optimal commands are ~0.01 amplitude
+  units — invisible on displays calibrated for 5–25.
+- Slope 9.7 vs the certainty-equivalence 4.9: the observer pushes harder
+  because the saline "plant" never responds to u (measured y ~0.0009
+  regardless), so the state estimate keeps correcting downward. Correct
+  closed-loop behavior against a dead plant, not a defect; with a real
+  fitted plant the loop settles at the certainty-equivalence point.
+- y-channel verdict NOT TRACKING = the expected saline null. For these two
+  runs the readout is u-on-r, not y-on-r.
+
+**cl5 — Nu QUESTION SETTLED** (`ref_rehearsal.csv` touch-template rehearsal,
+**`-ControlHorizon 20`**; `capture_mpc_20260825_213442.csv` →
+`tracking_cl5.{json,png}`):
+
+- slope u1-on-r = 7.8; 5 template events detected at their exact 220-tick
+  spacing.
+- **Transient fidelity du/(slope·dr) ≈ 1.0–1.3** — the u event swing
+  (0.00258 on a 0.000257 reference event) is FULL amplitude, vs **cl3's
+  ~2–3% at Nu=2** (2026-08-20). A ~40x recovery from one flag.
+- **STANDARD SET: every touch-template MPC arm on Friday runs
+  `-ControlHorizon 20`.** This also makes open-vs-closed fair: Choi's
+  offline synthesis optimizes every tick independently, and Nu=20 gives
+  the closed-loop arm the same freedom.
+
+First real-data outing for `tracking_metrics.py`: verdicts, slopes and ETAs
+all behaved; the JSON/PNG pairs are ready for the Friday report manifest.
+
 ## Still pending before Friday
 
-- cl4/cl5 moving-target tracking runs (staged; commands in memory +
-  EXPERIMENT_MANUAL §9) — score with `tracking_metrics.py`.
 - Suite saline session (tomorrow): quiet capture + 60 Hz quantification;
-  artifact retest at higher amplitude (then final trim decision);
+  **enable Wav1/Wav2 SAVING in Synapse** (stores were zero in the 08-18
+  blocks); artifact retest at higher amplitude (then final trim decision);
   randomized-probe delivery validation; **2x-rate saline gate** (positive +
-  negative stream-fs tests); frame-locked closed-loop dress rehearsal;
-  Wav1 saving fix; `git push` (blocked from this session's sandbox).
+  negative stream-fs tests); frame-locked closed-loop dress rehearsal.
+- `git push` (repo ahead of origin; user will push after tomorrow's
+  successful suite test).
