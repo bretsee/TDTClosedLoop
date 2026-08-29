@@ -1,4 +1,4 @@
-function make_synthetic_capture(outFile, respChannel, snr, noiseSeed, stimSeed)
+function make_synthetic_capture(outFile, respChannel, snr, noiseSeed, stimSeed, nU, nY)
 %MAKE_SYNTHETIC_CAPTURE  Build a capture with a KNOWN response, for testing.
 %
 %   make_synthetic_capture('capture_synth.csv', 7, 3)
@@ -28,11 +28,21 @@ function make_synthetic_capture(outFile, respChannel, snr, noiseSeed, stimSeed)
     % crossval_model, but is a weaker test than genuinely different excitation.
     if nargin < 4 || isempty(noiseSeed),   noiseSeed = 20260730;          end
     if nargin < 5 || isempty(stimSeed),    stimSeed = 12345;              end
+    % Stim (u) and recording (y) widths are independent in production (8 pairs
+    % vs 16/32 channels); the historical fixture conflated them at 16/16, which
+    % stays the default so the committed fixtures regenerate byte-identical.
+    % An 8u x 32y fixture exercises the 32-ch offline chain with a response
+    % planted above channel 16 (2026-08-29).
+    if nargin < 6 || isempty(nU),          nU = 16;                       end
+    if nargin < 7 || isempty(nY),          nY = 16;                       end
+    if respChannel > nY
+        error('make_synthetic_capture:BadRespChannel', ...
+              'respChannel %d > nY %d.', respChannel, nY);
+    end
 
     nTicks = 3000;
-    m = 16;
 
-    U = make_excitation('prbs', nTicks, m, ...
+    U = make_excitation('prbs', nTicks, nU, ...
                         struct('uMin', 0, 'uMax', 10, 'clockTicks', 5, ...
                                'seed', stimSeed, 'activeChannels', 3));
 
@@ -50,8 +60,8 @@ function make_synthetic_capture(outFile, respChannel, snr, noiseSeed, stimSeed)
 
     sig = std(y);
     rs = noiseSeed;
-    Y = zeros(nTicks, m);
-    for ch = 1:m
+    Y = zeros(nTicks, nY);
+    for ch = 1:nY
         [rs, n] = local_randn(rs, nTicks);
         if ch == respChannel
             Y(:, ch) = 250 + y + (sig / snr) * n;   % MAV-like positive offset
@@ -65,8 +75,8 @@ function make_synthetic_capture(outFile, respChannel, snr, noiseSeed, stimSeed)
     tms  = (tick - 1) * 10;
 
     names = [{'tick', 'seq', 't_ms'}, ...
-             arrayfun(@(i) sprintf('u%d', i), 1:m, 'UniformOutput', false), ...
-             arrayfun(@(i) sprintf('y%d', i), 1:m, 'UniformOutput', false)];
+             arrayfun(@(i) sprintf('u%d', i), 1:nU, 'UniformOutput', false), ...
+             arrayfun(@(i) sprintf('y%d', i), 1:nY, 'UniformOutput', false)];
     T = array2table([tick, seq, tms, U, Y], 'VariableNames', names);
     writetable(T, outFile);
 

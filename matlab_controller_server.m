@@ -3,9 +3,9 @@ function matlab_controller_server(mode, requestPort, replyPort, outputCount, con
 %
 % Two calling styles:
 %   Positional (original):
-%     matlab_controller_server('mpc', 31000, 31001, 16, 0, 600, 'server_lat.csv')
+%     matlab_controller_server('mpc', 31000, 31001, 8, 0, 600, 'server_lat.csv')
 %   Options struct (needed for openloop; ignores the other arguments):
-%     cfg.mode = 'openloop'; cfg.outputCount = 16; cfg.maxPackets = 6000;
+%     cfg.mode = 'openloop'; cfg.outputCount = 8; cfg.maxPackets = 6000;
 %     cfg.excitation.kind = 'prbs'; cfg.captureFile = 'capture.csv';
 %     matlab_controller_server(cfg)
 %
@@ -19,6 +19,9 @@ function matlab_controller_server(mode, requestPort, replyPort, outputCount, con
 %   logFile       CSV of per-packet server timing            (default none)
 %   excitation    struct passed to make_excitation, plus .kind ('openloop' only)
 %   captureFile   CSV of aligned (u, y) per tick             ('openloop' only)
+%   featureCount  live feature-vector width, sizes the mpc warm-up so
+%                 featureChannel may address any live channel ('mpc' only;
+%                 0 = legacy outputCount-wide warm)
 %
 % Protocol:
 %   Request  = [uint32 seq][uint32 feature_count][feature_count x float32]
@@ -63,6 +66,13 @@ function matlab_controller_server(mode, requestPort, replyPort, outputCount, con
     cfg = set_default(cfg, 'referenceFile', '');   % mpc only: per-tick reference CSV
     cfg = set_default(cfg, 'mpcOpts',       struct());  % mpc only: MPC_OPTS overrides
     cfg = set_default(cfg, 'stimPairs',     []);   % mpc only: reply-slot mapping
+    % mpc only: width of the live feature vector, used to size the warm-up call.
+    % mpc_test latches its input length (P.ny_feat) on the FIRST call and
+    % fit_length truncates/pads everything after, so warming with a vector
+    % narrower than the live features silently capped featureChannel at
+    % outputCount (=8) -- found 2026-08-29. 0 = legacy behavior (warm with
+    % outputCount-wide zeros), kept for byte-identical old-caller behavior.
+    cfg = set_default(cfg, 'featureCount',  0);
 
     mode          = lower(string(cfg.mode));
     requestPort   = double(cfg.requestPort);
@@ -131,16 +141,31 @@ function matlab_controller_server(mode, requestPort, replyPort, outputCount, con
         % warm calls, then a STATE-ONLY reset -- a full reset here would discard
         % the warmed problem and re-pay init on the first real packet, which is
         % exactly what the warm-up exists to avoid.
+        % The warm vector's WIDTH is load-bearing: mpc_test latches P.ny_feat on
+        % this first call and truncates every later feature vector to it, so it
+        % must match the live width (cfg.featureCount) or featureChannel above
+        % the warm width throws BadFeatureChannel mid-run. The QP itself depends
+        % only on model dims, so warming wider changes nothing else.
+        warmWidth = max(round(double(cfg.featureCount)), outputCount);
+        if cfg.featureCount > 0 && isfield(cfg.mpcOpts, 'featureChannel') ...
+                && cfg.mpcOpts.featureChannel > cfg.featureCount
+            error('matlab_controller_server:BadFeatureChannel', ...
+                  'mpcOpts.featureChannel=%d exceeds featureCount=%d.', ...
+                  cfg.mpcOpts.featureChannel, cfg.featureCount);
+        end
         mpc_test([]);
         try
             for k = 1:3
-                mpc_test(zeros(outputCount, 1));
+                mpc_test(zeros(warmWidth, 1));
             end
         catch warmErr
             fprintf('Controller warm-up skipped (%s). First reply may be late.\n', ...
                     warmErr.identifier);
         end
         mpc_test('state');   % zero xhat/u_last/tick, keep the warmed problem
+        if cfg.featureCount > 0
+            fprintf('mpc: warmed for %d-wide feature vectors (featureCount).\n', warmWidth);
+        end
 
     elseif mode == "openloop"
         % Open-loop system-ID excitation. The whole sequence is generated up front

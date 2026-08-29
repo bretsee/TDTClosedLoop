@@ -22,10 +22,11 @@ param(
 
     # Recording channels fed to the controller (argv[3] / mpcInputCount).
     # MUST match what the PO8e actually streams -- the .exe prints
-    # "Streaming. numChannels=N" at startup. Asking for more than N is not an
-    # error, it just zero-pads the extra features, which then pollute the fit.
-    # Measured 2026-08-14: the card delivers 16. Raise this to 32 only once the
-    # card reports 32.
+    # "Streaming. numChannels=N" at startup. Since 2026-08-29 asking for MORE
+    # than N is a FATAL startup error (the padded features are exact zeros and
+    # poison fits; --allow-channel-pad overrides for deliberate debugging).
+    # Asking for fewer warns and uses the first M channels (legitimate 16-ch
+    # fallback on a 32-ch circuit). Raise to 32 only once the card reports 32.
     [int]    $InputChannels = 16,
 
     # UDP words per packet = BIPOLAR STIM PAIRS. The RZ2 receive gizmo reads 8;

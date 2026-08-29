@@ -943,6 +943,13 @@ int main(int argc, char** argv)
     //                            whatever the carrier phase. Same rule as
     //                            --feature-signed: capture and deploy must
     //                            share the trim mode.
+    //   --allow-channel-pad      permit MPC input size (argv[3]) > stream width.
+    //                            Without it that mismatch is a FATAL startup
+    //                            error, because the padded features are exact
+    //                            zeros and silently poison any fit (2026-08-29).
+    //                            The opposite direction (stream wider than
+    //                            requested) is a warning only -- a legitimate
+    //                            16-ch fallback on a 32-ch circuit.
     //   --stream-fs <hz>         hardware PO8e stream rate (default 610.3515625
     //                            = base 24414.0625/40; pass 1220.703125 =
     //                            base/20 for the 2x Synapse circuit, with
@@ -1017,6 +1024,12 @@ int main(int argc, char** argv)
     // Drop the K largest-|x| samples per feature window (--feature-trim,
     // 2026-08-25). 0 = off, byte-identical to the validated default path.
     size_t featureTrim = 0;
+    // Requesting more input channels than the stream carries makes the extra
+    // features EXACT ZEROS (computeMeanAbsSamples writes only the first
+    // min(inputCount, streamWidth)), which silently poisons any fit on the
+    // capture. That is a hard startup error unless this flag is passed
+    // (--allow-channel-pad, deliberate debugging only, 2026-08-29).
+    bool allowChannelPad = false;
     // Hardware PO8e stream rate. The PLL and tick period derive from this, so
     // it MUST match the Synapse circuit's Wav divisor (base/40 default;
     // base/20 = 1220.703125 for the 2x-LFP-rate option, 2026-08-25).
@@ -1069,6 +1082,10 @@ int main(int argc, char** argv)
         {
             featureTrim = static_cast<size_t>(std::max(0, std::atoi(argv[i + 1])));
             ++i;
+        }
+        else if (arg == "--allow-channel-pad")
+        {
+            allowChannelPad = true;
         }
         else if (arg == "--stream-fs" && (i + 1) < argc)
         {
@@ -1174,6 +1191,11 @@ int main(int argc, char** argv)
     // Mirrors udpOutputCount (which is scoped inside the try) so the cleanup
     // paths know how many words to zero.
     size_t activeUdpOutputCount = 0;
+    // Requested-vs-stream channel reconciliation, set once the stream width is
+    // known; echoed in the loop banner and the summary so every log
+    // self-documents which channels the features actually covered.
+    const char* channelMode = "exact";
+    int streamChannelCount = 0;
     SOCKET localhostControllerSock = INVALID_SOCKET;
     bool udpReady = false;
         std::ofstream validateLog;
@@ -1323,6 +1345,37 @@ int main(int argc, char** argv)
             std::printf("FATAL: unsupported stream sample size %d bytes -- check the Synapse "
                         "gizmo data format (expected int16 or float32).\n", sampleBytes);
             return 1;
+        }
+        // Reconcile the requested controller width (argv[3]) with what the stream
+        // actually carries. The two numbers meet only inside
+        // computeMeanAbsSamples(), which pads with exact zeros or truncates with
+        // no error in either direction -- and zero-padded features silently
+        // poison every downstream fit. Nothing has been sent to the RZ2 yet, so
+        // refusing here is free.
+        streamChannelCount = nCh;
+        if (mpcInputCount > (size_t)nCh)
+        {
+            channelMode = "pad";
+            if (!allowChannelPad)
+            {
+                std::printf("FATAL: MPC input size %zu > stream channels %d. Features %d..%zu would be\n"
+                            "       EXACT ZEROS and silently poison any fit on this capture.\n"
+                            "       Lower -InputChannels (argv[3]) to %d, or widen the Synapse PO8e tap,\n"
+                            "       or pass --allow-channel-pad for deliberate debugging only.\n",
+                            mpcInputCount, nCh, nCh + 1, mpcInputCount, nCh);
+                return 1;
+            }
+            std::printf("WARNING: --allow-channel-pad: features %d..%zu are EXACT ZEROS (stream\n"
+                        "         carries %d channels). Do NOT fit models on this capture.\n",
+                        nCh + 1, mpcInputCount, nCh);
+        }
+        else if (mpcInputCount < (size_t)nCh)
+        {
+            channelMode = "truncate";
+            std::printf("WARNING: stream carries %d channels but the controller uses only the first %zu;\n"
+                        "         channels %zu..%d are acquired and IGNORED. (Legitimate for a 16-ch\n"
+                        "         fallback on a 32-ch circuit; raise -InputChannels to use them all.)\n",
+                        nCh, mpcInputCount, mpcInputCount + 1, nCh);
         }
         // The RZ2 UDP receive gizmo reads 8 float words -- one per BIPOLAR STIM PAIR
         // (sSig[2k] = -sSig[2k-1], verified exact on 2026-08-12). Defaulting to the
@@ -1612,14 +1665,14 @@ int main(int argc, char** argv)
         if (tickFrames > 0)
         {
             const double streamFs = simInputEnabled ? simFs : streamFsHardware;
-            std::printf("Entering loop (MPC input size=%zu, UDP output count=%zu, control=FRAME-LOCKED %zu frames/tick (~%.4f Hz on the stream clock), ring capacity=%zu, matlabDelayTicks=%zu, maxControlTicks=%zu).\n",
-                        mpcInputCount, udpOutputCount, tickFrames, streamFs / (double)tickFrames,
+            std::printf("Entering loop (MPC input size=%zu, cardChannels=%d, channelMode=%s, UDP output count=%zu, control=FRAME-LOCKED %zu frames/tick (~%.4f Hz on the stream clock), ring capacity=%zu, matlabDelayTicks=%zu, maxControlTicks=%zu).\n",
+                        mpcInputCount, streamChannelCount, channelMode, udpOutputCount, tickFrames, streamFs / (double)tickFrames,
                         ringBufferCapacity, matlabStartDelayTicks, maxControlTicks);
         }
         else
         {
-            std::printf("Entering loop (MPC input size=%zu, UDP output count=%zu, control=100 Hz, ring capacity=%zu, matlabDelayTicks=%zu, maxControlTicks=%zu).\n",
-                        mpcInputCount, udpOutputCount, ringBufferCapacity, matlabStartDelayTicks, maxControlTicks);
+            std::printf("Entering loop (MPC input size=%zu, cardChannels=%d, channelMode=%s, UDP output count=%zu, control=100 Hz, ring capacity=%zu, matlabDelayTicks=%zu, maxControlTicks=%zu).\n",
+                        mpcInputCount, streamChannelCount, channelMode, udpOutputCount, ringBufferCapacity, matlabStartDelayTicks, maxControlTicks);
         }
 
         while (!stopped)
@@ -2222,7 +2275,7 @@ int main(int argc, char** argv)
         // 1) did the 100 Hz scheduler stay healthy?
         // 2) how expensive was each stage?
         // 3) in localhost mode, how often did we use fresh vs held vs zero output?
-        std::printf("\nSummary: packets=%llu controlTicks=%llu droppedControlTicks=%llu finalBuffered=%zu/%zu nominalWindowSamples=%zu minWindowSamples=%zu undersampledWindows=%llu\n",
+        std::printf("\nSummary: packets=%llu controlTicks=%llu droppedControlTicks=%llu finalBuffered=%zu/%zu nominalWindowSamples=%zu minWindowSamples=%zu undersampledWindows=%llu channelMode=%s(in=%zu card=%d)\n",
                     (unsigned long long)sentPackets,
                     (unsigned long long)controlTicks,
                     (unsigned long long)droppedControlTicks,
@@ -2230,7 +2283,8 @@ int main(int argc, char** argv)
                     ring.capacity,
                     nominalWindowSamples,
                     minWindowSamplesSeen,
-                    (unsigned long long)undersampledWindows);
+                    (unsigned long long)undersampledWindows,
+                    channelMode, mpcInputCount, streamChannelCount);
         std::printf("Acquisition: backlogFramesDropped=%llu (stale pre-start history "
                     "plus any mid-run catch-up; not a data loss the controller can see)\n",
                     (unsigned long long)backlogFramesDropped);

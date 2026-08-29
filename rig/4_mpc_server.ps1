@@ -51,6 +51,11 @@ param(
     # Feature channel the model's output was identified on (replaces the old
     # "hand-edit feature_map in mpc_test.m" step). 0 = legacy first-p mapping.
     [int]    $FeatureChannel = 0,
+    # Width of the LIVE feature vector = the loop's -InputChannels. Sizes the
+    # server's warm-up so any live channel is addressable; before 2026-08-29 the
+    # warm-up latched mpc_test at 8-wide and -FeatureChannel 9+ threw
+    # BadFeatureChannel mid-run. Pass 32 with a 32-ch circuit.
+    [int]    $FeatureCount   = 16,
     # Which AllModels slot to control from (default 10).
     [int]    $ModelIndex     = 0
 )
@@ -59,6 +64,12 @@ $repo = Split-Path -Parent $PSScriptRoot
 Set-Location $repo
 $mr = "C:\Program Files\MATLAB\R2025b"
 
+if ($FeatureChannel -gt $FeatureCount) {
+    Write-Host "FAIL: -FeatureChannel $FeatureChannel > -FeatureCount $FeatureCount." -ForegroundColor Red
+    Write-Host "      FeatureCount must be the loop's -InputChannels (the live feature" -ForegroundColor Yellow
+    Write-Host "      width). Pass -FeatureCount 32 when running the 32-ch circuit." -ForegroundColor Yellow
+    exit 1
+}
 if ([string]::IsNullOrWhiteSpace($Reference) -and [double]::IsNaN($Target)) {
     Write-Host "FAIL: either -Target <value> or -Reference <csv> is required." -ForegroundColor Red
     Write-Host "      Pick -Target from the feature range you actually observed in the" -ForegroundColor Yellow
@@ -142,7 +153,7 @@ $targetLine
 $modelLine
 cfg = struct('mode','mpc','requestPort',31000,'replyPort',31001, ...
              'outputCount',$Outputs,'maxPackets',$Ticks,'logFile','mpc_lat_$stamp.csv', ...
-             'captureFile','$capfile');
+             'captureFile','$capfile','featureCount',$FeatureCount);
 $optsLine
 $refLine
 $pairsLine

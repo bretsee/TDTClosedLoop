@@ -1,10 +1,18 @@
 # 0_preflight.ps1 -- run this FIRST, before touching the animal or the rig.
 # No hardware needed. Proves the toolchain still works and sets up the shell.
 #
-#   .\rig\0_preflight.ps1
+#   .\rig\0_preflight.ps1                     # 16-ch smoke (validated default)
+#   .\rig\0_preflight.ps1 -InputChannels 32   # rehearse the 32-ch width
 #
 # PASS means: the MATLAB runtime is on PATH, the .exe runs, and the control loop
 # holds its tick budget with zero dropped ticks.
+param(
+    # Width of the sim smoke test (argv[3] AND --sim-channels, kept equal so
+    # channelMode=exact). Run with 32 when the day will use the 32-ch circuit.
+    [int]    $InputChannels = 16,
+    # Rehearse a non-default stream rate (e.g. 1220.703125 for the 2x circuit).
+    [double] $SimFs = 610.3516
+)
 
 $ErrorActionPreference = 'Continue'
 $repo = Split-Path -Parent $PSScriptRoot
@@ -50,12 +58,9 @@ if (-not (Test-Path $backup)) {
 }
 
 # --- Smoke test: does the loop still hold its budget? ------------------------
-# $SimFs rehearses a non-default stream rate (e.g. 1220.703125 for the 2x
-# circuit); default stays the real base/40 rate.
-if (-not (Get-Variable -Name SimFs -ErrorAction SilentlyContinue)) { $SimFs = 610.3516 }
-Write-Host "  Running 300-tick smoke test (no hardware, ~5 s, sim-fs $SimFs)..." -ForegroundColor Gray
-$out = & .\MpcPo8eUdpClosedLoop.exe 127.0.0.1 . 16 --controller constant --constant-output 5 `
-        --sim-input sine --sim-fs $SimFs --sim-channels 16 --skip-udp-send `
+Write-Host "  Running 300-tick smoke test (no hardware, ~5 s, $InputChannels ch, sim-fs $SimFs)..." -ForegroundColor Gray
+$out = & .\MpcPo8eUdpClosedLoop.exe 127.0.0.1 . $InputChannels --controller constant --constant-output 5 `
+        --sim-input sine --sim-fs $SimFs --sim-channels $InputChannels --skip-udp-send `
         --max-control-ticks 300 --validate-log sim_smoke.csv 2>&1
 $exit = $LASTEXITCODE
 

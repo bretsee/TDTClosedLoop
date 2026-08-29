@@ -155,6 +155,14 @@ def main():
                          "blocks where Wav1 was dead, e.g. LD-260812)")
     ap.add_argument("--events", choices=["probe", "pulse"], default="probe")
     ap.add_argument("--channels", type=int, nargs="+", default=None)
+    ap.add_argument("--own-pair", choices=["legacy", "none"], default="legacy",
+                    help="which recording channels are a stim pair's OWN "
+                         "electrodes (excluded from the verdict). 'legacy' "
+                         "(default) = recording ch (2k-1, 2k) ARE stim pair k's "
+                         "electrodes -- true for the original co-indexed 16-ch "
+                         "setup. 'none' = the recording headstage is separate "
+                         "from the stim electrodes (e.g. the 32-ch cortical "
+                         "array): no channel is masked, the verdict scores all.")
     ap.add_argument("--pre-ms", type=float, default=None,
                     help="epoch pre window (default: 25 probe / 2 pulse)")
     ap.add_argument("--post-ms", type=float, default=None,
@@ -289,7 +297,8 @@ def main():
                 else:
                     frac[k] = float("nan")
             rows.append(dict(channel=ch, n_trials=int(ep.shape[0]),
-                             own_pair=(ch in (2 * w + 1, 2 * w + 2)),
+                             own_pair=(args.own_pair == "legacy"
+                                       and ch in (2 * w + 1, 2 * w + 2)),
                              peak=peak, peak_over_noise=peak / max(sigma_mean, 1e-15),
                              std_ratio=std_ratio, noise_source=noise_src,
                              width_samples=width_samp, width_ms=width_ms,
@@ -303,11 +312,16 @@ def main():
     # ---- report ------------------------------------------------------------
     k0 = args.trim_k[0]
     print("\nper stim word, top channels by artifact std ratio "
-          "(post-event window vs %s baseline).\n"
-          "  Channels marked * are the stim pair's OWN electrodes (2k-1, 2k):\n"
-          "  always artifact-saturated, never usable for control, and EXCLUDED\n"
-          "  from the verdict -- the verdict scores the controllable channels."
+          "(post-event window vs %s baseline)."
           % ("quiet-segment" if S is not None else "pre-event"))
+    if args.own_pair == "legacy":
+        print("  own-pair mode LEGACY: channels marked * are the stim pair's OWN\n"
+              "  electrodes (2k-1, 2k): always artifact-saturated, never usable for\n"
+              "  control, and EXCLUDED from the verdict -- the verdict scores the\n"
+              "  controllable channels.")
+    else:
+        print("  own-pair mode NONE: recording headstage is separate from the stim\n"
+              "  electrodes; no channel is masked and the verdict scores ALL channels.")
     print("  word  ch    trials  stdRatio  peak/noise  width(samp/ms)  tau_ms  "
           "hf>150Hz  tick0 full/trim%d/base  artifactFrac(k=%d)" % (k0, k0))
     dominant = moderate = False

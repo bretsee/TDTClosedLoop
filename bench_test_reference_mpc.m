@@ -311,6 +311,50 @@ function bench_test_reference_mpc
         isequal(uFF1, uFF2) && strcmp(warnId, 'mpc_test:ObserverDisabled'), ...
         sprintf('u identical under y=0 and y=100; warning %s', warnId));
 
+    % ---- 12. warm-up width fix (2026-08-29): a 16-wide warm-up must leave ---
+    % featureChannel 9..16 addressable. Before the fix the server warmed with
+    % zeros(8,1), latching P.ny_feat = 8, and fit_length truncated every live
+    % 16-wide vector -- featureChannel 12 threw BadFeatureChannel mid-run.
+    ok = true;
+    detail = '';
+    try
+        assignin('base', 'MPC_OPTS', struct('featureChannel', 12));
+        mpc_test([]);
+        for k = 1:3
+            mpc_test(zeros(16, 1));   % the server warm-up at featureCount 16
+        end
+        mpc_test('state');
+        yA = zeros(16, 1); yA(12) = 0.5;   % marker on the mapped channel
+        uMk = run_settled(yA, 0.5);
+        mpc_test('state');
+        uSil = run_settled(zeros(16, 1), 0.5);
+        ok = abs(uMk(1) - uSil(1)) > 1e-9;
+        detail = sprintf('u(ch12 loaded) = %.4g, u(ch12 silent) = %.4g (must differ)', ...
+                         uMk(1), uSil(1));
+    catch err
+        ok = false;
+        detail = err.message;
+    end
+    evalin('base', 'clear MPC_OPTS');
+    mpc_test([]);
+    fails = fails + report('warm width frees ch>8', ok, detail);
+
+    % ---- 13. ...and the bounds check still guards: an 8-wide warm-up with ---
+    % featureChannel 12 must throw BadFeatureChannel, not silently read junk.
+    ok = false;
+    detail = 'no error raised';
+    try
+        assignin('base', 'MPC_OPTS', struct('featureChannel', 12));
+        mpc_test([]);
+        mpc_test(zeros(8, 1));
+    catch err
+        ok = strcmp(err.identifier, 'mpc_test:BadFeatureChannel');
+        detail = sprintf('threw %s', err.identifier);
+    end
+    evalin('base', 'clear MPC_OPTS');
+    mpc_test([]);
+    fails = fails + report('narrow warm still guards', ok, detail);
+
     fprintf('\n%s\n', ternary(fails == 0, 'ALL BENCH TESTS PASS', ...
                               sprintf('%d BENCH TEST(S) FAILED', fails)));
     if fails > 0

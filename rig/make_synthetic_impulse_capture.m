@@ -1,4 +1,4 @@
-function make_synthetic_impulse_capture(outFile, respChannel, snr, noiseSeed)
+function make_synthetic_impulse_capture(outFile, respChannel, snr, noiseSeed, nU, nY)
 %MAKE_SYNTHETIC_IMPULSE_CAPTURE  Impulse-probe capture with a KNOWN response.
 %
 %   make_synthetic_impulse_capture('capture_synth_impulse.csv', 7, 3)
@@ -34,11 +34,18 @@ function make_synthetic_impulse_capture(outFile, respChannel, snr, noiseSeed)
     if nargin < 2 || isempty(respChannel), respChannel = 7;                       end
     if nargin < 3 || isempty(snr),         snr = 3;                               end
     if nargin < 4 || isempty(noiseSeed),   noiseSeed = 20260817;                  end
+    % Independent stim/recording widths; 16/16 defaults keep the committed
+    % fixture byte-identical (see make_synthetic_capture, 2026-08-29).
+    if nargin < 5 || isempty(nU),          nU = 16;                              end
+    if nargin < 6 || isempty(nY),          nY = 16;                              end
+    if respChannel > nY
+        error('make_synthetic_impulse_capture:BadRespChannel', ...
+              'respChannel %d > nY %d.', respChannel, nY);
+    end
 
     nTicks = 6000;
-    m = 16;
 
-    U = make_excitation('impulse', nTicks, m, ...
+    U = make_excitation('impulse', nTicks, nU, ...
                         struct('uMin', 0, 'uMax', 40, 'activeChannels', 3));
 
     % Second-order plant, poles 0.5 / 0.2 (tissue-speed -- see header), driven
@@ -54,8 +61,8 @@ function make_synthetic_impulse_capture(outFile, respChannel, snr, noiseSeed)
 
     sig = std(y);
     rs = noiseSeed;
-    Y = zeros(nTicks, m);
-    for ch = 1:m
+    Y = zeros(nTicks, nY);
+    for ch = 1:nY
         [rs, n] = local_randn(rs, nTicks);
         if ch == respChannel
             Y(:, ch) = 250 + y + (sig / snr) * n;   % MAV-like positive offset
@@ -69,8 +76,8 @@ function make_synthetic_impulse_capture(outFile, respChannel, snr, noiseSeed)
     tms  = (tick - 1) * 10;
 
     names = [{'tick', 'seq', 't_ms'}, ...
-             arrayfun(@(i) sprintf('u%d', i), 1:m, 'UniformOutput', false), ...
-             arrayfun(@(i) sprintf('y%d', i), 1:m, 'UniformOutput', false)];
+             arrayfun(@(i) sprintf('u%d', i), 1:nU, 'UniformOutput', false), ...
+             arrayfun(@(i) sprintf('y%d', i), 1:nY, 'UniformOutput', false)];
     T = array2table([tick, seq, tms, U, Y], 'VariableNames', names);
     writetable(T, outFile);
 
