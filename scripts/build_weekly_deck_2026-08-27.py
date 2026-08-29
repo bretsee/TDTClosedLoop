@@ -189,6 +189,159 @@ def fig_mpc() -> Path | None:
     return out
 
 
+def fig_week() -> Path:
+    """Timeline of the week's events plus the Monday target (quoted dates)."""
+    plt = _mpl()
+    FIG_DIR.mkdir(parents=True, exist_ok=True)
+    events = [
+        (25, "prep + control-horizon\nresult banked (Nu=20)", "#5B6470", 1),
+        (26, "suite day: preflight, quiet\ncapture, nThw 150/150", "#5B6470", -1),
+        (26.96, "23:00 BLOCKER\nPO8e zero frames", "#B3413A", 1),
+        (27.4, "root cause: card unseated\nreseat -> both gates GREEN", "#3F7A4E", -1),
+        (31, "acute experiment\nGO from Phase 0", "#3F7A4E", 1),
+    ]
+    fig, ax = plt.subplots(figsize=(11.8, 2.3))
+    ax.axhline(0, color="#444A52", lw=1.2, zorder=1)
+    for x, label, color, side in events:
+        ax.plot([x], [0], "o", ms=9, color=color, zorder=3)
+        ax.annotate(label, (x, 0), xytext=(0, 26 * side), textcoords="offset points",
+                    ha="center", va="bottom" if side > 0 else "top",
+                    fontsize=8.5, color=color)
+    ax.axvspan(28, 30.5, color="#5B6470", alpha=0.08, zorder=0)
+    ax.text(29.25, 0.02, "weekend", ha="center", fontsize=8, color="#5B6470")
+    ax.set_xlim(24.3, 31.9)
+    ax.set_ylim(-1, 1)
+    ax.set_yticks([])
+    ax.set_xticks([25, 26, 27, 28, 31])
+    ax.set_xticklabels(["Tue 08-25", "Wed 08-26", "Thu 08-27", "Fri 08-28", "Mon 08-31"])
+    for sp in ("left", "bottom"):
+        ax.spines[sp].set_visible(False)
+    ax.tick_params(length=0)
+    out = FIG_DIR / "weekly27_week.png"
+    fig.tight_layout()
+    fig.savefig(out, dpi=200, bbox_inches="tight")
+    plt.close(fig)
+    return out
+
+
+def _read_u_and_ref(cap_name, ref_name, skip=50):
+    """u1 from a capture + the reference affine-mapped into u-units (LS fit,
+    same skip as the tracking scorer so the startup transient is excluded)."""
+    import numpy as np
+    hdr, data = _csv_cols(REPO / cap_name)
+    ui = next(i for i, h in enumerate(hdr) if h.strip().lower() == "u1")
+    u = np.array([float(r[ui]) for r in data])
+    rhdr, rdata = _csv_cols(REPO / ref_name)
+    ri = next(i for i, h in enumerate(rhdr) if h.strip().lower() == "r1")
+    r = np.array([float(row[ri]) for row in rdata])
+    n = min(len(u), len(r))
+    u, r = u[skip:n], r[skip:n]
+    a, b = np.polyfit(r, u, 1)
+    return u, a * r + b
+
+
+def fig_horizon() -> Path | None:
+    """cl4 vs cl5 (2026-08-25 saline): commanded u against the reference scaled
+    by the fitted slope, one shared u-unit axis per panel (no dual axes)."""
+    try:
+        cl4 = json.loads((REPO / "tracking_cl4.json").read_text())
+        cl5 = json.loads((REPO / "tracking_cl5.json").read_text())
+        runs = []
+        for d, title in ((cl4, "cl4: step reference, Nu=2"),
+                         (cl5, "cl5: touch-template reference, Nu=20")):
+            s = d["per_channel"][0]["slope_u_on_r"]["u1"]
+            u, r = _read_u_and_ref(d["capture"], d["ref"], d["skip_ticks"])
+            runs.append((title, s, u, r))
+    except (OSError, KeyError, StopIteration, ValueError) as e:
+        print(f"NOTE: could not build control-horizon figure ({e}) -- skipping")
+        return None
+    plt = _mpl()
+    FIG_DIR.mkdir(parents=True, exist_ok=True)
+    fig, axes = plt.subplots(1, 2, figsize=(11.4, 2.7))
+    for ax, (title, s, u, r) in zip(axes, runs):
+        ax.step(range(len(r)), r, color="#5B6470", lw=1.2, where="post",
+                label=f"reference, affine-mapped to u (scorer slope {s:.1f})")
+        ax.plot(range(len(u)), u, color="#3F7A4E", lw=1.0, label="commanded u1")
+        ax.set_title(title, fontsize=10, color="black")
+        ax.set_xlabel("tick (10 ms)")
+        ax.legend(frameon=False, fontsize=8.5, loc="upper left")
+    axes[0].set_ylabel("u1 (stim amplitude)")
+    out = FIG_DIR / "weekly27_horizon.png"
+    fig.tight_layout()
+    fig.savefig(out, dpi=200, bbox_inches="tight")
+    plt.close(fig)
+    return out
+
+
+def fig_plan() -> Path:
+    """Monday time budget as a cumulative timeline (same rows as the plan table;
+    phase 6 shows its 4.5 h budget solid + the 6 h stretch hatched)."""
+    plt = _mpl()
+    FIG_DIR.mkdir(parents=True, exist_ok=True)
+    phases = [  # (label, minutes, stretch_minutes)
+        ("0-1 bring-up + preflight + quiet", 45, 0),
+        ("2 thwack battery (10 sites)", 90, 0),
+        ("3-4 probing -> fit -> GO/NO-GO", 80, 0),
+        ("5 tapes + designs + NN training", 30, 0),
+        ("6 ARMS x sites (4 controllers)", 270, 90),
+        ("7 drift check + re-run + push", 30, 0),
+    ]
+    fig, ax = plt.subplots(figsize=(11.4, 2.9))
+    t = 0.0
+    for i, (label, mins, stretch) in enumerate(phases):
+        ax.barh(i, mins / 60, left=t / 60, color="#3F7A4E" if "GO/NO-GO" in label
+                else "#5B6470", height=0.62)
+        if stretch:
+            ax.barh(i, stretch / 60, left=(t + mins) / 60, color="none",
+                    edgecolor="#5B6470", hatch="///", height=0.62, lw=0.8)
+        ax.text((t + mins) / 60 + (stretch / 60) + 0.08, i, label, va="center",
+                fontsize=9, color="black")
+        t += mins + stretch
+    total_lo = sum(m for _, m, _ in phases) / 60
+    ax.set_yticks([])
+    ax.invert_yaxis()
+    ax.set_xlabel(f"elapsed hours (budget {total_lo:.1f} h; hatched = phase-6 stretch to 6 h -> {t/60:.1f} h)")
+    ax.set_xlim(0, 12.4)
+    out = FIG_DIR / "weekly27_plan.png"
+    fig.tight_layout()
+    fig.savefig(out, dpi=200, bbox_inches="tight")
+    plt.close(fig)
+    return out
+
+
+def fig_latency() -> Path | None:
+    """MATLAB-server turnaround distribution for the 08-27 MPC check,
+    recomputed from mpc_lat_20260827_184338.csv; 10 ms = loop -TimeoutMs."""
+    import numpy as np
+    p = REPO / "mpc_lat_20260827_184338.csv"
+    if not p.is_file():
+        print("NOTE: mpc_lat csv missing -- skipping latency figure")
+        return None
+    hdr, data = _csv_cols(p)
+    ti = next(i for i, h in enumerate(hdr) if h.strip().lower() == "turnaround_ms")
+    v = np.array([float(r[ti]) for r in data if r[ti].strip().lower() != "nan"])
+    over = float((v > 10).mean())
+    plt = _mpl()
+    FIG_DIR.mkdir(parents=True, exist_ok=True)
+    fig, ax = plt.subplots(figsize=(8.4, 2.6))
+    ax.hist(v, bins=np.arange(0, min(v.max(), 60) + 2, 1), color="#5B6470")
+    ax.axvline(10, color="#B3413A", lw=1.2, ls="--")
+    ax.text(10.6, ax.get_ylim()[1] * 0.9,
+            f"10 ms loop timeout\n{over*100:.0f}% of {len(v)} replies over it\n"
+            f"(p50 {np.percentile(v, 50):.1f} ms, p95 {np.percentile(v, 95):.1f} ms)",
+            fontsize=9, color="#B3413A", va="top")
+    ax.set_xlabel("MATLAB server turnaround (ms)")
+    ax.set_ylabel("ticks")
+    ax.set_title("08-27 MPC check: MATLAB server turnaround — a long-stall tail "
+                 "(~35-38 ms), the known behavior behind loop timeouts (cpp arms "
+                 "immune)", fontsize=10.5, color="black")
+    out = FIG_DIR / "weekly27_latency.png"
+    fig.tight_layout()
+    fig.savefig(out, dpi=200, bbox_inches="tight")
+    plt.close(fig)
+    return out
+
+
 # -------------------------------------------------------------------- build --
 def build(qs, mc, designed, figs):
     from pptx import Presentation
@@ -277,7 +430,8 @@ def build(qs, mc, designed, figs):
             "deferred saline gates then banked green the same session."),
         (0, "State: every pre-surgery gate is green. The Monday runbook "
             "(RIG_DAY_2026-08-31.md) is a GO from Phase 0."),
-    ])
+    ], top=1.5)
+    pic(s, figs["week"], 0.75, 4.85, 11.8)
 
     # -- control horizon -----------------------------------------------------
     s = new("Control-horizon result: Nu=20 standard set (08-25, saline)",
@@ -294,7 +448,9 @@ def build(qs, mc, designed, figs):
         (0, "NN training benchmark (28k-tick capture, 200 epochs, history 25): linear 14 s, "
             "mlp 15 s, residual_mlp 17 s, GRU 1062 s — day-of policy: GRU at ~50 epochs "
             "(~4-5 min) or skip."),
-    ])
+    ], top=1.5)
+    if figs.get("horizon"):
+        pic(s, figs["horizon"], 0.95, 4.55, 11.4)
 
     # -- suite bring-up ------------------------------------------------------
     s = new("Suite bring-up 2026-08-26: environment re-banked",
@@ -388,6 +544,18 @@ def build(qs, mc, designed, figs):
             "interpreting any null; stim enable ON immediately after 'go' (08-27 lesson)."),
     ], top=5.0)
 
+    # -- Monday time budget --------------------------------------------------
+    s = new("Monday at a glance: the time budget",
+            "Same phases as the runbook table; the day is decided by phase 6")
+    pic(s, figs["plan"], 0.95, 1.75, 11.4)
+    bullets(s, [
+        (0, "9.1 h budget (10.6 h with the phase-6 stretch) — phase 6 is half the day, "
+            "which is why every earlier phase banks a self-contained result and the cut "
+            "order (nncl -> nnol) is decided in advance."),
+        (0, "The GO/NO-GO gate (green) sits ~3.6 h in: if randomized probing fits no plant "
+            "(|corr| < 0.1), the day still banks the thwack battery + open-loop tapes."),
+    ], top=5.2)
+
     # -- risks ---------------------------------------------------------------
     s = new("Watch items / open risks")
     bullets(s, [
@@ -402,7 +570,9 @@ def build(qs, mc, designed, figs):
             "watchdog remains the durable ask)."),
         (0, "10 Mbps link negotiation on the RZ2 port persists (suspect cable) — harmless for "
             "control traffic; swap opportunistically, then re-run net_diag."),
-    ])
+    ], top=1.5)
+    if figs.get("latency"):
+        pic(s, figs["latency"], 2.5, 4.55, 8.4)
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     out = OUT_DIR / "ClosedLoop_weekly_2026-08-27.pptx"
@@ -430,7 +600,9 @@ def main():
     print(f"Recomputed: noise {qs['noise_lo']:.1f}-{qs['noise_hi']:.1f} uV "
           f"(ch13 {qs['noise_ch13']:.0f}), line {qs['line_med']*100:.0f}%, "
           f"designed probes {designed}, mpc slope {mc['slope_u']:.3f}")
-    figs = {"gate": fig_gate(), "noise": fig_noise(qs), "mpc": fig_mpc()}
+    figs = {"gate": fig_gate(), "noise": fig_noise(qs), "mpc": fig_mpc(),
+            "week": fig_week(), "horizon": fig_horizon(), "plan": fig_plan(),
+            "latency": fig_latency()}
     out = build(qs, mc, designed, figs)
     print(f"Wrote {out}")
 
