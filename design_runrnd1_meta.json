@@ -1,0 +1,1 @@
+{"kind":"impulse","nTicks":183000,"m":8,"generated":"2026-08-31 18:37:13","generator":"make_excitation.m","pulseAmps":[2,4,6,9,13,18,25],"gapTicks":36,"gapJitterMeanTicks":6,"uMin":0,"uMax":25,"schedule":"random","crossGuardTicks":2,"seed":2.0260818E+7}

@@ -1,0 +1,293 @@
+{
+  "seed": 20260827,
+  "baseline_volts": 0.00012,
+  "channel": 8,
+  "scale": 1.0,
+  "sham_scale": null,
+  "repeats": 100,
+  "gap_secs": 2.0,
+  "lead_secs": 2.0,
+  "signed": false,
+  "templates_dir": "C:\\Users\\brets\\Documents\\Repositories\\NNController\\outputs\\BiomimeticInversion\\touch\\Acute_2026-08-31",
+  "sham_transient_thresh": 0.00011080277775,
+  "sites": [
+    "D1",
+    "D2",
+    "D3",
+    "D4",
+    "P1",
+    "P2",
+    "P3",
+    "LP",
+    "MP",
+    "SHAM"
+  ],
+  "arms": {
+    "mpc": [
+      {
+        "order": 1,
+        "site": "LP",
+        "ref_csv": "day_2026-08-31\\ref_LP.csv",
+        "run_label": "mpc_LP",
+        "ticks": 22200
+      },
+      {
+        "order": 2,
+        "site": "D4",
+        "ref_csv": "day_2026-08-31\\ref_D4.csv",
+        "run_label": "mpc_D4",
+        "ticks": 22200
+      },
+      {
+        "order": 3,
+        "site": "D3",
+        "ref_csv": "day_2026-08-31\\ref_D3.csv",
+        "run_label": "mpc_D3",
+        "ticks": 22200
+      },
+      {
+        "order": 4,
+        "site": "P3",
+        "ref_csv": "day_2026-08-31\\ref_P3.csv",
+        "run_label": "mpc_P3",
+        "ticks": 22200
+      },
+      {
+        "order": 5,
+        "site": "P1",
+        "ref_csv": "day_2026-08-31\\ref_P1.csv",
+        "run_label": "mpc_P1",
+        "ticks": 22200
+      },
+      {
+        "order": 6,
+        "site": "D1",
+        "ref_csv": "day_2026-08-31\\ref_D1.csv",
+        "run_label": "mpc_D1",
+        "ticks": 22200
+      },
+      {
+        "order": 7,
+        "site": "MP",
+        "ref_csv": "day_2026-08-31\\ref_MP.csv",
+        "run_label": "mpc_MP",
+        "ticks": 22200
+      },
+      {
+        "order": 8,
+        "site": "P2",
+        "ref_csv": "day_2026-08-31\\ref_P2.csv",
+        "run_label": "mpc_P2",
+        "ticks": 22200
+      },
+      {
+        "order": 9,
+        "site": "SHAM",
+        "ref_csv": "day_2026-08-31\\ref_SHAM.csv",
+        "run_label": "mpc_SHAM",
+        "ticks": 22200
+      },
+      {
+        "order": 10,
+        "site": "D2",
+        "ref_csv": "day_2026-08-31\\ref_D2.csv",
+        "run_label": "mpc_D2",
+        "ticks": 22200
+      }
+    ],
+    "choi": [
+      {
+        "order": 1,
+        "site": "P1",
+        "ref_csv": "day_2026-08-31\\ref_P1.csv",
+        "run_label": "choi_P1",
+        "ticks": 22200
+      },
+      {
+        "order": 2,
+        "site": "P3",
+        "ref_csv": "day_2026-08-31\\ref_P3.csv",
+        "run_label": "choi_P3",
+        "ticks": 22200
+      },
+      {
+        "order": 3,
+        "site": "P2",
+        "ref_csv": "day_2026-08-31\\ref_P2.csv",
+        "run_label": "choi_P2",
+        "ticks": 22200
+      },
+      {
+        "order": 4,
+        "site": "SHAM",
+        "ref_csv": "day_2026-08-31\\ref_SHAM.csv",
+        "run_label": "choi_SHAM",
+        "ticks": 22200
+      },
+      {
+        "order": 5,
+        "site": "D2",
+        "ref_csv": "day_2026-08-31\\ref_D2.csv",
+        "run_label": "choi_D2",
+        "ticks": 22200
+      },
+      {
+        "order": 6,
+        "site": "D1",
+        "ref_csv": "day_2026-08-31\\ref_D1.csv",
+        "run_label": "choi_D1",
+        "ticks": 22200
+      },
+      {
+        "order": 7,
+        "site": "MP",
+        "ref_csv": "day_2026-08-31\\ref_MP.csv",
+        "run_label": "choi_MP",
+        "ticks": 22200
+      },
+      {
+        "order": 8,
+        "site": "LP",
+        "ref_csv": "day_2026-08-31\\ref_LP.csv",
+        "run_label": "choi_LP",
+        "ticks": 22200
+      },
+      {
+        "order": 9,
+        "site": "D3",
+        "ref_csv": "day_2026-08-31\\ref_D3.csv",
+        "run_label": "choi_D3",
+        "ticks": 22200
+      },
+      {
+        "order": 10,
+        "site": "D4",
+        "ref_csv": "day_2026-08-31\\ref_D4.csv",
+        "run_label": "choi_D4",
+        "ticks": 22200
+      }
+    ]
+  },
+  "site_templates": {
+    "D1": {
+      "block": "BSClosedLoop32-260831-180905",
+      "npz": "C:\\Users\\brets\\Documents\\Repositories\\NNController\\outputs\\BiomimeticInversion\\touch\\Acute_2026-08-31\\BSClosedLoop32-260831-180905.npz",
+      "ref_csv": "day_2026-08-31\\ref_D1.csv",
+      "ticks": 22200,
+      "scale": 1.0,
+      "event_peak_delta_volts": [
+        0.0003399577777777778
+      ],
+      "split_half_corr": 0.921,
+      "qc_pass": true
+    },
+    "D2": {
+      "block": "BSClosedLoop32-260831-182330",
+      "npz": "C:\\Users\\brets\\Documents\\Repositories\\NNController\\outputs\\BiomimeticInversion\\touch\\Acute_2026-08-31\\BSClosedLoop32-260831-182330.npz",
+      "ref_csv": "day_2026-08-31\\ref_D2.csv",
+      "ticks": 22200,
+      "scale": 1.0,
+      "event_peak_delta_volts": [
+        0.00036080472222222224
+      ],
+      "split_half_corr": 0.924,
+      "qc_pass": true
+    },
+    "D3": {
+      "block": "BSClosedLoop32-260831-182722",
+      "npz": "C:\\Users\\brets\\Documents\\Repositories\\NNController\\outputs\\BiomimeticInversion\\touch\\Acute_2026-08-31\\BSClosedLoop32-260831-182722.npz",
+      "ref_csv": "day_2026-08-31\\ref_D3.csv",
+      "ticks": 22200,
+      "scale": 1.0,
+      "event_peak_delta_volts": [
+        0.00034495472222222215
+      ],
+      "split_half_corr": 0.946,
+      "qc_pass": true
+    },
+    "D4": {
+      "block": "BSClosedLoop32-260831-180520",
+      "npz": "C:\\Users\\brets\\Documents\\Repositories\\NNController\\outputs\\BiomimeticInversion\\touch\\Acute_2026-08-31\\BSClosedLoop32-260831-180520.npz",
+      "ref_csv": "day_2026-08-31\\ref_D4.csv",
+      "ticks": 22200,
+      "scale": 1.0,
+      "event_peak_delta_volts": [
+        0.0005376913888888886
+      ],
+      "split_half_corr": 0.976,
+      "qc_pass": true
+    },
+    "P1": {
+      "block": "BSClosedLoop32-260831-181632",
+      "npz": "C:\\Users\\brets\\Documents\\Repositories\\NNController\\outputs\\BiomimeticInversion\\touch\\Acute_2026-08-31\\BSClosedLoop32-260831-181632.npz",
+      "ref_csv": "day_2026-08-31\\ref_P1.csv",
+      "ticks": 22200,
+      "scale": 1.0,
+      "event_peak_delta_volts": [
+        0.0005228588888888888
+      ],
+      "split_half_corr": 0.989,
+      "qc_pass": true
+    },
+    "P2": {
+      "block": "BSClosedLoop32-260831-183157",
+      "npz": "C:\\Users\\brets\\Documents\\Repositories\\NNController\\outputs\\BiomimeticInversion\\touch\\Acute_2026-08-31\\BSClosedLoop32-260831-183157.npz",
+      "ref_csv": "day_2026-08-31\\ref_P2.csv",
+      "ticks": 22200,
+      "scale": 1.0,
+      "event_peak_delta_volts": [
+        0.0003938038888888888
+      ],
+      "split_half_corr": 0.976,
+      "qc_pass": true
+    },
+    "P3": {
+      "block": "BSClosedLoop32-260831-180137",
+      "npz": "C:\\Users\\brets\\Documents\\Repositories\\NNController\\outputs\\BiomimeticInversion\\touch\\Acute_2026-08-31\\BSClosedLoop32-260831-180137.npz",
+      "ref_csv": "day_2026-08-31\\ref_P3.csv",
+      "ticks": 22200,
+      "scale": 1.0,
+      "event_peak_delta_volts": [
+        0.0005671505555555556
+      ],
+      "split_half_corr": 0.963,
+      "qc_pass": true
+    },
+    "LP": {
+      "block": "BSClosedLoop32-260831-182004",
+      "npz": "C:\\Users\\brets\\Documents\\Repositories\\NNController\\outputs\\BiomimeticInversion\\touch\\Acute_2026-08-31\\BSClosedLoop32-260831-182004.npz",
+      "ref_csv": "day_2026-08-31\\ref_LP.csv",
+      "ticks": 22200,
+      "scale": 1.0,
+      "event_peak_delta_volts": [
+        0.0005547675
+      ],
+      "split_half_corr": 0.981,
+      "qc_pass": true
+    },
+    "MP": {
+      "block": "BSClosedLoop32-260831-181248",
+      "npz": "C:\\Users\\brets\\Documents\\Repositories\\NNController\\outputs\\BiomimeticInversion\\touch\\Acute_2026-08-31\\BSClosedLoop32-260831-181248.npz",
+      "ref_csv": "day_2026-08-31\\ref_MP.csv",
+      "ticks": 22200,
+      "scale": 1.0,
+      "event_peak_delta_volts": [
+        0.0004995188888888888
+      ],
+      "split_half_corr": 0.967,
+      "qc_pass": true
+    },
+    "SHAM": {
+      "block": "BSClosedLoop32-260831-175746",
+      "npz": "C:\\Users\\brets\\Documents\\Repositories\\NNController\\outputs\\BiomimeticInversion\\touch\\Acute_2026-08-31\\BSClosedLoop32-260831-175746.npz",
+      "ref_csv": "day_2026-08-31\\ref_SHAM.csv",
+      "ticks": 22200,
+      "scale": 1.0,
+      "event_peak_delta_volts": [
+        3.8326944444444456e-05
+      ],
+      "split_half_corr": -0.076,
+      "qc_pass": true
+    }
+  }
+}

@@ -1,0 +1,1 @@
+{"kind":"prbs","nTicks":12000,"m":8,"generated":"2026-08-31 20:13:26","generator":"make_excitation.m","uMin":10,"uMax":30,"clockTicks":5,"seed":2.0260831E+7,"activeChannels":[1,4]}

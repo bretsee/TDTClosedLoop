@@ -1,0 +1,40 @@
+{
+ "label": "choi_mixr1",
+ "ref": "day_2026-08-31\\ref_mix_r1.csv",
+ "capture": "day_2026-08-31\\capture_choi_mixr1.csv",
+ "lti": null,
+ "n_ticks": 22150,
+ "skip_ticks": 50,
+ "y_channels": [
+  8
+ ],
+ "u_channels": [
+  1,
+  4
+ ],
+ "per_channel": [
+  {
+   "ref_col": 1,
+   "y_channel": 8,
+   "rmse": 8.942561300467356e-05,
+   "nrmse_ptp": 0.16119475817288062,
+   "nrmse_std": 2.3471612737175507,
+   "pearson_lag0": 0.5733119027537122,
+   "pearson_best": 0.715604524364847,
+   "best_lag_ticks": 1,
+   "slope_y_on_r": 1.1479563464690805,
+   "slope_u_on_r": {
+    "u1": 19979.059009958957,
+    "u4": 6611.967394384009
+   },
+   "tracking_index": 6.1434457530084305,
+   "eta": {
+    "n_transients": 83,
+    "peak_delay_ticks": 2,
+    "peak_ratio": 1.822578972417766
+   },
+   "verdict": "TRACKING"
+  }
+ ],
+ "overall": "TRACKING"
+}

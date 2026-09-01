@@ -1,0 +1,34 @@
+{
+ "label": "mpc_mixr1",
+ "ref": "day_2026-08-31\\ref_mix_r1.csv",
+ "capture": "capture_mpc_20260831_204354.csv",
+ "lti": null,
+ "n_ticks": 21507,
+ "skip_ticks": 50,
+ "y_channels": [
+  8
+ ],
+ "u_channels": [],
+ "per_channel": [
+  {
+   "ref_col": 1,
+   "y_channel": 8,
+   "rmse": 0.0001019312748518132,
+   "nrmse_ptp": 0.1837369255621737,
+   "nrmse_std": 2.6511888080883903,
+   "pearson_lag0": 0.004433201209802526,
+   "pearson_best": 0.02984260467533248,
+   "best_lag_ticks": 21,
+   "slope_y_on_r": 0.006603056987643568,
+   "slope_u_on_r": {},
+   "tracking_index": 0.9871796117493616,
+   "eta": {
+    "n_transients": 81,
+    "peak_delay_ticks": 68,
+    "peak_ratio": -0.04619507352131409
+   },
+   "verdict": "NOT TRACKING"
+  }
+ ],
+ "overall": "NOT TRACKING"
+}

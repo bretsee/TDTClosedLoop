@@ -1,0 +1,524 @@
+{
+ "run": 3,
+ "seed": 202608313,
+ "sites": [
+  "D1",
+  "D2",
+  "D3",
+  "P2",
+  "LP",
+  "SHAM"
+ ],
+ "counts": {
+  "D1": 16,
+  "D2": 17,
+  "D3": 17,
+  "P2": 16,
+  "LP": 17,
+  "SHAM": 17
+ },
+ "lead_ticks": 172,
+ "period_ticks": 220,
+ "events": [
+  {
+   "event": 1,
+   "site": "LP",
+   "onset_tick": 203
+  },
+  {
+   "event": 2,
+   "site": "D1",
+   "onset_tick": 423
+  },
+  {
+   "event": 3,
+   "site": "D3",
+   "onset_tick": 643
+  },
+  {
+   "event": 4,
+   "site": "SHAM",
+   "onset_tick": 863
+  },
+  {
+   "event": 5,
+   "site": "P2",
+   "onset_tick": 1083
+  },
+  {
+   "event": 6,
+   "site": "D2",
+   "onset_tick": 1303
+  },
+  {
+   "event": 7,
+   "site": "P2",
+   "onset_tick": 1523
+  },
+  {
+   "event": 8,
+   "site": "D2",
+   "onset_tick": 1743
+  },
+  {
+   "event": 9,
+   "site": "SHAM",
+   "onset_tick": 1963
+  },
+  {
+   "event": 10,
+   "site": "LP",
+   "onset_tick": 2183
+  },
+  {
+   "event": 11,
+   "site": "D3",
+   "onset_tick": 2403
+  },
+  {
+   "event": 12,
+   "site": "D1",
+   "onset_tick": 2623
+  },
+  {
+   "event": 13,
+   "site": "SHAM",
+   "onset_tick": 2843
+  },
+  {
+   "event": 14,
+   "site": "D2",
+   "onset_tick": 3063
+  },
+  {
+   "event": 15,
+   "site": "P2",
+   "onset_tick": 3283
+  },
+  {
+   "event": 16,
+   "site": "LP",
+   "onset_tick": 3503
+  },
+  {
+   "event": 17,
+   "site": "D3",
+   "onset_tick": 3723
+  },
+  {
+   "event": 18,
+   "site": "D1",
+   "onset_tick": 3943
+  },
+  {
+   "event": 19,
+   "site": "D3",
+   "onset_tick": 4163
+  },
+  {
+   "event": 20,
+   "site": "D1",
+   "onset_tick": 4383
+  },
+  {
+   "event": 21,
+   "site": "P2",
+   "onset_tick": 4603
+  },
+  {
+   "event": 22,
+   "site": "LP",
+   "onset_tick": 4823
+  },
+  {
+   "event": 23,
+   "site": "D2",
+   "onset_tick": 5043
+  },
+  {
+   "event": 24,
+   "site": "SHAM",
+   "onset_tick": 5263
+  },
+  {
+   "event": 25,
+   "site": "P2",
+   "onset_tick": 5483
+  },
+  {
+   "event": 26,
+   "site": "LP",
+   "onset_tick": 5703
+  },
+  {
+   "event": 27,
+   "site": "D2",
+   "onset_tick": 5923
+  },
+  {
+   "event": 28,
+   "site": "D3",
+   "onset_tick": 6143
+  },
+  {
+   "event": 29,
+   "site": "SHAM",
+   "onset_tick": 6363
+  },
+  {
+   "event": 30,
+   "site": "D1",
+   "onset_tick": 6583
+  },
+  {
+   "event": 31,
+   "site": "LP",
+   "onset_tick": 6803
+  },
+  {
+   "event": 32,
+   "site": "SHAM",
+   "onset_tick": 7023
+  },
+  {
+   "event": 33,
+   "site": "D3",
+   "onset_tick": 7243
+  },
+  {
+   "event": 34,
+   "site": "D1",
+   "onset_tick": 7463
+  },
+  {
+   "event": 35,
+   "site": "D2",
+   "onset_tick": 7683
+  },
+  {
+   "event": 36,
+   "site": "P2",
+   "onset_tick": 7903
+  },
+  {
+   "event": 37,
+   "site": "LP",
+   "onset_tick": 8123
+  },
+  {
+   "event": 38,
+   "site": "D3",
+   "onset_tick": 8343
+  },
+  {
+   "event": 39,
+   "site": "D1",
+   "onset_tick": 8563
+  },
+  {
+   "event": 40,
+   "site": "D2",
+   "onset_tick": 8783
+  },
+  {
+   "event": 41,
+   "site": "P2",
+   "onset_tick": 9003
+  },
+  {
+   "event": 42,
+   "site": "SHAM",
+   "onset_tick": 9223
+  },
+  {
+   "event": 43,
+   "site": "D1",
+   "onset_tick": 9443
+  },
+  {
+   "event": 44,
+   "site": "D3",
+   "onset_tick": 9663
+  },
+  {
+   "event": 45,
+   "site": "SHAM",
+   "onset_tick": 9883
+  },
+  {
+   "event": 46,
+   "site": "P2",
+   "onset_tick": 10103
+  },
+  {
+   "event": 47,
+   "site": "D2",
+   "onset_tick": 10323
+  },
+  {
+   "event": 48,
+   "site": "LP",
+   "onset_tick": 10543
+  },
+  {
+   "event": 49,
+   "site": "D2",
+   "onset_tick": 10763
+  },
+  {
+   "event": 50,
+   "site": "LP",
+   "onset_tick": 10983
+  },
+  {
+   "event": 51,
+   "site": "P2",
+   "onset_tick": 11203
+  },
+  {
+   "event": 52,
+   "site": "SHAM",
+   "onset_tick": 11423
+  },
+  {
+   "event": 53,
+   "site": "D1",
+   "onset_tick": 11643
+  },
+  {
+   "event": 54,
+   "site": "D3",
+   "onset_tick": 11863
+  },
+  {
+   "event": 55,
+   "site": "D2",
+   "onset_tick": 12083
+  },
+  {
+   "event": 56,
+   "site": "D1",
+   "onset_tick": 12303
+  },
+  {
+   "event": 57,
+   "site": "SHAM",
+   "onset_tick": 12523
+  },
+  {
+   "event": 58,
+   "site": "P2",
+   "onset_tick": 12743
+  },
+  {
+   "event": 59,
+   "site": "LP",
+   "onset_tick": 12963
+  },
+  {
+   "event": 60,
+   "site": "D3",
+   "onset_tick": 13183
+  },
+  {
+   "event": 61,
+   "site": "D3",
+   "onset_tick": 13403
+  },
+  {
+   "event": 62,
+   "site": "LP",
+   "onset_tick": 13623
+  },
+  {
+   "event": 63,
+   "site": "SHAM",
+   "onset_tick": 13843
+  },
+  {
+   "event": 64,
+   "site": "P2",
+   "onset_tick": 14063
+  },
+  {
+   "event": 65,
+   "site": "D1",
+   "onset_tick": 14283
+  },
+  {
+   "event": 66,
+   "site": "D2",
+   "onset_tick": 14503
+  },
+  {
+   "event": 67,
+   "site": "LP",
+   "onset_tick": 14723
+  },
+  {
+   "event": 68,
+   "site": "SHAM",
+   "onset_tick": 14943
+  },
+  {
+   "event": 69,
+   "site": "P2",
+   "onset_tick": 15163
+  },
+  {
+   "event": 70,
+   "site": "D2",
+   "onset_tick": 15383
+  },
+  {
+   "event": 71,
+   "site": "D1",
+   "onset_tick": 15603
+  },
+  {
+   "event": 72,
+   "site": "D3",
+   "onset_tick": 15823
+  },
+  {
+   "event": 73,
+   "site": "SHAM",
+   "onset_tick": 16043
+  },
+  {
+   "event": 74,
+   "site": "D1",
+   "onset_tick": 16263
+  },
+  {
+   "event": 75,
+   "site": "LP",
+   "onset_tick": 16483
+  },
+  {
+   "event": 76,
+   "site": "D2",
+   "onset_tick": 16703
+  },
+  {
+   "event": 77,
+   "site": "P2",
+   "onset_tick": 16923
+  },
+  {
+   "event": 78,
+   "site": "D3",
+   "onset_tick": 17143
+  },
+  {
+   "event": 79,
+   "site": "D3",
+   "onset_tick": 17363
+  },
+  {
+   "event": 80,
+   "site": "LP",
+   "onset_tick": 17583
+  },
+  {
+   "event": 81,
+   "site": "D1",
+   "onset_tick": 17803
+  },
+  {
+   "event": 82,
+   "site": "P2",
+   "onset_tick": 18023
+  },
+  {
+   "event": 83,
+   "site": "D2",
+   "onset_tick": 18243
+  },
+  {
+   "event": 84,
+   "site": "SHAM",
+   "onset_tick": 18463
+  },
+  {
+   "event": 85,
+   "site": "D3",
+   "onset_tick": 18683
+  },
+  {
+   "event": 86,
+   "site": "SHAM",
+   "onset_tick": 18903
+  },
+  {
+   "event": 87,
+   "site": "P2",
+   "onset_tick": 19123
+  },
+  {
+   "event": 88,
+   "site": "LP",
+   "onset_tick": 19343
+  },
+  {
+   "event": 89,
+   "site": "D2",
+   "onset_tick": 19563
+  },
+  {
+   "event": 90,
+   "site": "D1",
+   "onset_tick": 19783
+  },
+  {
+   "event": 91,
+   "site": "LP",
+   "onset_tick": 20003
+  },
+  {
+   "event": 92,
+   "site": "SHAM",
+   "onset_tick": 20223
+  },
+  {
+   "event": 93,
+   "site": "P2",
+   "onset_tick": 20443
+  },
+  {
+   "event": 94,
+   "site": "D2",
+   "onset_tick": 20663
+  },
+  {
+   "event": 95,
+   "site": "D3",
+   "onset_tick": 20883
+  },
+  {
+   "event": 96,
+   "site": "D1",
+   "onset_tick": 21103
+  },
+  {
+   "event": 97,
+   "site": "D2",
+   "onset_tick": 21323
+  },
+  {
+   "event": 98,
+   "site": "LP",
+   "onset_tick": 21543
+  },
+  {
+   "event": 99,
+   "site": "SHAM",
+   "onset_tick": 21763
+  },
+  {
+   "event": 100,
+   "site": "D3",
+   "onset_tick": 21983
+  }
+ ]
+}

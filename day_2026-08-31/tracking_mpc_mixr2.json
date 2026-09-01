@@ -1,0 +1,40 @@
+{
+ "label": "mpc_mixr2",
+ "ref": "day_2026-08-31\\ref_mix_r2.csv",
+ "capture": "C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\capture_mpc_20260831_213029.csv",
+ "lti": null,
+ "n_ticks": 21298,
+ "skip_ticks": 50,
+ "y_channels": [
+  8
+ ],
+ "u_channels": [
+  1,
+  4
+ ],
+ "per_channel": [
+  {
+   "ref_col": 1,
+   "y_channel": 8,
+   "rmse": 9.759367803538634e-05,
+   "nrmse_ptp": 0.1759181603741862,
+   "nrmse_std": 2.5559472658263376,
+   "pearson_lag0": 0.38026780009148875,
+   "pearson_best": 0.7119623763448133,
+   "best_lag_ticks": 2,
+   "slope_y_on_r": 0.8326726546560773,
+   "slope_u_on_r": {
+    "u1": 7859.50277344163,
+    "u4": 21683.972905147122
+   },
+   "tracking_index": 5.121148545065131,
+   "eta": {
+    "n_transients": 80,
+    "peak_delay_ticks": 2,
+    "peak_ratio": 1.8959335437781397
+   },
+   "verdict": "TRACKING"
+  }
+ ],
+ "overall": "TRACKING"
+}
