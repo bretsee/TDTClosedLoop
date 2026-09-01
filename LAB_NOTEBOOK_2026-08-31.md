@@ -92,6 +92,44 @@ carrier phase; rules adopted (apps closed before runs, per-run margin check,
 ## End of session
 
 Stim wire zeroed (400 zero packets; note `send_envelope` flag is `--shape
-const`, not `--kind` — runbook line stale). Offline queue: per-site epoched
-scoring via `schedule_mix_r*.json`; 32-ch spatial-match analysis vs touch
-templates per arm; races-aware exclusions (first 3 min of rnd1); results deck.
+const`, not `--kind` — runbook line stale).
+
+---
+
+## OVERNIGHT ANALYSIS (run while the user slept; three parallel deep dives)
+
+Everything in `day_2026-08-31/analysis/` (13 figures, 3 summary JSONs,
+reproducible scripts; per-trial caches local-only, not committed). Deck:
+`PythonIntanAnalysis/outputs/Synthesis/AcuteClosedLoop_2026-08-31_results.pptx`
+(17 slides), builder `scripts/build_results_deck_2026-08-31.py`.
+
+**Refinements to the live conclusions (the honest version):**
+1. **MPC-vs-Choi is a TIE on shape fidelity at each arm's own best lag**
+   (Δr −0.007 [−0.034,+0.019], p=0.63, n=161 paired events) — the live "MPC
+   wins at lag 0" was Choi's run-1 latency sitting at +1 tick. MPC's real,
+   defensible advantages: **latency stability** (~2.1 ticks both runs vs Choi
+   1.3→1.8) and **within-run stability** (Choi decays −0.13 r/100 events at
+   best lag, both runs; MPC never degrades) → MPC wins outright beyond ~100
+   events. Plus **29.5% less charge** for the tied fidelity (Choi rides the
+   30 µA cap 48% of ticks; MPC hugs hold, never full-off).
+2. **SHAM catch trials clean**: false-touch 0/32 (MPC), 1/33 (Choi); d′ 4.2 /
+   3.6; Hold control flat (r 0.004±0.125) — tracking is controller action.
+3. **HEADLINE NEGATIVE — no site-selectivity**: Mahalanobis nearest-template
+   classification of arm-evoked 32-ch patterns = 19–22% vs 20% chance. One
+   control channel + one fixed stim footprint cannot choose WHICH site it
+   reproduces (the acute rank/selectivity ceiling, live). Touch itself IS
+   decodable (48% ten-way) — the ceiling is on the stim side.
+4. **Artifact confound in biological-space validation**: raw-Wav1 arm-event
+   averages are contaminated by overlapping continuous-stim artifact (Choi
+   worst); TRACKING verdicts are FEATURE-space. Single-pulse probes (artifact
+   separable) do show real touch-footprint responses (r 0.96–0.99), so drive
+   is real — but artifact-aware analysis (pulse-resolved 24 kHz, signed
+   features, trim) is the top queue item before claiming biological
+   reproduction during the arms.
+5. Peak overshoot ~2× on single-tick peaks (onset jitter, not gain);
+   sub-spontaneous-floor targets unreachable; final drift re-probe (opfit2)
+   had degraded PC timing (8.5% dropped ticks, 73 resyncs) — treat its fit as
+   indicative; cpp server didn't write latency CSVs for choi arm runs (add to
+   preflight checklist).
+6. Engineering: MATLAB server p50 1.69 ms vs cpp 17 µs (~100×); all four arm
+   runs p95 tick error < 1.9 ms, zero dropped ticks, no mid-run resyncs.

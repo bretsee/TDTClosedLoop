@@ -1,0 +1,87 @@
+{
+ "n_pairs": 161,
+ "mean_dr": 0.0682,
+ "ci": [
+  0.0395,
+  0.0961
+ ],
+ "p_perm": 0.0,
+ "cohen_d": 0.365,
+ "mpc_winrate": 0.64,
+ "per_site": {
+  "D1": {
+   "n": 32,
+   "mean_dr": 0.029,
+   "ci": [
+    -0.038,
+    0.091
+   ]
+  },
+  "D2": {
+   "n": 32,
+   "mean_dr": 0.117,
+   "ci": [
+    0.045,
+    0.188
+   ]
+  },
+  "D3": {
+   "n": 32,
+   "mean_dr": 0.066,
+   "ci": [
+    0.003,
+    0.13
+   ]
+  },
+  "P2": {
+   "n": 33,
+   "mean_dr": 0.042,
+   "ci": [
+    -0.014,
+    0.096
+   ]
+  },
+  "LP": {
+   "n": 32,
+   "mean_dr": 0.089,
+   "ci": [
+    0.025,
+    0.148
+   ]
+  }
+ },
+ "per_run": {
+  "r1": {
+   "n": 81,
+   "mean_dr": 0.147,
+   "ci": [
+    0.109,
+    0.185
+   ],
+   "winrate": 0.765
+  },
+  "r2": {
+   "n": 80,
+   "mean_dr": -0.012,
+   "ci": [
+    -0.048,
+    0.025
+   ],
+   "winrate": 0.512
+  }
+ },
+ "verdict_common_lag2": "MPC beats Choi",
+ "best_lag_control": {
+  "note": "Choi r1 scored at its best lag +1, Choi r2 and MPC at +2",
+  "n": 161,
+  "mean_dr": -0.0065,
+  "ci": [
+   -0.0348,
+   0.0196
+  ],
+  "p_perm": 0.63455,
+  "mpc_winrate": 0.528,
+  "verdict": "tie"
+ },
+ "verdict": "At matched latency the arms tie on shape fidelity; the common-lag(+2) MPC advantage in r1 reflects Choi's shorter (+1) latency there."
+}

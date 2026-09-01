@@ -1,0 +1,77 @@
+{
+ "MPC_real_absmod_mV": {
+  "n": 161,
+  "median": 0.9222,
+  "mean": 0.8746,
+  "p90": 1.0841
+ },
+ "MPC_sham_absmod_mV": {
+  "n": 32,
+  "median": 0.1775,
+  "mean": 0.1893,
+  "p90": 0.3095
+ },
+ "Choi_real_absmod_mV": {
+  "n": 167,
+  "median": 0.7601,
+  "mean": 0.7384,
+  "p90": 0.9566
+ },
+ "Choi_sham_absmod_mV": {
+  "n": 33,
+  "median": 0.137,
+  "mean": 0.133,
+  "p90": 0.1776
+ },
+ "Hold_real_absmod_mV": {
+  "n": 81,
+  "median": 0.2004,
+  "mean": 0.2201,
+  "p90": 0.4224
+ },
+ "Hold_sham_absmod_mV": {
+  "n": 16,
+  "median": 0.2463,
+  "mean": 0.2915,
+  "p90": 0.4643
+ },
+ "MPC_false_touch_rate": {
+  "rate": 0.0,
+  "n": 32,
+  "k": 0,
+  "statistic": "mean raw y8 over 21-tick pulse window, lag +2"
+ },
+ "MPC_real_hit_rate": {
+  "rate": 0.95,
+  "n": 161
+ },
+ "MPC_dprime": 4.24,
+ "Choi_false_touch_rate": {
+  "rate": 0.03,
+  "n": 33,
+  "k": 1,
+  "statistic": "mean raw y8 over 21-tick pulse window, lag +2"
+ },
+ "Choi_real_hit_rate": {
+  "rate": 0.862,
+  "n": 167
+ },
+ "Choi_dprime": 3.56,
+ "Hold_false_touch_rate": {
+  "rate": 0.062,
+  "n": 16,
+  "k": 1,
+  "statistic": "mean raw y8 over 21-tick pulse window, lag +2"
+ },
+ "Hold_real_hit_rate": {
+  "rate": 0.111,
+  "n": 81
+ },
+ "Hold_dprime": 0.1,
+ "sham_target_peak_mV": {
+  "median": 0.0383
+ },
+ "real_target_peak_mV": {
+  "median": 0.3608
+ }
+}

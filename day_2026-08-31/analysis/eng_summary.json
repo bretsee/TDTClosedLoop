@@ -1,0 +1,587 @@
+{
+ "generated": "2026-08-31 overnight analysis, part 3/3 (engineering)",
+ "sources": "loop CSVs/logs + server latency CSVs + command captures only (no TDT blocks)",
+ "nominal_tick_ms": 9.8304,
+ "server_latency": {
+  "matlab_turnaround_ms": {
+   "p50": 1.6863,
+   "p95": 2.9619,
+   "p99": 29.3336,
+   "max": 47.69,
+   "n": 42949,
+   "frac_over_tick": 0.0144
+  },
+  "matlab_compute_ms": {
+   "p50": 0.5708,
+   "p95": 0.9509,
+   "p99": 9.8369
+  },
+  "cpp_turnaround_ms": {
+   "p50": 0.0167,
+   "p95": 0.0286,
+   "p99": 0.0349,
+   "max": 0.3516,
+   "n": 211000,
+   "note": "choi-run server CSVs not written; cpp stats from rnd1/rndhi probe runs (same binary)"
+  },
+  "cpp_compute_ms": {
+   "p50": 0.0003,
+   "p95": 0.0006,
+   "p99": 0.0007
+  },
+  "p50_ratio_matlab_over_cpp": 101.0
+ },
+ "u_strategy_r1": {
+  "mpc": {
+   "pct_at_cap": 0.33783783783783783,
+   "pct_at_zero": 0.0,
+   "pct_near_hold": 48.898648648648646,
+   "mean_abs_du_uA": 0.11384905966350595
+  },
+  "choi": {
+   "pct_at_cap": 48.20720720720721,
+   "pct_at_zero": 6.445945945945946,
+   "pct_near_hold": 0.3355855855855856,
+   "mean_abs_du_uA": 0.5582405297808959
+  },
+  "slew_ratio_choi_over_mpc": 4.9
+ },
+ "charge_day_total_uA_ticks": 6115315.0,
+ "charge_note": "MPC captures log only submitted ticks; skipped ticks forward-filled (loop holds last command). Stacked bar = tonic+|u-hold| per the ledger definition; diamond = actual delivered sum(u), which for Choi off-ticks is below tonic+modulation.",
+ "runs": {
+  "rnd1": {
+   "kind": "probe (random excitation, cpp server)",
+   "ticks": 183000,
+   "server_lat": "server_lat_runrnd1.csv",
+   "loop": {
+    "mpc_ms": {
+     "p50": 0.028,
+     "p95": 0.041,
+     "p99": 0.051
+    },
+    "in_to_udp_ms": {
+     "p50": 0.036,
+     "p95": 0.052,
+     "p99": 0.062
+    },
+    "tick_err_ms": {
+     "p50": 0.1736,
+     "p95": 1.8264,
+     "p99": 1.8344,
+     "max": 11.095
+    }
+   },
+   "tick_health": {
+    "resyncs_total": 8,
+    "resyncs_startup": 3,
+    "resyncs_midrun": 2,
+    "midrun_resync_packets": [
+     16325,
+     16350
+    ],
+    "scheduler_resync_events_logged": 5,
+    "dropped_control_ticks": 88,
+    "phase_err_avg_ms": 0.7,
+    "phase_err_max_ms": 29.42,
+    "bins_p95_over_3ms": 1,
+    "loop_counters": {
+     "submitted": 183000,
+     "replies": 182999,
+     "failures": 0,
+     "timeouts": 0,
+     "staleDropped": 0,
+     "skippedWhileBusy": 0,
+     "freshTicks": 182999,
+     "heldTicks": 0,
+     "zeroTicks": 1
+    }
+   },
+   "charge": {
+    "nticks": 183000,
+    "capture_rows": 183000,
+    "held_channels": [],
+    "tonic_hold_uA_ticks": 0.0,
+    "modulation_uA_ticks": 46820.0,
+    "delivered_total_uA_ticks": 46820.0,
+    "delivered_total_uA_s": 460.0,
+    "mean_delivered_uA_per_tick_per_held_pair": null
+   }
+  },
+  "rndhi": {
+   "kind": "probe (random hi-amp, cpp server)",
+   "ticks": 28000,
+   "server_lat": "server_lat_runrndhi.csv",
+   "loop": {
+    "mpc_ms": {
+     "p50": 0.028,
+     "p95": 0.041,
+     "p99": 0.049
+    },
+    "in_to_udp_ms": {
+     "p50": 0.035,
+     "p95": 0.051,
+     "p99": 0.056
+    },
+    "tick_err_ms": {
+     "p50": 0.1726,
+     "p95": 1.8274,
+     "p99": 1.8344,
+     "max": 10.764
+    }
+   },
+   "tick_health": {
+    "resyncs_total": 3,
+    "resyncs_startup": 3,
+    "resyncs_midrun": 0,
+    "midrun_resync_packets": [],
+    "scheduler_resync_events_logged": 1,
+    "dropped_control_ticks": 1,
+    "phase_err_avg_ms": 0.71,
+    "phase_err_max_ms": 2.95,
+    "bins_p95_over_3ms": 0,
+    "loop_counters": {
+     "submitted": 28000,
+     "replies": 27999,
+     "failures": 0,
+     "timeouts": 0,
+     "staleDropped": 0,
+     "skippedWhileBusy": 0,
+     "freshTicks": 27999,
+     "heldTicks": 0,
+     "zeroTicks": 1
+    }
+   },
+   "charge": {
+    "nticks": 28000,
+    "capture_rows": 28000,
+    "held_channels": [],
+    "tonic_hold_uA_ticks": 0.0,
+    "modulation_uA_ticks": 13298.0,
+    "delivered_total_uA_ticks": 13298.0,
+    "delivered_total_uA_s": 131.0,
+    "mean_delivered_uA_per_tick_per_held_pair": null
+   }
+  },
+  "opfit": {
+   "kind": "probe (operating-point fit, design-driven)",
+   "ticks": 12000,
+   "server_lat": null,
+   "loop": {
+    "mpc_ms": {
+     "p50": 0.028,
+     "p95": 0.042,
+     "p99": 0.05
+    },
+    "in_to_udp_ms": {
+     "p50": 0.036,
+     "p95": 0.052,
+     "p99": 0.058
+    },
+    "tick_err_ms": {
+     "p50": 0.1766,
+     "p95": 1.8235,
+     "p99": 1.8334,
+     "max": 2.34
+    }
+   },
+   "tick_health": {
+    "resyncs_total": 3,
+    "resyncs_startup": 3,
+    "resyncs_midrun": 0,
+    "midrun_resync_packets": [],
+    "scheduler_resync_events_logged": 0,
+    "dropped_control_ticks": 0,
+    "phase_err_avg_ms": 0.69,
+    "phase_err_max_ms": 2.77,
+    "bins_p95_over_3ms": 0,
+    "loop_counters": {
+     "submitted": 12000,
+     "replies": 11999,
+     "failures": 0,
+     "timeouts": 0,
+     "staleDropped": 0,
+     "skippedWhileBusy": 0,
+     "freshTicks": 11999,
+     "heldTicks": 0,
+     "zeroTicks": 1
+    }
+   },
+   "charge": {
+    "nticks": 12000,
+    "capture_rows": 12000,
+    "held_channels": [
+     "u1",
+     "u4"
+    ],
+    "tonic_hold_uA_ticks": 480000.0,
+    "modulation_uA_ticks": 240000.0,
+    "delivered_total_uA_ticks": 481200.0,
+    "delivered_total_uA_s": 4730.0,
+    "mean_delivered_uA_per_tick_per_held_pair": 20.05
+   }
+  },
+  "mpc_mixr1": {
+   "kind": "arm MPC r1 - INERT first attempt (u frozen at hold; excluded)",
+   "ticks": 22200,
+   "server_lat": "mpc_lat_20260831_204354.csv",
+   "loop": {
+    "mpc_ms": {
+     "p50": 0.031,
+     "p95": 0.045,
+     "p99": 0.063
+    },
+    "in_to_udp_ms": {
+     "p50": 0.038,
+     "p95": 0.056,
+     "p99": 0.075
+    },
+    "tick_err_ms": {
+     "p50": 0.6726,
+     "p95": 1.6876,
+     "p99": 1.8534,
+     "max": 2.666
+    }
+   },
+   "tick_health": {
+    "resyncs_total": 2,
+    "resyncs_startup": 2,
+    "resyncs_midrun": 0,
+    "midrun_resync_packets": [],
+    "scheduler_resync_events_logged": 0,
+    "dropped_control_ticks": 0,
+    "phase_err_avg_ms": 0.71,
+    "phase_err_max_ms": 3.25,
+    "bins_p95_over_3ms": 0,
+    "loop_counters": {
+     "submitted": 21557,
+     "replies": 20505,
+     "failures": 0,
+     "timeouts": 1051,
+     "staleDropped": 1051,
+     "skippedWhileBusy": 643,
+     "freshTicks": 22117,
+     "heldTicks": 65,
+     "zeroTicks": 18
+    }
+   },
+   "charge": {
+    "nticks": 22200,
+    "capture_rows": 21557,
+    "held_channels": [
+     "u1",
+     "u4"
+    ],
+    "tonic_hold_uA_ticks": 888000.0,
+    "modulation_uA_ticks": 2973.0,
+    "delivered_total_uA_ticks": 889894.0,
+    "delivered_total_uA_s": 8748.0,
+    "mean_delivered_uA_per_tick_per_held_pair": 20.04
+   }
+  },
+  "mpc_mixr1b": {
+   "kind": "arm MPC r1 (valid)",
+   "ticks": 22200,
+   "server_lat": "mpc_lat_20260831_210645.csv",
+   "loop": {
+    "mpc_ms": {
+     "p50": 0.03,
+     "p95": 0.045,
+     "p99": 0.063
+    },
+    "in_to_udp_ms": {
+     "p50": 0.038,
+     "p95": 0.056,
+     "p99": 0.076
+    },
+    "tick_err_ms": {
+     "p50": 0.6676,
+     "p95": 1.6896,
+     "p99": 1.8466,
+     "max": 2.577
+    }
+   },
+   "tick_health": {
+    "resyncs_total": 4,
+    "resyncs_startup": 4,
+    "resyncs_midrun": 0,
+    "midrun_resync_packets": [],
+    "scheduler_resync_events_logged": 0,
+    "dropped_control_ticks": 0,
+    "phase_err_avg_ms": 0.77,
+    "phase_err_max_ms": 3.4,
+    "bins_p95_over_3ms": 0,
+    "loop_counters": {
+     "submitted": 21601,
+     "replies": 20557,
+     "failures": 0,
+     "timeouts": 1043,
+     "staleDropped": 1043,
+     "skippedWhileBusy": 599,
+     "freshTicks": 22027,
+     "heldTicks": 145,
+     "zeroTicks": 28
+    }
+   },
+   "charge": {
+    "nticks": 22200,
+    "capture_rows": 21601,
+    "held_channels": [
+     "u1",
+     "u4"
+    ],
+    "tonic_hold_uA_ticks": 888000.0,
+    "modulation_uA_ticks": 31558.0,
+    "delivered_total_uA_ticks": 915856.0,
+    "delivered_total_uA_s": 9003.0,
+    "mean_delivered_uA_per_tick_per_held_pair": 20.63
+   }
+  },
+  "choi_mixr1": {
+   "kind": "arm Choi r1",
+   "ticks": 22200,
+   "server_lat": null,
+   "loop": {
+    "mpc_ms": {
+     "p50": 0.029,
+     "p95": 0.042,
+     "p99": 0.052
+    },
+    "in_to_udp_ms": {
+     "p50": 0.037,
+     "p95": 0.051,
+     "p99": 0.06
+    },
+    "tick_err_ms": {
+     "p50": 0.6726,
+     "p95": 1.6986,
+     "p99": 1.8424,
+     "max": 2.524
+    }
+   },
+   "tick_health": {
+    "resyncs_total": 3,
+    "resyncs_startup": 3,
+    "resyncs_midrun": 0,
+    "midrun_resync_packets": [],
+    "scheduler_resync_events_logged": 0,
+    "dropped_control_ticks": 0,
+    "phase_err_avg_ms": 0.67,
+    "phase_err_max_ms": 3.33,
+    "bins_p95_over_3ms": 0,
+    "loop_counters": {
+     "submitted": 22200,
+     "replies": 22199,
+     "failures": 0,
+     "timeouts": 0,
+     "staleDropped": 0,
+     "skippedWhileBusy": 0,
+     "freshTicks": 22199,
+     "heldTicks": 0,
+     "zeroTicks": 1
+    }
+   },
+   "charge": {
+    "nticks": 22200,
+    "capture_rows": 22200,
+    "held_channels": [
+     "u1",
+     "u4"
+    ],
+    "tonic_hold_uA_ticks": 888000.0,
+    "modulation_uA_ticks": 432404.0,
+    "delivered_total_uA_ticks": 1186004.0,
+    "delivered_total_uA_s": 11659.0,
+    "mean_delivered_uA_per_tick_per_held_pair": 26.71
+   }
+  },
+  "mpc_mixr2": {
+   "kind": "arm MPC r2",
+   "ticks": 22200,
+   "server_lat": "mpc_lat_20260831_213029.csv",
+   "loop": {
+    "mpc_ms": {
+     "p50": 0.03,
+     "p95": 0.047,
+     "p99": 0.067
+    },
+    "in_to_udp_ms": {
+     "p50": 0.038,
+     "p95": 0.058,
+     "p99": 0.08
+    },
+    "tick_err_ms": {
+     "p50": 0.6706,
+     "p95": 1.6786,
+     "p99": 1.8414,
+     "max": 2.664
+    }
+   },
+   "tick_health": {
+    "resyncs_total": 3,
+    "resyncs_startup": 3,
+    "resyncs_midrun": 0,
+    "midrun_resync_packets": [],
+    "scheduler_resync_events_logged": 0,
+    "dropped_control_ticks": 0,
+    "phase_err_avg_ms": 0.57,
+    "phase_err_max_ms": 3.38,
+    "bins_p95_over_3ms": 0,
+    "loop_counters": {
+     "submitted": 21348,
+     "replies": 19946,
+     "failures": 0,
+     "timeouts": 1401,
+     "staleDropped": 1401,
+     "skippedWhileBusy": 852,
+     "freshTicks": 22063,
+     "heldTicks": 121,
+     "zeroTicks": 16
+    }
+   },
+   "charge": {
+    "nticks": 22200,
+    "capture_rows": 21348,
+    "held_channels": [
+     "u1",
+     "u4"
+    ],
+    "tonic_hold_uA_ticks": 888000.0,
+    "modulation_uA_ticks": 30950.0,
+    "delivered_total_uA_ticks": 915270.0,
+    "delivered_total_uA_s": 8997.0,
+    "mean_delivered_uA_per_tick_per_held_pair": 20.61
+   }
+  },
+  "choi_mixr2": {
+   "kind": "arm Choi r2",
+   "ticks": 22200,
+   "server_lat": null,
+   "loop": {
+    "mpc_ms": {
+     "p50": 0.03,
+     "p95": 0.043,
+     "p99": 0.054
+    },
+    "in_to_udp_ms": {
+     "p50": 0.038,
+     "p95": 0.053,
+     "p99": 0.062
+    },
+    "tick_err_ms": {
+     "p50": 0.6726,
+     "p95": 1.6836,
+     "p99": 1.8354,
+     "max": 2.694
+    }
+   },
+   "tick_health": {
+    "resyncs_total": 3,
+    "resyncs_startup": 3,
+    "resyncs_midrun": 0,
+    "midrun_resync_packets": [],
+    "scheduler_resync_events_logged": 0,
+    "dropped_control_ticks": 0,
+    "phase_err_avg_ms": 0.61,
+    "phase_err_max_ms": 3.39,
+    "bins_p95_over_3ms": 0,
+    "loop_counters": {
+     "submitted": 22200,
+     "replies": 22199,
+     "failures": 0,
+     "timeouts": 0,
+     "staleDropped": 0,
+     "skippedWhileBusy": 0,
+     "freshTicks": 22199,
+     "heldTicks": 0,
+     "zeroTicks": 1
+    }
+   },
+   "charge": {
+    "nticks": 22200,
+    "capture_rows": 22200,
+    "held_channels": [
+     "u1",
+     "u4"
+    ],
+    "tonic_hold_uA_ticks": 888000.0,
+    "modulation_uA_ticks": 432492.0,
+    "delivered_total_uA_ticks": 1185773.0,
+    "delivered_total_uA_s": 11657.0,
+    "mean_delivered_uA_per_tick_per_held_pair": 26.71
+   }
+  },
+  "opfit2": {
+   "kind": "probe (post-arm operating-point re-fit)",
+   "ticks": 12000,
+   "server_lat": null,
+   "loop": {
+    "mpc_ms": {
+     "p50": 0.03,
+     "p95": 0.06,
+     "p99": 0.093
+    },
+    "in_to_udp_ms": {
+     "p50": 0.038,
+     "p95": 0.072,
+     "p99": 0.111
+    },
+    "tick_err_ms": {
+     "p50": 0.6866,
+     "p95": 6.0586,
+     "p99": 6.2527,
+     "max": 10.418
+    }
+   },
+   "tick_health": {
+    "resyncs_total": 73,
+    "resyncs_startup": 3,
+    "resyncs_midrun": 2,
+    "midrun_resync_packets": [
+     9975,
+     10000
+    ],
+    "scheduler_resync_events_logged": 15,
+    "dropped_control_ticks": 1016,
+    "phase_err_avg_ms": 2.84,
+    "phase_err_max_ms": 29.49,
+    "bins_p95_over_3ms": 2,
+    "loop_counters": {
+     "submitted": 12000,
+     "replies": 11999,
+     "failures": 0,
+     "timeouts": 0,
+     "staleDropped": 0,
+     "skippedWhileBusy": 0,
+     "freshTicks": 11999,
+     "heldTicks": 0,
+     "zeroTicks": 1
+    }
+   },
+   "charge": {
+    "nticks": 12000,
+    "capture_rows": 12000,
+    "held_channels": [
+     "u1",
+     "u4"
+    ],
+    "tonic_hold_uA_ticks": 480000.0,
+    "modulation_uA_ticks": 240000.0,
+    "delivered_total_uA_ticks": 481200.0,
+    "delivered_total_uA_s": 4730.0,
+    "mean_delivered_uA_per_tick_per_held_pair": 20.05
+   }
+  }
+ },
+ "findings": [
+  "MATLAB-vs-cpp server contrast (for the paper): MATLAB MPC server turnaround p50 1.69 ms / p95 2.96 ms / p99 29.3 ms / max 47.7 ms (pooled arm runs mixr1b+mixr2, n=42,949); cpp Choi-class server p50 17 us / p95 29 us / p99 35 us / max 0.35 ms (rnd1+rndhi, n=211,000). ~100x at the median.",
+  "1.4% of MATLAB replies exceed the 9.83 ms tick outright; the loop's tighter wait budget turned that tail into ~5-6.5% timeouts per MPC arm run (timeouts=staleDropped: 1043 mixr1b, 1401 mixr2), all absorbed by hold-last-command: freshTicks >= 22027/22200 (99.2%), heldTicks <= 145, zeroTicks <= 28, failures 0. cpp choi runs: 0 timeouts, freshTicks 22199/22200 (single zeroTick is the first tick before any reply).",
+  "ANOMALY (process, resolved): first MPC r1 attempt (mpc_mixr1, 20:43-20:49) was inert - u1/u4 frozen at exactly the hold values (19.98/20.11 uA, zero variance for all 21,557 logged ticks) while the MATLAB server ran with normal latency. Rerun as mpc_mixr1b was healthy. Keep excluding mixr1 from science.",
+  "Tick health: all four arm runs clean - |tick err| p95 < 1.9 ms, 0 dropped control ticks, no mid-run PLL resyncs (the 2-4 multi-second 'resyncs' in every log are the pre-stream backlog flush at tick 1).",
+  "ANOMALY: rnd1 had one mid-run stall at tick ~16.3k (~2.7 min): 5 scheduler resyncs + 2 PLL resyncs (~30 ms phase error), 88/183,000 ticks dropped (0.05%). Isolated; rest of the 30-min run nominal.",
+  "ANOMALY (worst of the day, but post-arm): opfit2 (last run, 21:56) degraded from tick ~9.9k to end of run - 1016/12,000 control ticks dropped (8.5%), 73 PLL resyncs, sustained ~5-6 ms lateness, tick-err p99 6.3 ms. Pattern (a drop roughly every other tick from ~10k on, ~5 ms late each time) looks like a sustained competing load on the rig PC, not PO8e trouble. No arm run affected, but opfit2's operating-point fit should be treated as suspect or re-derived from opfit (which was clean).",
+  "MISSING FILES: the cpp server did not write server_lat_runchoi_mixr1/2.csv for the choi arm runs; cpp turnaround is quantified from the rnd probe runs (same binary) and corroborated loop-side (choi mpc_ms p50 0.029 ms). Check the cpp server's -latcsv flag before the next rig day.",
+  "Loop-side overhead is negligible everywhere: in_to_udp_ms p99 <= 0.111 ms, mpc_ms p99 <= 0.093 ms across all 9 runs; the control budget is entirely the server turnaround.",
+  "Charge ledger: Choi delivered 1.186M uA-ticks per arm run vs MPC 0.916M (+29.5%) on identical schedules; day total across 9 runs 6.12M uA-ticks. Tonic hold (20 uA x 2 pairs) is 97% of the MPC total - MPC modulation is only ~3% on top of baseline.",
+  "Command strategy on the same schedule (r1): MPC is reactive and parsimonious - 48.9% of ticks within +/-0.5 uA of hold, never at 0, 0.3% at cap, mean |du| 0.11 uA/tick. Choi's precomputed drive rides near the 30 uA cap (48.2% of ticks at cap, median u4 = 30) with brief full shut-offs (6.4% at 0) around event onsets, including SHAM events; it slews 4.9x harder. Same tracking scores, very different actuation - and MPC's is the gentler, charge-cheaper policy."
+ ]
+}

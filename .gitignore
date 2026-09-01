@@ -44,3 +44,5 @@ __pycache__/
 *.pyc
 
 __pycache__/
+
+day_2026-08-31/analysis/cache/
