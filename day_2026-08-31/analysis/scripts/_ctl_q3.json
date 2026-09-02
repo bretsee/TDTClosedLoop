@@ -1,0 +1,44 @@
+{
+ "decoder": "nearest centroid, Euclidean, LOO; features = baseline-subtracted lag-corrected y8 at ticks 3..40 post-onset (38 dims); runs pooled per arm",
+ "per_arm": {
+  "MPC": {
+   "n": 161,
+   "accuracy": 0.23,
+   "chance_majority": 0.205,
+   "null_mean": 0.2,
+   "null95": 0.267,
+   "p_perm": 0.241
+  },
+  "Choi": {
+   "n": 167,
+   "accuracy": 0.192,
+   "chance_majority": 0.204,
+   "null_mean": 0.2,
+   "null95": 0.263,
+   "p_perm": 0.615
+  },
+  "Hold": {
+   "n": 81,
+   "accuracy": 0.136,
+   "chance_majority": 0.21,
+   "null_mean": 0.197,
+   "null95": 0.284,
+   "p_perm": 0.913
+  }
+ },
+ "shape_only_variant": {
+  "MPC": {
+   "accuracy": 0.224,
+   "p_perm": 0.308
+  },
+  "Choi": {
+   "accuracy": 0.156,
+   "p_perm": 0.893
+  },
+  "Hold": {
+   "accuracy": 0.222,
+   "p_perm": 0.337
+  }
+ },
+ "verdict": "site identity is NOT reliably decodable from the y8 time course"
+}

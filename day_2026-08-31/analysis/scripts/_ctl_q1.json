@@ -1,0 +1,134 @@
+{
+ "per_arm_run": {
+  "MPC_r1": {
+   "n": 81,
+   "slope": 0.063,
+   "slope_ci": [
+    -0.233,
+    0.415
+   ],
+   "intercept_mV": 0.24585,
+   "pearson_r": 0.045
+  },
+  "MPC_r2": {
+   "n": 80,
+   "slope": 0.169,
+   "slope_ci": [
+    -0.057,
+    0.382
+   ],
+   "intercept_mV": 0.16866,
+   "pearson_r": 0.103
+  },
+  "Choi_r1": {
+   "n": 83,
+   "slope": 0.133,
+   "slope_ci": [
+    -0.175,
+    0.591
+   ],
+   "intercept_mV": 0.16525,
+   "pearson_r": 0.089
+  },
+  "Choi_r2": {
+   "n": 84,
+   "slope": -0.055,
+   "slope_ci": [
+    -0.203,
+    0.096
+   ],
+   "intercept_mV": 0.21544,
+   "pearson_r": -0.073
+  },
+  "Hold_r1": {
+   "n": 81,
+   "slope": -0.042,
+   "slope_ci": [
+    -0.447,
+    0.413
+   ],
+   "intercept_mV": 0.22393,
+   "pearson_r": -0.022,
+   "spearman_rho": -0.03,
+   "spearman_p": 0.7875302121976171
+  }
+ },
+ "pooled": {
+  "MPC": {
+   "n": 161,
+   "slope": 0.116,
+   "slope_ci": [
+    -0.076,
+    0.322
+   ],
+   "pearson_r": 0.076,
+   "spearman_rho": 0.159,
+   "spearman_p": 0.04453734269990192
+  },
+  "Choi": {
+   "n": 167,
+   "slope": 0.039,
+   "slope_ci": [
+    -0.134,
+    0.277
+   ],
+   "pearson_r": 0.033,
+   "spearman_rho": -0.028,
+   "spearman_p": 0.7164812818234637
+  },
+  "slope_diff_MPC_minus_Choi": {
+   "mean": 0.073,
+   "ci": [
+    -0.222,
+    0.351
+   ]
+  }
+ },
+ "meanresp_slope_ticks3to40": {
+  "MPC": {
+   "slope": 0.059,
+   "slope_ci": [
+    -0.007,
+    0.124
+   ],
+   "pearson_r": 0.129
+  },
+  "Choi": {
+   "slope": -0.009,
+   "slope_ci": [
+    -0.052,
+    0.035
+   ],
+   "pearson_r": -0.029
+  },
+  "Hold": {
+   "slope": 0.02,
+   "slope_ci": [
+    -0.121,
+    0.171
+   ],
+   "pearson_r": 0.033
+  }
+ },
+ "hold_peak_noise_floor": {
+  "mean_peak_mV": 0.2073,
+  "sd_mV": 0.1515
+ },
+ "site_target_peaks_mV": {
+  "r1": {
+   "D1": 0.34,
+   "D2": 0.3608,
+   "D3": 0.345,
+   "P2": 0.3938,
+   "LP": 0.5548
+  },
+  "r2": {
+   "D1": 0.34,
+   "D2": 0.3608,
+   "D3": 0.345,
+   "P2": 0.3938,
+   "LP": 0.5548
+  }
+ },
+ "note": "peaks in mV, artifact ticks 0-2 excluded, per-arm best lag; slope CI = 5000x bootstrap over events; epoch-max peak is partly a noise-max statistic (see Hold floor), mean-response slope supplements it"
+}

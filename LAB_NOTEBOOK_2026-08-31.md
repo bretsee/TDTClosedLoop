@@ -133,3 +133,27 @@ reproducible scripts; per-trial caches local-only, not committed). Deck:
    preflight checklist).
 6. Engineering: MATLAB server p50 1.69 ms vs cpp 17 µs (~100×); all four arm
    runs p95 tick error < 1.9 ms, zero dropped ticks, no mid-run resyncs.
+
+### 09-01 addenda (artifact redo art_* + control questions ctl_*)
+
+- **Choi's contamination = a slow AMPLITUDE-STEP transient** (~2 mV, electrode
+  polarization at command steps; per-pulse artifact is over by ~1.2 ms and
+  contributes <0.3 dB below 45 Hz). **The selectivity negative is
+  artifact-robust** (cleaned 5-way 23%/22% vs 20% chance); cleaned MPC
+  footprints soften from anticorrelated to ~uncorrelated.
+- **Paired comparison, cleaned windows (Q4): the "tie at best lag" does NOT
+  fully survive** — with artifact ticks excluded, pooled Δr = +0.079
+  [0.046, 0.112] favoring MPC (65% of events), driven by r1 (+0.163); r2 stays
+  a tie. Choi's r1 parity was partly carried by artifact samples. Both arms
+  remain far above the Hold noise floor (r 0.06 vs ~0.5-0.6) — tracking is
+  genuine.
+- **Amplitude transfer (Q1): ABSENT at single-event resolution** — cleaned
+  achieved peaks sit at the Hold noise floor with no target dependence
+  (pooled slope ~0.1 vs identity 1; only MPC Spearman ρ=0.16, p=0.045).
+  The overnight ~2-3× "overshoot" was artifact-inflated. Interpretation:
+  event-AVERAGED tracking is real; per-event amplitude gradation is below
+  single-event SNR in the cleaned estimate.
+- **Intent decoding from the y8 time course (Q3): null** (23%/19% vs 20%) —
+  selectivity is absent in time as well as space. MIMO + more pairs is the fix.
+- **Order effects (Q2): none** (lag-1 residual autocorrelation null in all 5
+  arm-runs) — the interleaved design worked; paired stats are valid.

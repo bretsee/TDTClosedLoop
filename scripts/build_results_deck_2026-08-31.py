@@ -155,11 +155,13 @@ def build():
     fig_slide("MPC vs Choi, paired on identical schedules: a tie on shape -- with a twist",
               "Same seeded event sequence in both arms; per-event paired differences",
               "sci_paired.png",
-              [(0, "At a common +2-tick lag MPC 'wins' (dr +0.068, p<1e-4) -- but that gap "
-                   "is Choi's run-1 latency sitting at +1. Scored at each arm's own best "
-                   "lag the arms TIE (dr -0.007 [-0.034, +0.019], p=0.63, n=161). MPC's real "
-                   "edges: latency STABILITY (~2.1 ticks both runs vs Choi drifting "
-                   "1.3->1.8) and within-run stability (next slide).")])
+              [(0, "Raw scoring at each arm's own best lag reads as a TIE -- but with "
+                   "artifact ticks (0-2 post-onset) EXCLUDED (ctl_ redo, 09-01) MPC wins: "
+                   "pooled dr +0.079 [0.046, 0.112], p<1e-4, 65% of events -- driven by r1 "
+                   "(+0.163; Choi's r1 parity was partly artifact samples), r2 a true tie. "
+                   "Plus MPC's latency STABILITY (~2.1 ticks both runs vs Choi drifting "
+                   "1.3->1.8) and within-run stability (next slide). Both arms sit far "
+                   "above the Hold noise floor (r 0.06 vs ~0.5-0.6) -- tracking is real.")])
 
     # 8 -- time course
     fig_slide("The value of feedback appears over time",
@@ -230,26 +232,26 @@ def build():
         s = new(label, name)
         bullets(s, [(0, t) for t in f[:12]], size=10.5)
 
-    # 15 -- good news / bad news
-    s = new("Summary: good news / bad news")
+    # 15 -- good news / bad news (updated 09-01 with the artifact-aware redo)
+    s = new("Summary: good news / bad news (artifact-aware, 09-01)")
     bullets(s, [
-        (0, "GOOD: closed-loop biomimetic tracking works -- stable ~20 ms latency, "
-            "d-prime ~4 sham rejection, 30% charge savings vs open loop, and a "
-            "within-run stability advantage that grows with run length."),
-        (0, "GOOD: the recording side is superb (10/10 templates, 48% ten-way touch "
-            "decodability) and the whole day ran on the 32-ch system without a dropped "
-            "tick in any arm run."),
-        (0, "BAD: no site-selectivity -- one control channel + one stim footprint cannot "
-            "choose WHICH touch it reproduces (19-22% vs 20% chance). More pairs + "
-            "multichannel control is the path."),
-        (0, "BAD: raw-LFP validation during continuous stim is artifact-confounded; the "
-            "TRACKING verdicts are feature-space. Artifact-aware biological validation is "
-            "the top analysis priority."),
-        (0, "CAVEATS: single-tick peak overshoot ~2x; sub-floor targets unreachable; final "
-            "drift re-probe timing-degraded; cpp server latency CSVs missing for choi arms."),
-        (0, "NEXT: multichannel/max-rank control (standing goal); signed/trimmed features; "
-            "pulse-resolved 24 kHz artifact separation; longer runs to cash in the MPC "
-            "stability advantage; per-pair montage expansion beyond pairs 1+4."),
+        (0, "GOOD: closed-loop biomimetic tracking works and survives artifact cleaning "
+            "-- both arms sit far above the Hold noise floor (per-event r ~0.5-0.6 vs "
+            "0.06); stable ~20 ms latency; d-prime ~4 sham rejection; 30% charge savings."),
+        (0, "GOOD (upgraded): with artifact ticks excluded MPC BEATS Choi (pooled dr "
+            "+0.079, p<1e-4; r1 +0.163, r2 tie) on top of its stability advantages -- "
+            "Choi's apparent parity was partly artifact samples."),
+        (0, "GOOD: no order effects in the interleaved design (residual autocorr null "
+            "in all 5 runs) -- the randomized schedule did its job; paired stats valid."),
+        (0, "BAD (artifact-robust): no site-selectivity in space (cleaned 23%/22% vs 20% "
+            "chance) OR time course (intent decoding null). One control channel + one "
+            "footprint cannot choose WHICH touch it reproduces. MIMO + more pairs is the path."),
+        (0, "BAD: per-event amplitude transfer is absent in the cleaned estimate (slope "
+            "~0.1 vs 1; single-event SNR-limited) -- event-averaged tracking is real, "
+            "per-event grading is not demonstrated. Choi's step transient (~2 mV "
+            "polarization at command steps) needs a slew penalty next time."),
+        (0, "NEXT: MIMO/max-rank control with all 8 pairs (9/3); Choi --lam smoothness; "
+            "signed/trimmed features; longer runs to cash in MPC stability; 64-ch map."),
     ])
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)

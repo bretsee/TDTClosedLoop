@@ -1,0 +1,337 @@
+{
+ "workstream": "B4 extended control analyses, 2026-08-31 acute data",
+ "conventions": {
+  "artifact_exclusion": "relative ticks 0-2 post-onset removed from achieved y8 metrics",
+  "epoch": "-30..+190 ticks re onset; baseline = first 25 pre ticks",
+  "best_lags": {
+   "MPC": 2,
+   "Choi_r1": 1,
+   "Choi_r2": 2
+  },
+  "hold_control": "capture_mpc_20260831_204354.csv scored against schedule/ref r1"
+ },
+ "q1_amplitude_transfer": {
+  "per_arm_run": {
+   "MPC_r1": {
+    "n": 81,
+    "slope": 0.063,
+    "slope_ci": [
+     -0.233,
+     0.415
+    ],
+    "intercept_mV": 0.24585,
+    "pearson_r": 0.045
+   },
+   "MPC_r2": {
+    "n": 80,
+    "slope": 0.169,
+    "slope_ci": [
+     -0.057,
+     0.382
+    ],
+    "intercept_mV": 0.16866,
+    "pearson_r": 0.103
+   },
+   "Choi_r1": {
+    "n": 83,
+    "slope": 0.133,
+    "slope_ci": [
+     -0.175,
+     0.591
+    ],
+    "intercept_mV": 0.16525,
+    "pearson_r": 0.089
+   },
+   "Choi_r2": {
+    "n": 84,
+    "slope": -0.055,
+    "slope_ci": [
+     -0.203,
+     0.096
+    ],
+    "intercept_mV": 0.21544,
+    "pearson_r": -0.073
+   },
+   "Hold_r1": {
+    "n": 81,
+    "slope": -0.042,
+    "slope_ci": [
+     -0.447,
+     0.413
+    ],
+    "intercept_mV": 0.22393,
+    "pearson_r": -0.022,
+    "spearman_rho": -0.03,
+    "spearman_p": 0.7875302121976171
+   }
+  },
+  "pooled": {
+   "MPC": {
+    "n": 161,
+    "slope": 0.116,
+    "slope_ci": [
+     -0.076,
+     0.322
+    ],
+    "pearson_r": 0.076,
+    "spearman_rho": 0.159,
+    "spearman_p": 0.04453734269990192
+   },
+   "Choi": {
+    "n": 167,
+    "slope": 0.039,
+    "slope_ci": [
+     -0.134,
+     0.277
+    ],
+    "pearson_r": 0.033,
+    "spearman_rho": -0.028,
+    "spearman_p": 0.7164812818234637
+   },
+   "slope_diff_MPC_minus_Choi": {
+    "mean": 0.073,
+    "ci": [
+     -0.222,
+     0.351
+    ]
+   }
+  },
+  "meanresp_slope_ticks3to40": {
+   "MPC": {
+    "slope": 0.059,
+    "slope_ci": [
+     -0.007,
+     0.124
+    ],
+    "pearson_r": 0.129
+   },
+   "Choi": {
+    "slope": -0.009,
+    "slope_ci": [
+     -0.052,
+     0.035
+    ],
+    "pearson_r": -0.029
+   },
+   "Hold": {
+    "slope": 0.02,
+    "slope_ci": [
+     -0.121,
+     0.171
+    ],
+    "pearson_r": 0.033
+   }
+  },
+  "hold_peak_noise_floor": {
+   "mean_peak_mV": 0.2073,
+   "sd_mV": 0.1515
+  },
+  "site_target_peaks_mV": {
+   "r1": {
+    "D1": 0.34,
+    "D2": 0.3608,
+    "D3": 0.345,
+    "P2": 0.3938,
+    "LP": 0.5548
+   },
+   "r2": {
+    "D1": 0.34,
+    "D2": 0.3608,
+    "D3": 0.345,
+    "P2": 0.3938,
+    "LP": 0.5548
+   }
+  },
+  "note": "peaks in mV, artifact ticks 0-2 excluded, per-arm best lag; slope CI = 5000x bootstrap over events; epoch-max peak is partly a noise-max statistic (see Hold floor), mean-response slope supplements it"
+ },
+ "q2_order_effects": {
+  "MPC_r1": {
+   "n_same": 2,
+   "n_diff": 78,
+   "same_minus_diff_peak_mV": 0.01409,
+   "p_perm_peak": 0.8553,
+   "same_minus_diff_r": -0.1169,
+   "p_perm_r": 0.3427,
+   "lag1_autocorr_peak_resid": 0.005,
+   "p_perm_autocorr": 0.972,
+   "null95": [
+    -0.222,
+    0.186
+   ]
+  },
+  "MPC_r2": {
+   "n_same": 3,
+   "n_diff": 76,
+   "same_minus_diff_peak_mV": 0.01206,
+   "p_perm_peak": 0.8005,
+   "same_minus_diff_r": 0.0211,
+   "p_perm_r": 0.8065,
+   "lag1_autocorr_peak_resid": 0.026,
+   "p_perm_autocorr": 0.76,
+   "null95": [
+    -0.159,
+    0.326
+   ]
+  },
+  "Choi_r1": {
+   "n_same": 2,
+   "n_diff": 80,
+   "same_minus_diff_peak_mV": -0.06789,
+   "p_perm_peak": 0.3097,
+   "same_minus_diff_r": -0.0821,
+   "p_perm_r": 0.5173,
+   "lag1_autocorr_peak_resid": -0.063,
+   "p_perm_autocorr": 0.544,
+   "null95": [
+    -0.184,
+    0.231
+   ]
+  },
+  "Choi_r2": {
+   "n_same": 3,
+   "n_diff": 80,
+   "same_minus_diff_peak_mV": 0.03037,
+   "p_perm_peak": 0.4125,
+   "same_minus_diff_r": 0.0429,
+   "p_perm_r": 0.5758,
+   "lag1_autocorr_peak_resid": 0.056,
+   "p_perm_autocorr": 0.627,
+   "null95": [
+    -0.227,
+    0.207
+   ]
+  },
+  "Hold_r1": {
+   "n_same": 2,
+   "n_diff": 78,
+   "same_minus_diff_peak_mV": -0.16517,
+   "p_perm_peak": 0.1372,
+   "same_minus_diff_r": -0.055,
+   "p_perm_r": 0.5728,
+   "lag1_autocorr_peak_resid": -0.127,
+   "p_perm_autocorr": 0.259,
+   "null95": [
+    -0.23,
+    0.2
+   ]
+  }
+ },
+ "q3_intent_decoding": {
+  "decoder": "nearest centroid, Euclidean, LOO; features = baseline-subtracted lag-corrected y8 at ticks 3..40 post-onset (38 dims); runs pooled per arm",
+  "per_arm": {
+   "MPC": {
+    "n": 161,
+    "accuracy": 0.23,
+    "chance_majority": 0.205,
+    "null_mean": 0.2,
+    "null95": 0.267,
+    "p_perm": 0.241
+   },
+   "Choi": {
+    "n": 167,
+    "accuracy": 0.192,
+    "chance_majority": 0.204,
+    "null_mean": 0.2,
+    "null95": 0.263,
+    "p_perm": 0.615
+   },
+   "Hold": {
+    "n": 81,
+    "accuracy": 0.136,
+    "chance_majority": 0.21,
+    "null_mean": 0.197,
+    "null95": 0.284,
+    "p_perm": 0.913
+   }
+  },
+  "shape_only_variant": {
+   "MPC": {
+    "accuracy": 0.224,
+    "p_perm": 0.308
+   },
+   "Choi": {
+    "accuracy": 0.156,
+    "p_perm": 0.893
+   },
+   "Hold": {
+    "accuracy": 0.222,
+    "p_perm": 0.337
+   }
+  },
+  "verdict": "site identity is NOT reliably decodable from the y8 time course"
+ },
+ "q4_paired_clean": {
+  "n_pairs": 161,
+  "mean_dr": 0.0791,
+  "ci": [
+   0.0464,
+   0.1118
+  ],
+  "p_perm": 0.0,
+  "mpc_winrate": 0.646,
+  "per_run": {
+   "r1": {
+    "n": 81,
+    "mean_dr": 0.1631,
+    "ci": [
+     0.1145,
+     0.2092
+    ],
+    "winrate": 0.778
+   },
+   "r2": {
+    "n": 80,
+    "mean_dr": -0.006,
+    "ci": [
+     -0.041,
+     0.0291
+    ],
+    "winrate": 0.512
+   }
+  },
+  "median_best_lag": {
+   "MPC": 0.0,
+   "Choi": 0.0
+  },
+  "mean_r": {
+   "MPC": 0.606,
+   "Choi": 0.527
+  },
+  "hold_noise_floor": {
+   "n": 81,
+   "mean_bestlag_r": 0.062,
+   "ci": [
+    0.027,
+    0.097
+   ]
+  },
+  "fixed_lag_masked_control": {
+   "r1": {
+    "n": 81,
+    "mean_dr": 0.0707,
+    "ci": [
+     0.0258,
+     0.1128
+    ]
+   },
+   "r2": {
+    "n": 80,
+    "mean_dr": 0.0022,
+    "ci": [
+     -0.0463,
+     0.0501
+    ]
+   }
+  },
+  "verdict": "MPC ahead after cleaning",
+  "note": "masked r excludes ticks 0-2 post-onset; per-event best lag searched 0..6 independently per arm; Hold floor shows the optimism from best-lag selection"
+ },
+ "findings": [
+  "BAD: amplitude transfer is absent in artifact-cleaned windows. Achieved y8 peak does not scale with the site's target peak: pooled slope MPC 0.12 [-0.08, 0.32], Choi 0.04 [-0.13, 0.28] (identity would be 1.0). Cleaned achieved peaks (~0.17-0.25 mV intercept) sit at the Hold noise floor (0.21 +/- 0.15 mV): the epoch-max statistic is mostly a noise max. Only weak positive signal: MPC Spearman rho=0.16 (p=0.045); Choi none.",
+  "IMPORTANT reinterpretation: the overnight peak_ratio ~3x 'overshoot' was artifact-inflated - with ticks 0-2 excluded, achieved peaks drop to roughly target scale but are no longer target-dependent.",
+  "GOOD: no order effects / adaptation. Same-site-predecessor vs different-site comparison is null in all 5 arm-runs (all p>=0.14, but underpowered: only 2-3 same-site transitions per run). The powered test - lag-1 autocorrelation of site-mean-removed peak residuals - is null in all 5 arm-runs (|ac|<=0.13, all p>=0.26 vs 1000x order-shuffle null), Hold included. Events are statistically independent; the paired analyses are safe.",
+  "BAD (for selectivity): intent is NOT decodable from the y8 time course alone. LOO nearest-centroid 5-way accuracy: MPC 23% (p=0.24), Choi 19% (p=0.62), Hold 14% (p=0.91) vs ~20% chance; shape-only (correlation-distance) variant equally null. This does NOT rescue the 32-ch Mahalanobis negative - selectivity is absent in amplitude/time course too, consistent with Q1's flat amplitude transfer.",
+  "MIXED: the overnight 'tie at best lag' does NOT fully survive window cleaning. With artifact ticks 0-2 excluded and per-event best lag (0..6), MPC leads: pooled dr=+0.079 [0.046, 0.112], p<1e-4, 65% win rate (n=161 pairs). The advantage is entirely r1 (dr=+0.163 [0.115, 0.209]); r2 remains a tie (dr=-0.006 [-0.041, 0.029]). The fixed-lag masked control (MPC +2, Choi r1 +1/r2 +2) still shows MPC ahead in r1 (+0.071 [0.026, 0.113]) - so the flip is caused by removing the artifact ticks, not by lag freedom: Choi r1's apparent parity was partly carried by artifact samples.",
+  "Hold noise floor for best-lag masked r is 0.06 [0.03, 0.10] - the ~0.5-0.6 mean per-event r of both arms is far above selection optimism, so tracking itself is real in both arms."
+ ]
+}

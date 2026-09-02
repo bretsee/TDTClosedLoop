@@ -1,0 +1,66 @@
+{
+ "n_pairs": 161,
+ "mean_dr": 0.0791,
+ "ci": [
+  0.0464,
+  0.1118
+ ],
+ "p_perm": 0.0,
+ "mpc_winrate": 0.646,
+ "per_run": {
+  "r1": {
+   "n": 81,
+   "mean_dr": 0.1631,
+   "ci": [
+    0.1145,
+    0.2092
+   ],
+   "winrate": 0.778
+  },
+  "r2": {
+   "n": 80,
+   "mean_dr": -0.006,
+   "ci": [
+    -0.041,
+    0.0291
+   ],
+   "winrate": 0.512
+  }
+ },
+ "median_best_lag": {
+  "MPC": 0.0,
+  "Choi": 0.0
+ },
+ "mean_r": {
+  "MPC": 0.606,
+  "Choi": 0.527
+ },
+ "hold_noise_floor": {
+  "n": 81,
+  "mean_bestlag_r": 0.062,
+  "ci": [
+   0.027,
+   0.097
+  ]
+ },
+ "fixed_lag_masked_control": {
+  "r1": {
+   "n": 81,
+   "mean_dr": 0.0707,
+   "ci": [
+    0.0258,
+    0.1128
+   ]
+  },
+  "r2": {
+   "n": 80,
+   "mean_dr": 0.0022,
+   "ci": [
+    -0.0463,
+    0.0501
+   ]
+  }
+ },
+ "verdict": "MPC ahead after cleaning",
+ "note": "masked r excludes ticks 0-2 post-onset; per-event best lag searched 0..6 independently per arm; Hold floor shows the optimism from best-lag selection"
+}
