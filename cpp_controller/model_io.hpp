@@ -97,6 +97,12 @@ struct LtiModel {
     Mat A, B, C, D;
     double Ts = 0.01;
     int n = 0, m = 0, p = 0;
+    // Operating-point offsets (export_plant_lti.m trailing blocks, optional for
+    // old files). The model is fitted on CENTERED data: y = yOff + C x + D (u -
+    // uOff). A controller that ignores these on an offset model regulates the
+    // wrong plant -- the 2026-08-20 hazard, closed 2026-09-01.
+    Vec uOff, yOff;   // sized m / p; zeros when the file carries no offsets
+    bool has_offsets = false;
 };
 
 inline LtiModel load_lti(const std::string& path) {
@@ -120,6 +126,21 @@ inline LtiModel load_lti(const std::string& path) {
 
     if (!all_finite(M.A) || !all_finite(M.B) || !all_finite(M.C) || !all_finite(M.D))
         throw std::runtime_error(path + ": model contains non-finite entries");
+
+    // Optional trailing offset blocks (either order; both or neither expected in
+    // practice -- export_plant_lti.m writes uOffset then yOffset).
+    M.uOff.assign((size_t)M.m, 0.0);
+    M.yOff.assign((size_t)M.p, 0.0);
+    while (!t.done()) {
+        const std::string key = t.next();
+        if (key == "uOffset")      { M.uOff = t.vector(M.m); M.has_offsets = true; }
+        else if (key == "yOffset") { M.yOff = t.vector(M.p); M.has_offsets = true; }
+        else throw std::runtime_error(path + ": unrecognised trailing block '" + key + "'");
+    }
+    for (double v : M.uOff) if (!std::isfinite(v))
+        throw std::runtime_error(path + ": non-finite uOffset");
+    for (double v : M.yOff) if (!std::isfinite(v))
+        throw std::runtime_error(path + ": non-finite yOffset");
     return M;
 }
 

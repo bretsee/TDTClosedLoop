@@ -81,15 +81,24 @@ struct Options {
     std::string reference_file;         // mpc: per-tick target trajectory CSV (r1..rp)
 
     double target = 0.0;
+    std::vector<double> target_vec;     // per-output targets (--target a,b,...)
     std::string target_file;            // re-read live, mirrors MATLAB's MPC_TARGET
     std::vector<int> feature_map;
     std::vector<int> stim_pairs;        // controller output i -> wire slot pairs[i]
+    int preview_ticks = 20;             // mpc --reference horizon preview window
 
     MpcConfig mpc;
     NnConfig  nn;
     ExcitationConfig exc;
     bool selftest = false;
 };
+
+static void parse_double_list(const std::string& s, std::vector<double>& out) {
+    out.clear();
+    std::stringstream ss(s);
+    std::string item;
+    while (std::getline(ss, item, ',')) if (!item.empty()) out.push_back(std::atof(item.c_str()));
+}
 
 // Load the columns of a CSV whose header names start with `prefix` followed by
 // a digit (u1..uM for designed commands, r1..rp for reference trajectories).
@@ -180,8 +189,10 @@ static void usage() {
         "  --pairs 3                 map controller output k to bipolar pair slot k\n"
         "                            (1-based; word k on the wire drives pair k). A\n"
         "                            1-output model with no --pairs drives pair 1.\n"
-        "  --horizon N (20)  --control-horizon N (2)\n"
-        "  --q-weight V (1)  --r-weight V (1)  --q-scale V (0.01)\n"
+        "  --horizon N (20)  --control-horizon N (2)  --preview N (20, mpc --reference)\n"
+        "  --q-weight V|a,b,..  --r-weight V|a,b,..  per-output/input weights (MIMO)\n"
+        "  --target V|a,b,..    per-output targets   --no-observer  deliberate feedforward\n"
+        "  --q-scale V (0.01)\n"
         "  --umin V (0)      --umax V (40)     --max-rate V (0 = no slew limit)\n"
         "  --exc-kind prbs|multilevel|steps|chirp   --exc-clock N (5)\n"
         "  --exc-hold N (50) --exc-levels N (4)     --exc-seed N\n"
@@ -207,14 +218,19 @@ static bool parse_args(int argc, char** argv, Options& o) {
         else if (a == "--log")             o.log_file = next("--log");
         else if (a == "--play")            o.play_file = next("--play");
         else if (a == "--reference")       o.reference_file = next("--reference");
-        else if (a == "--target")          o.target = std::atof(next("--target").c_str());
+        else if (a == "--target")          { parse_double_list(next("--target"), o.target_vec);
+                                             o.target = o.target_vec.empty() ? 0.0 : o.target_vec[0]; }
         else if (a == "--target-file")     o.target_file = next("--target-file");
         else if (a == "--feature-map")     parse_int_list(next("--feature-map"), o.feature_map);
         else if (a == "--pairs")           parse_int_list(next("--pairs"), o.stim_pairs);
+        else if (a == "--preview")         o.preview_ticks = std::atoi(next("--preview").c_str());
         else if (a == "--horizon")         o.mpc.N = std::atoi(next("--horizon").c_str());
         else if (a == "--control-horizon") o.mpc.Nu = std::atoi(next("--control-horizon").c_str());
-        else if (a == "--q-weight")        o.mpc.q_weight = std::atof(next("--q-weight").c_str());
-        else if (a == "--r-weight")        o.mpc.r_weight = std::atof(next("--r-weight").c_str());
+        else if (a == "--no-observer")     o.mpc.use_observer = false;
+        else if (a == "--q-weight")        { parse_double_list(next("--q-weight"), o.mpc.q_weights);
+                                             if (o.mpc.q_weights.size() == 1) { o.mpc.q_weight = o.mpc.q_weights[0]; o.mpc.q_weights.clear(); } }
+        else if (a == "--r-weight")        { parse_double_list(next("--r-weight"), o.mpc.r_weights);
+                                             if (o.mpc.r_weights.size() == 1) { o.mpc.r_weight = o.mpc.r_weights[0]; o.mpc.r_weights.clear(); } }
         else if (a == "--q-scale")         o.mpc.qScale = std::atof(next("--q-scale").c_str());
         else if (a == "--umin")            { o.mpc.umin = o.nn.umin = o.exc.umin = std::atof(next("--umin").c_str()); }
         else if (a == "--umax")            { o.mpc.umax = o.nn.umax = o.exc.umax = std::atof(next("--umax").c_str()); }
@@ -440,12 +456,19 @@ static int selftest() {
 // --------------------------------------------------------------------------
 // live target file
 // --------------------------------------------------------------------------
-static bool read_target_file(const std::string& path, double& value) {
+// Reads one or more whitespace-separated per-output targets (p-vector; a
+// single value still works and broadcasts via set_target's hold-last pad).
+static bool read_target_file(const std::string& path, std::vector<double>& values) {
     std::ifstream f(path);
     if (!f) return false;
+    std::vector<double> vs;
     double v;
-    if (!(f >> v) || !std::isfinite(v)) return false;
-    value = v;
+    while (f >> v) {
+        if (!std::isfinite(v)) return false;
+        vs.push_back(v);
+    }
+    if (vs.empty()) return false;
+    values = vs;
     return true;
 }
 
@@ -511,20 +534,43 @@ int main(int argc, char** argv) {
             const LtiModel M = load_lti(o.model_path);
             std::printf("Loaded plant %s: n=%d m=%d p=%d Ts=%g\n",
                         o.model_path.c_str(), M.n, M.m, M.p, M.Ts);
+            if (M.has_offsets) {
+                std::printf("Operating-point offsets: uOff=[");
+                for (int i = 0; i < M.m; ++i) std::printf("%s%.4g", i ? " " : "", M.uOff[(size_t)i]);
+                std::printf("] yOff=[");
+                for (int i = 0; i < M.p; ++i) std::printf("%s%.4g", i ? " " : "", M.yOff[(size_t)i]);
+                std::printf("] -- controller runs CENTERED, commands/measurements raw.\n");
+            }
+            if (!o.feature_map.empty() && (int)o.feature_map.size() != M.p) {
+                std::printf("FATAL: --feature-map has %zu entries but the model has p=%d "
+                            "outputs -- one feature index per model output.\n",
+                            o.feature_map.size(), M.p);
+                return 2;
+            }
             std::unique_ptr<MpcController> mpc(new MpcController(M, o.mpc, o.output_count));
             if (!o.feature_map.empty()) {
                 std::vector<int> zero_based;
-                for (int v : o.feature_map) zero_based.push_back(v - 1);
+                for (int v : o.feature_map) {
+                    if (v < 1) { std::printf("FATAL: --feature-map indices are 1-based (got %d)\n", v); return 2; }
+                    zero_based.push_back(v - 1);
+                }
                 mpc->set_feature_map(zero_based);
                 std::printf("Feature map (1-based): ");
                 for (int v : o.feature_map) std::printf("%d ", v);
                 std::printf("\n");
             }
-            mpc->set_target(std::vector<double>((size_t)M.p, o.target));
+            {
+                std::vector<double> tgt = o.target_vec;
+                if (tgt.empty()) tgt.assign((size_t)M.p, o.target);
+                while ((int)tgt.size() < M.p) tgt.push_back(tgt.back());
+                mpc->set_target(tgt);
+            }
             std::printf("Observer: %s (|pole| = %.6f)   target = %g\n",
-                        mpc->observer_active() ? "ACTIVE" : "*** INACTIVE -- OPEN LOOP ***",
+                        mpc->observer_active() ? "ACTIVE"
+                        : (o.mpc.use_observer ? "*** INACTIVE -- OPEN LOOP ***"
+                                              : "off (DELIBERATE --no-observer feedforward arm)"),
                         mpc->observer_pole(), o.target);
-            if (!mpc->observer_active())
+            if (!mpc->observer_active() && o.mpc.use_observer)
                 std::printf("WARNING: the controller will ignore its measurement. "
                             "Do not trust closed-loop behaviour.\n");
             mpc_ptr = mpc.get();
@@ -536,10 +582,10 @@ int main(int argc, char** argv) {
                 for (const auto& r : refRows)
                     for (double v : r) { lo = std::min(lo, v); hi = std::max(hi, v); }
                 std::printf("mpc: reference %s -- %zu ticks (%.1f s), %zu output(s), "
-                            "range [%g %g]. Per-tick target, NO horizon preview "
-                            "(backup path; MATLAB server previews).\n",
+                            "range [%g %g], horizon preview %d ticks.\n",
                             o.reference_file.c_str(), refRows.size(),
-                            refRows.size() / 100.0, refRows[0].size(), lo, hi);
+                            refRows.size() / 100.0, refRows[0].size(), lo,
+                            hi, o.preview_ticks);
             }
             if (!o.stim_pairs.empty()) {
                 std::printf("mpc: controller output(s) mapped to stim pair slot(s) [");
@@ -606,6 +652,7 @@ int main(int argc, char** argv) {
     // ---- loop ------------------------------------------------------------
     std::vector<unsigned char> rx(65536), tx(65536);
     long long packets = 0;
+    int idle_reads = 0;
     std::vector<double> turnarounds;
     turnarounds.reserve(o.max_packets > 0 ? (size_t)o.max_packets : 20000);
 
@@ -613,8 +660,20 @@ int main(int argc, char** argv) {
     std::vector<unsigned> cap_seq;
     std::vector<double> cap_t;
 
+    // Latency log: default it whenever a capture is requested (the 08-31 choi
+    // arm runs shipped no per-run latency CSV because the flag was omitted).
+    if (o.log_file.empty() && !o.capture_file.empty()) {
+        o.log_file = "server_lat_" + o.capture_file;
+        std::printf("Latency log defaulted to %s\n", o.log_file.c_str());
+    }
     std::ofstream logf;
-    if (!o.log_file.empty()) { logf.open(o.log_file); logf << "seq,computeMs,turnaroundMs\n"; }
+    if (!o.log_file.empty()) { logf.open(o.log_file); logf << "seq,gap_ms,computeMs,turnaroundMs\n"; }
+    double last_wake_ms = -1.0;
+
+    // Bound the capture (parity with matlab_controller_server's capCapacity):
+    // an unbounded run must not grow memory without limit.
+    const size_t cap_capacity = (o.max_packets > 0) ? (size_t)o.max_packets : 200000;
+    bool cap_full_warned = false;
 
     const auto t_start = std::chrono::steady_clock::now();
     auto now_ms = [&]() {
@@ -627,14 +686,19 @@ int main(int argc, char** argv) {
         int fromlen = sizeof from;
         const int n = recvfrom(s, (char*)rx.data(), (int)rx.size(), 0, (sockaddr*)&from, &fromlen);
         if (n == SOCKET_ERROR) {
-            if (o.max_packets > 0 && packets > 0) {
-                std::printf("Idle after %lld packets; stopping bounded run.\n", packets);
+            // Stop only after 3 consecutive idle reads (parity with the MATLAB
+            // server): a single 1 s sender stall must not end a bounded run.
+            if (o.max_packets > 0 && packets > 0 && ++idle_reads >= 3) {
+                std::printf("Idle 3x after %lld packets; stopping bounded run.\n", packets);
                 break;
             }
             continue;
         }
+        idle_reads = 0;
 
         const double t_wake = now_ms();
+        const double gap_ms = (last_wake_ms >= 0.0) ? (t_wake - last_wake_ms) : -1.0;
+        last_wake_ms = t_wake;
         Request rq;
         if (!parse_request(rx.data(), n, rq)) {
             std::printf("Ignoring malformed request (%d bytes)\n", n);
@@ -658,13 +722,20 @@ int main(int argc, char** argv) {
             if ((int)u.size() != o.output_count) u.resize((size_t)o.output_count, 0.0);
         } else {
             if (mpc_ptr && !refRows.empty()) {
-                // Per-tick reference: hold the final row after the trajectory
-                // ends (a touch reference ends at baseline, so holding = idle).
+                // Sliding preview window into the horizon (parity with the
+                // MATLAB server's refPreviewTicks): rows k..k+K-1, holding the
+                // final row after the trajectory ends (a touch reference ends
+                // at baseline, so holding = idle).
                 const size_t k = std::min((size_t)(packets - 1), refRows.size() - 1);
-                mpc_ptr->set_target(refRows[k]);
+                const int K = std::max(1, o.preview_ticks);
+                std::vector<std::vector<double>> win;
+                win.reserve((size_t)K);
+                for (int w = 0; w < K; ++w)
+                    win.push_back(refRows[std::min(k + (size_t)w, refRows.size() - 1)]);
+                mpc_ptr->set_target_preview(win);
             } else if (mpc_ptr && !o.target_file.empty() && (packets % 25 == 0)) {
-                double tv2;
-                if (read_target_file(o.target_file, tv2)) mpc_ptr->set_target({tv2});
+                std::vector<double> tv2;
+                if (read_target_file(o.target_file, tv2)) mpc_ptr->set_target(tv2);
             }
             u = controller->step(rq.features);
             if (!o.stim_pairs.empty()) {
@@ -687,13 +758,20 @@ int main(int argc, char** argv) {
         const double turn_ms = now_ms() - t_wake;
         turnarounds.push_back(turn_ms);
 
-        if (logf) logf << rq.seq << "," << compute_ms << "," << turn_ms << "\n";
+        if (logf) logf << rq.seq << "," << gap_ms << "," << compute_ms << "," << turn_ms << "\n";
 
         if (!o.capture_file.empty()) {
-            cap_seq.push_back(rq.seq);
-            cap_t.push_back(now_ms());
-            cap_u.push_back(u);
-            cap_y.push_back(rq.features);
+            if (cap_u.size() < cap_capacity) {
+                cap_seq.push_back(rq.seq);
+                cap_t.push_back(now_ms());
+                cap_u.push_back(u);
+                cap_y.push_back(rq.features);
+            } else if (!cap_full_warned) {
+                std::printf("WARNING: capture buffer full at %zu rows; later ticks "
+                            "are NOT captured (raise --max-packets to size it).\n",
+                            cap_capacity);
+                cap_full_warned = true;
+            }
         }
 
         if (packets <= 5 || packets % 100 == 0) {
