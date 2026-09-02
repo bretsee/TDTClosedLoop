@@ -136,12 +136,19 @@ function bench_test_reference_mpc
         sprintf('u = %s', mat2str(round(u_legacy', 4))));
 
     % ---- 3. per-tick reference steers the command ------------------------
+    % Scale-appropriate weights: AllModels(10) is a real volt-scale plant since
+    % 2026-08-31; at default qWeight the objective sits below OSQP tolerance
+    % and u pins at uOffset (the mpc_mixr1 inert-controller signature -- this
+    % check now REGRESSES that exact bug).
+    assignin('base', 'MPC_OPTS', struct('qWeight', 1e12, 'rWeight', 100));
     mpc_test([]);
-    uLo = run_settled(zeros(8, 1), 0);      % track 0
+    uLo = run_settled(zeros(8, 1), 1.2e-4);   % track baseline
     mpc_test([]);
-    uHi = run_settled(zeros(8, 1), 1.0);    % track a big positive reference
-    fails = fails + report('reference steers u', uHi(1) > uLo(1) + 1e-6, ...
-        sprintf('u(track 0) = %.4g, u(track 1) = %.4g', uLo(1), uHi(1)));
+    uHi = run_settled(zeros(8, 1), 5e-4);     % track an event-scale reference
+    evalin('base', 'clear MPC_OPTS');
+    mpc_test([]);
+    fails = fails + report('reference steers u', uHi(1) > uLo(1) + 1e-3, ...
+        sprintf('u(track base) = %.4g, u(track event) = %.4g', uLo(1), uHi(1)));
 
     % ---- 4. preview shapes ----------------------------------------------
     mpc_test([]);
@@ -220,9 +227,16 @@ function bench_test_reference_mpc
     % ---- 7. solver hygiene: zero target from rest -> u is EXACTLY zero ----
     % (2026-08-20: OSQP polish + tight eps + dust clamp. At the old defaults,
     % ADMM residue ~1e-3 leaked out as phantom sub-threshold stim commands.)
+    % Premise requires a ZERO-OFFSET plant (on an offset model the correct
+    % zero-target answer is near uOffset, not 0) -- stage a toy for it.
     evalin('base', 'clear MPC_OPTS MPC_TARGET');
+    sysZ = struct('A', 0.9512, 'B', 0.00975, 'C', 1, 'D', 0, 'Ts', 0.01);
+    AMz = repmat(struct('sys', []), 1, 10); AMz(10).sys = sysZ;
+    assignin('base', 'AllModels', AMz);
     mpc_test([]);
     uZ = run_settled(zeros(8, 1), 0);
+    evalin('base', 'clear AllModels');
+    mpc_test([]);
     fails = fails + report('exact zero at zero target', all(uZ == 0), ...
         sprintf('u = %s (must be exactly 0)', mat2str(uZ')));
 
@@ -354,6 +368,52 @@ function bench_test_reference_mpc
     evalin('base', 'clear MPC_OPTS');
     mpc_test([]);
     fails = fails + report('narrow warm still guards', ok, detail);
+
+    % ---- 14. MIMO featureChannel vector (2026-09-01): a p=2 model maps two --
+    % feature indices; the measurement must follow each mapped channel.
+    ok = true; detail = '';
+    try
+        s1 = struct('A', 0.9, 'B', [0.1 0.0], 'C', 1, 'D', [0 0]);
+        s2 = struct('A', 0.8, 'B', [0.0 0.1], 'C', 1, 'D', [0 0]);
+        sysM = struct('A', blkdiag(s1.A, s2.A), 'B', [s1.B; s2.B], ...
+                      'C', blkdiag(1, 1), 'D', zeros(2, 2), 'Ts', 0.01);
+        AM = repmat(struct('sys', []), 1, 10); AM(10).sys = sysM;
+        assignin('base', 'AllModels', AM);
+        assignin('base', 'MPC_OPTS', struct('featureChannel', [12 5], ...
+                 'qWeight', [1 2], 'rWeight', 1e-4));
+        mpc_test([]);
+        for k = 1:3, mpc_test(zeros(16, 1)); end
+        mpc_test('state');
+        yA = zeros(16, 1); yA(12) = 0.7;               % load mapped output 1
+        uA = run_settled(yA, [0.5; 0.5]);
+        mpc_test('state');
+        yB = zeros(16, 1); yB(5) = 0.7;                % load mapped output 2
+        uB = run_settled(yB, [0.5; 0.5]);
+        ok = numel(uA) >= 2 && abs(uA(1) - uB(1)) > 1e-9 && abs(uA(2) - uB(2)) > 1e-9;
+        detail = sprintf('u=[%.3g %.3g] vs [%.3g %.3g] (must differ per output)', ...
+                         uA(1), uA(2), uB(1), uB(2));
+    catch err
+        ok = false; detail = err.message;
+    end
+    evalin('base', 'clear AllModels MPC_OPTS');
+    mpc_test([]);
+    fails = fails + report('MIMO featureChannel map', ok, detail);
+
+    % ---- 15. ...and a wrong-arity vector must throw, not silently truncate --
+    ok = false; detail = 'no error raised';
+    try
+        AM = repmat(struct('sys', []), 1, 10); AM(10).sys = sysM;
+        assignin('base', 'AllModels', AM);
+        assignin('base', 'MPC_OPTS', struct('featureChannel', [12 5 3]));
+        mpc_test([]);
+        mpc_test(zeros(16, 1));
+    catch err
+        ok = strcmp(err.identifier, 'mpc_test:BadFeatureChannel');
+        detail = sprintf('threw %s', err.identifier);
+    end
+    evalin('base', 'clear AllModels MPC_OPTS');
+    mpc_test([]);
+    fails = fails + report('MIMO featureChannel arity', ok, detail);
 
     fprintf('\n%s\n', ternary(fails == 0, 'ALL BENCH TESTS PASS', ...
                               sprintf('%d BENCH TEST(S) FAILED', fails)));

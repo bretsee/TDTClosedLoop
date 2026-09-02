@@ -196,8 +196,10 @@ function P = init_controller(ny_feat)
     P.featureChannel = mpcOpts.featureChannel;   % 0 = legacy first-p mapping
     P.rOffStack = [];   % filled after P.N is final (below)
 
-    Q = mpcOpts.qWeight * eye(P.p);
-    R = mpcOpts.rWeight * eye(P.m);
+    % qWeight/rWeight may be per-output/per-input VECTORS (MIMO: feature scales
+    % differ across control channels). A scalar behaves exactly as before.
+    Q = diag(expand_weight(mpcOpts.qWeight, P.p, 'qWeight'));
+    R = diag(expand_weight(mpcOpts.rWeight, P.m, 'rWeight'));
 
     % Input constraints
     P.umin = mpcOpts.umin * ones(P.m,1);
@@ -299,16 +301,32 @@ function opts = get_mpc_opts(assets)
     fields = fieldnames(src);
     for i = 1:numel(fields)
         f = fields{i};
-        if isfield(opts, f) && isnumeric(src.(f)) && isscalar(src.(f)) && isfinite(src.(f))
+        % featureChannel and the weights may be VECTORS (MIMO, 2026-09-01):
+        % one feature index per model output / per-output qWeight.
+        vectorOk = any(strcmp(f, {'featureChannel', 'qWeight', 'rWeight'}));
+        if isfield(opts, f) && isnumeric(src.(f)) && all(isfinite(src.(f))) ...
+                && (isscalar(src.(f)) || (vectorOk && isvector(src.(f))))
             opts.(f) = double(src.(f));
         end
     end
     opts.N  = max(1, round(opts.N));
     opts.Nu = max(1, min(round(opts.Nu), opts.N));
     opts.featureChannel = max(0, round(opts.featureChannel));
-    fprintf('mpc_test: N=%d Nu=%d qWeight=%g rWeight=%g u in [%g %g] featureChannel=%d observer=%d\n', ...
-            opts.N, opts.Nu, opts.qWeight, opts.rWeight, opts.umin, opts.umax, ...
-            opts.featureChannel, opts.useObserver ~= 0);
+    fprintf('mpc_test: N=%d Nu=%d qWeight=[%s] rWeight=[%s] u in [%g %g] featureChannel=[%s] observer=%d\n', ...
+            opts.N, opts.Nu, strtrim(sprintf('%g ', opts.qWeight)), ...
+            strtrim(sprintf('%g ', opts.rWeight)), opts.umin, opts.umax, ...
+            strtrim(sprintf('%d ', opts.featureChannel)), opts.useObserver ~= 0);
+end
+
+function w = expand_weight(w, n, name)
+% Scalar -> n-vector; n-vector passes through; anything else is a config error.
+    w = double(w(:));
+    if isscalar(w)
+        w = repmat(w, n, 1);
+    elseif numel(w) ~= n
+        error('mpc_test:BadWeight', ...
+              'MPC_OPTS.%s has %d entries; expected 1 or %d.', name, numel(w), n);
+    end
 end
 
 function s = merge_struct(s, over)
@@ -363,18 +381,32 @@ function yk = feature_map(y_feat, P)
 % Measurement mapping, configurable via MPC_OPTS.featureChannel:
 %   featureChannel = 0 (default): legacy -- first p entries of the feature
 %     vector are the measured outputs.
-%   featureChannel = k > 0: the model's (single) output is feature channel k.
-%     This replaces the old "hand-edit this function at the rig" step
-%     (3_fit.ps1 used to instruct exactly that).
+%   featureChannel = k > 0 (scalar): the model's single output is feature k.
+%   featureChannel = [k1 .. kp] (vector, MIMO 2026-09-01): model output i is
+%     feature channel k_i. Must have exactly p entries.
 
     yk = zeros(P.p,1);
-    if P.featureChannel > 0
-        if P.featureChannel > numel(y_feat)
+    fc = P.featureChannel;
+    if any(fc > 0)
+        if numel(fc) == 1
+            fc = [fc; zeros(P.p - 1, 1)];   % legacy scalar on a p=1 model
+        end
+        if numel(fc) ~= P.p
+            error('mpc_test:BadFeatureChannel', ...
+                  'MPC_OPTS.featureChannel has %d entries but the model has p=%d outputs.', ...
+                  numel(fc), P.p);
+        end
+        if any(fc < 1)
+            error('mpc_test:BadFeatureChannel', ...
+                  'MPC_OPTS.featureChannel must be all-positive when mapping (got a 0/negative).');
+        end
+        if any(fc > numel(y_feat))
             error('mpc_test:BadFeatureChannel', ...
                   'MPC_OPTS.featureChannel = %d but only %d features arrive.', ...
-                  P.featureChannel, numel(y_feat));
+                  max(fc), numel(y_feat));
         end
-        yk(1) = y_feat(P.featureChannel);
+        yk = y_feat(fc(:));
+        yk = yk(:);
         return;
     end
     n = min(P.p, numel(y_feat));

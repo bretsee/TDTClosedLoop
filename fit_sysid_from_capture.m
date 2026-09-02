@@ -139,9 +139,56 @@ function result = fit_sysid_from_capture(captureFile, opts)
         opts.useInputs = moved;
     end
     if numel(opts.useOutputs) ~= 1
-        error('fit_sysid_from_capture:SingleOutputOnly', ...
-              ['This ARX path identifies one output at a time. Pass a single ' ...
-               'index in opts.useOutputs and run it once per output channel.']);
+        % ---- MIMO (2026-09-01): fit each output with the proven single-output
+        % path, then blkdiag-stack the chosen realizations. ARX is per-output
+        % independent, so this IS the MIMO ARX solution; each output keeps its
+        % own best order. The stacked model shares uOffset (same inputs) and
+        % carries a 1 x p yOffset.
+        outs = opts.useOutputs(:)';
+        fprintf('MIMO fit: %d outputs [%s] -- fitting each, then stacking.\n', ...
+                numel(outs), num2str(outs));
+        subs = cell(1, numel(outs));
+        for oi = 1:numel(outs)
+            so = opts;
+            so.useOutputs = outs(oi);
+            so.save = false;
+            fprintf('\n===== output %d (%d of %d) =====\n', outs(oi), oi, numel(outs));
+            subs{oi} = fit_sysid_from_capture(captureFile, so);
+        end
+        A = []; B = []; C = []; yOff = [];
+        orders = zeros(1, numel(outs)); valFits2 = zeros(1, numel(outs));
+        for oi = 1:numel(outs)
+            s = subs{oi}.sys;
+            nA = size(A, 1); nS = size(s.A, 1);
+            A = blkdiag(A, s.A);
+            B = [B; s.B];                                        %#ok<AGROW>
+            C = blkdiag(C, s.C);
+            yOff = [yOff, s.yOffset];                            %#ok<AGROW>
+            orders(oi) = subs{oi}.order; valFits2(oi) = subs{oi}.valFit;
+            if nA + nS ~= size(A, 1)
+                error('fit_sysid_from_capture:StackMismatch', 'blkdiag size drift');
+            end
+        end
+        sysM = struct('A', A, 'B', B, 'C', C, 'D', zeros(numel(outs), size(B, 2)), ...
+                      'Ts', subs{1}.Ts, 'uOffset', subs{1}.uOffset, 'yOffset', yOff);
+        fprintf('\nMIMO stacked model: n=%d states, m=%d inputs, p=%d outputs.\n', ...
+                size(A, 1), size(B, 2), numel(outs));
+        fprintf('  per-output orders [%s], valFit%% [%s]\n', ...
+                num2str(orders), num2str(valFits2, '%.2f '));
+        fprintf('  yOffset = %s\n', mat2str(yOff, 4));
+        result = struct('sys', sysM, 'order', orders, 'valFit', valFits2, ...
+                        'uOffset', subs{1}.uOffset, 'yOffset', yOff, ...
+                        'Ts', subs{1}.Ts, 'useInputs', subs{1}.useInputs, ...
+                        'useOutputs', outs, 'orders', opts.orders, ...
+                        'valFits', {cellfun(@(x) x.valFits, subs, 'UniformOutput', false)}, ...
+                        'method', 'per-output ARX LS -> blkdiag stacked MIMO');
+        if opts.save
+            save_into_allmodels(sysM, opts.modelIndex, result);
+        else
+            fprintf(['\nNot saved. Re-run with opts.save = true to write this into ' ...
+                     'AllModels(%d).sys.\n'], opts.modelIndex);
+        end
+        return;
     end
     U = U(:, opts.useInputs);
     Y = Y(:, opts.useOutputs);
