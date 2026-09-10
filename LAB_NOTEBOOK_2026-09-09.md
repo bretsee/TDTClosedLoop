@@ -1,6 +1,7 @@
 # Lab notebook — 2026-09-09 (WEDNESDAY): 64-ch + MIMO validation day
 
-**STATUS: DRAFT — day in progress, do not cite until finalized.**
+**STATUS: FINAL (end of day 2026-09-09). ALL GATES GREEN — GO for acute #2
+on 2026-09-10 at 64-ch / MIMO / cpp-primary / new Microprobes map.**
 
 Goal: validate the full 64-ch recording + MIMO cpp-primary control stack in the
 surgical suite so acute #2 (2026-09-10, `RIG_DAY_2026-09-10.md`) runs with zero
@@ -39,8 +40,10 @@ en route (not yet installed).
   width. Resolved by the user via manual rig edit (no Detect). DSP compile
   (squares-greening window) completed at 64 ch — our circuit fits the RZ2's
   DSPs without Mark's rework.
-- .synrig export: FIXME confirm fresh dated export done today (pre-teardown
-  export was never made; Synapse Backups live on the rig PC only).
+- .synrig export: done after the 64-ch compile; **the MCMap changed later,
+  so a RE-EXPORT tonight is on the user's leave-checklist** (acknowledged).
+  Pre-teardown export was never made; Synapse Backups live on the rig PC
+  only — 8/30 backup zip preserved to the lab NAS 09-08.
 
 ### S2 — 64-ch acquisition (dry): PASS
 - Probe banner: `Streaming. numChannels=64 sampleBytes=4 (float32)`,
@@ -170,6 +173,28 @@ en route (not yet installed).
   needed. Planning session + wrap follow below.
 - Experiment plan review + improvements session: PENDING (planned after
   validation).
+
+## Planning wrap (end of day)
+
+- **Design upgrades adopted for tomorrow (user-approved):** (1) EARLY/LATE
+  REPEAT — both arms of run r1 re-run with identical tapes at day end
+  (Phase 7), giving a measured within-day drift number per arm; (2)
+  DECOUPLED-TARGET RUN — new `rig/build_decoupled_ref.py` (tested;
+  sim-verified end-to-end through cpp MPC, 1300/1300) builds a
+  round-robin one-active-output reference from any ref_mix; one such run
+  in Phase 6 = the first-in-class MIMO selectivity exhibit. Both are in
+  RIG_DAY_2026-09-10.md.
+- Scoring upgrades (post-hoc, no rig dependency): shuffled-template
+  nulls, identical charge accounting across arms, latency distributions,
+  sliding-window r. To be applied in the results analysis.
+- Mark @ TDT's reworked files did not arrive today → per standing rule
+  they wait for acute #3; tomorrow runs our validated circuit.
+- Leave-checklist (user acknowledged): stimulator on charge overnight;
+  re-export dated .synrig (post-MCMap state); PO8e bracket NOT installed
+  until after acute #2.
+- Workflow: tank-dir network share deferred to tomorrow morning
+  (share read-only on rig PC → UNC/mapped access from the analysis PC;
+  point ingest at the share).
 
 ## Ops notes for the record
 - Synapse falls to Idle after a recording stops — restart Preview before any
