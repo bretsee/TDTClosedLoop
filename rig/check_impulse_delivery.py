@@ -54,7 +54,22 @@ def main():
     ap.add_argument("--fs-acq", type=float, default=610.3515625,
                     help="Wav acquisition rate the loop reads (default base/40 = "
                          "610.3515625; pass 1220.703125 for the 2x circuit)")
+    ap.add_argument("--pairs", default=None,
+                    help="expected word->electrode pairs when the circuit MCMap is "
+                         "not the legacy adjacent layout: 8 comma-separated a:b "
+                         "1-based channel pairs in word order, e.g. the 2026-09-09 "
+                         "Microprobes 2x8 map "
+                         "'16:12,15:11,14:10,13:9,4:8,3:7,2:6,1:5'. Default = "
+                         "legacy (2k-1,2k).")
     args = ap.parse_args()
+
+    if args.pairs:
+        pair_table = []
+        for item in args.pairs.split(","):
+            a, b = item.split(":")
+            pair_table.append((int(a) - 1, int(b) - 1))  # 0-based
+    else:
+        pair_table = [(2 * w, 2 * w + 1) for w in range(8)]
 
     import tdt
     d = tdt.read_block(args.block, evtype=["streams", "scalars"])
@@ -181,8 +196,9 @@ def main():
     print("\nsSig bipolar pairs (inversion + word attribution):")
     ok_map = True
     absG = np.abs(G)
-    for w in range(min(n_words, G.shape[0] // 2)):
-        a, b = G[2 * w], G[2 * w + 1]
+    for w in range(min(n_words, len(pair_table))):
+        pa, pb = pair_table[w]
+        a, b = G[pa], G[pb]
         inv_ok = a.std() > 1e-12 and np.max(np.abs(a + b)) < 1e-6 * max(1.0, np.max(np.abs(a)))
         onU = np.flatnonzero((U[w][1:] > 1e-9) & (U[w][:-1] <= 1e-9)) + 1
         mask = np.zeros(G.shape[1], bool)
@@ -191,18 +207,20 @@ def main():
             mask[i0:i0 + int(0.012 * fsG)] = True
         ratio = absG[:, mask].mean(axis=1) / (absG[:, ~mask].mean(axis=1) + 1e-12)
         top2 = set(np.argsort(ratio)[::-1][:2].tolist())
-        attr_ok = top2 == {2 * w, 2 * w + 1}
+        attr_ok = top2 == {pa, pb}
         ok_map = ok_map and inv_ok and attr_ok
         print("  word %d -> pair %d (ch%d,ch%d): inversion %s, attribution %s "
               "(focality %.0fx)"
-              % (w + 1, w + 1, 2 * w + 1, 2 * w + 2,
+              % (w + 1, w + 1, pa + 1, pb + 1,
                  "EXACT" if inv_ok else "BROKEN",
                  "OK" if attr_ok else "WRONG CHANNELS %s" % sorted(c + 1 for c in top2),
-                 min(ratio[2 * w], ratio[2 * w + 1])))
+                 min(ratio[pa], ratio[pb])))
+    map_desc = ("word k -> electrodes (2k-1, 2k)" if not args.pairs
+                else "word k -> the --pairs table")
     if not ok_map:
-        note("FAIL", "bipolar mapping word k -> electrodes (2k-1, 2k) does NOT hold")
+        note("FAIL", "bipolar mapping %s does NOT hold" % map_desc)
     else:
-        print("  PAIR MAPPING CONFIRMED: word k -> electrodes (2k-1, 2k), exact inversion")
+        print("  PAIR MAPPING CONFIRMED: %s, exact inversion" % map_desc)
 
     # ---- Plse carrier rate --------------------------------------------------
     P, fsP = d.streams.Plse.data, d.streams.Plse.fs
