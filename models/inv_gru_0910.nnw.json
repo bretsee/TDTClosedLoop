@@ -1,0 +1,21 @@
+{
+  "arch": "gru",
+  "mode": "inverse",
+  "history": 1,
+  "captures": [
+    "capture_rig_runopfit12.csv"
+  ],
+  "params": 3624,
+  "val_rmse": 0.48749950528144836,
+  "val_r2_mean": 0.049393415451049805,
+  "val_r2_per_output": [
+    NaN,
+    NaN,
+    NaN,
+    0.014670073986053467,
+    NaN,
+    0.08411675691604614,
+    NaN,
+    NaN
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "arch": "linear",
+  "mode": "inverse",
+  "history": 1,
+  "captures": [
+    "capture_rig_runopfit12.csv"
+  ],
+  "params": 16,
+  "val_rmse": 0.500120997428894,
+  "val_r2_mean": -0.0003255009651184082,
+  "val_r2_per_output": [
+    NaN,
+    NaN,
+    NaN,
+    -0.0005222558975219727,
+    NaN,
+    -0.00012874603271484375,
+    NaN,
+    NaN
+  ]
+}

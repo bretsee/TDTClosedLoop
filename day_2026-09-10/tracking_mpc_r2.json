@@ -1,0 +1,40 @@
+{
+ "label": "mpc_r2",
+ "ref": "day_2026-09-10\\ref_mix_r2.csv",
+ "capture": "day_2026-09-10\\capture_mpc_mixr2.csv",
+ "lti": null,
+ "n_ticks": 22150,
+ "skip_ticks": 50,
+ "y_channels": [
+  64
+ ],
+ "u_channels": [
+  4,
+  6
+ ],
+ "per_channel": [
+  {
+   "ref_col": 1,
+   "y_channel": 64,
+   "rmse": 4.049488921746501e-05,
+   "nrmse_ptp": 0.17411436041112932,
+   "nrmse_std": 2.2513689187784576,
+   "pearson_lag0": 0.3782697599119145,
+   "pearson_best": 0.3782697599119146,
+   "best_lag_ticks": 0,
+   "slope_y_on_r": 0.9176803218938623,
+   "slope_u_on_r": {
+    "u4": 195189.9320365528,
+    "u6": 152656.7167389937
+   },
+   "tracking_index": 2.1231573415700797,
+   "eta": {
+    "n_transients": 80,
+    "peak_delay_ticks": 0,
+    "peak_ratio": 0.8649215654635722
+   },
+   "verdict": "MARGINAL"
+  }
+ ],
+ "overall": "MIXED/MARGINAL"
+}

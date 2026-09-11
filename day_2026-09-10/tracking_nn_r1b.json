@@ -1,0 +1,52 @@
+{
+ "label": "nn_r1b",
+ "ref": "day_2026-09-10\\ref_mix_r1.csv",
+ "capture": "day_2026-09-10\\capture_nn_r1b.csv",
+ "lti": null,
+ "n_ticks": 22150,
+ "skip_ticks": 50,
+ "y_channels": [
+  64
+ ],
+ "u_channels": [
+  1,
+  2,
+  3,
+  4,
+  5,
+  6,
+  7,
+  8
+ ],
+ "per_channel": [
+  {
+   "ref_col": 1,
+   "y_channel": 64,
+   "rmse": 3.437445303639549e-05,
+   "nrmse_ptp": 0.14779854990523345,
+   "nrmse_std": 1.9110948729987707,
+   "pearson_lag0": 0.019731654059887967,
+   "pearson_best": 0.07010411293135746,
+   "best_lag_ticks": 4,
+   "slope_y_on_r": 0.03118334925296023,
+   "slope_u_on_r": {
+    "u1": -1.3336526337372652,
+    "u2": -0.12079060090052329,
+    "u3": -0.012821829303667523,
+    "u4": 10542.227207567581,
+    "u5": 0.4742154186981699,
+    "u6": -21405.483521595426,
+    "u7": 0.024406915199685318,
+    "u8": 2.6788700134759784
+   },
+   "tracking_index": 1.0909889069918481,
+   "eta": {
+    "n_transients": 80,
+    "peak_delay_ticks": 5,
+    "peak_ratio": 0.11702614404594802
+   },
+   "verdict": "NOT TRACKING"
+  }
+ ],
+ "overall": "NOT TRACKING"
+}

@@ -95,6 +95,18 @@ def main() -> int:
     ap.add_argument("--output-count", type=int, default=8,
                     help="reply width; the rig is 8 bipolar pairs")
     ap.add_argument("--noise", type=float, default=0.0, help="measurement noise std")
+    ap.add_argument("--pairs", default="",
+                    help="comma-separated 1-based reply slots carrying the plant's "
+                         "m inputs -- MUST mirror cpp_controller --pairs, else the "
+                         "sim plant reads the wrong slots (zeros) and the loop "
+                         "falsely appears open. Default: slots 1..m.")
+    ap.add_argument("--feature-map", default="",
+                    help="comma-separated 1-based feature channels carrying the "
+                         "plant's p outputs -- MUST mirror cpp_controller "
+                         "--feature-map; the request frame is sized to cover them "
+                         "(the rig sends inputChannels-wide frames). Else cpp "
+                         "raises FEATURE-MAP-FAULT and replies hold-last zeros. "
+                         "Default: channels 1..p.")
     ap.add_argument("--dump-u", default="",
                     help="write the commanded u trajectory to this CSV "
                          "(tick,u1..uM design format, replayable via "
@@ -108,6 +120,24 @@ def main() -> int:
     A, B, C, D, Ts, uOff, yOff = load_lti(Path(args.plant))
     n, m, p = A.shape[0], B.shape[1], C.shape[0]
     print(f"Plant {args.plant}: n={n} m={m} p={p} Ts={Ts}")
+    if args.pairs:
+        slot_idx = np.array([int(s) - 1 for s in args.pairs.split(",")])
+        if len(slot_idx) != m:
+            print(f"FATAL: --pairs names {len(slot_idx)} slots but the plant has m={m} inputs")
+            return 1
+    else:
+        slot_idx = np.arange(m)
+    print(f"Plant inputs read from reply slots {[int(i)+1 for i in slot_idx]}")
+    if args.feature_map:
+        feat_idx = np.array([int(s) - 1 for s in args.feature_map.split(",")])
+        if len(feat_idx) != p:
+            print(f"FATAL: --feature-map names {len(feat_idx)} channels but the plant has p={p} outputs")
+            return 1
+    else:
+        feat_idx = np.arange(p)
+    feat_width = int(max(args.output_count, feat_idx.max() + 1))
+    print(f"Plant outputs sent on feature channels {[int(i)+1 for i in feat_idx]} "
+          f"(frame width {feat_width})")
     if np.any(uOff != 0) or np.any(yOff != 0):
         # The model is fitted on centered data; the PLANT here must live in the
         # raw frame or steady-state numbers are wrong for offset models.
@@ -143,10 +173,11 @@ def main() -> int:
             if args.noise > 0:
                 y = y + rng.normal(0, args.noise, y.shape)
 
-            # The feature vector the C++ loop sends is output_count wide; the
-            # controller's feature_map picks out the modelled channels.
-            feat = np.zeros(args.output_count)
-            feat[:min(p, args.output_count)] = y[:min(p, args.output_count)]
+            # The real C++ loop sends an inputChannels-wide feature frame; the
+            # controller's feature_map picks out the modelled channels. Place
+            # the plant outputs at their mapped channels, zeros elsewhere.
+            feat = np.zeros(feat_width)
+            feat[feat_idx] = y[:p]
 
             pkt = struct.pack(">II", k + 1, len(feat))
             pkt += b"".join(struct.pack(">f", float(v)) for v in feat)
@@ -164,7 +195,7 @@ def main() -> int:
 
             seq, cnt = struct.unpack(">II", dat[:8])
             vals = np.array(struct.unpack(f">{cnt}f", dat[8:8 + 4 * cnt]))
-            u = vals[:m]
+            u = vals[slot_idx]
 
             # One-tick command lag, matching the real localhost path: the command
             # computed from y(k) is not applied until k+1. Omitting this would
@@ -205,9 +236,12 @@ def main() -> int:
     print(f"Round-trip           : mean {np.mean(rtts):.3f} ms, p95 {np.percentile(rtts,95):.3f} ms")
     print(f"Output y  final/mean : {ys_a[-1]:.4f} / {ys_a[tail].mean():.4f}   target {args.target}")
     print(f"Command u final/mean : {us_a[-1]:.4f} / {us_a[tail].mean():.4f}")
-    print(f"Command range        : {us_a.max() - us_a.min():.6f}")
+    U_a = np.array(U_hist)
+    ranges = U_a.max(axis=0) - U_a.min(axis=0)
+    print("Command range        : " + "  ".join(
+        f"in{i+1}(slot{int(slot_idx[i])+1}):{ranges[i]:.4f}" for i in range(m)))
 
-    if us_a.max() - us_a.min() < 1e-6:
+    if ranges.max() < 1e-6:
         print("\n*** COMMAND IS CONSTANT -- the loop is NOT closed. ***")
         return 1
     print("\nCommand varies: the controller is responding to its measurement.")

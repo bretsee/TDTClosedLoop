@@ -1,0 +1,16 @@
+{
+ "nnw": "C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\models\\inv_gru_0910.nnw",
+ "nnw_mtime": 1789099265.3694243,
+ "ref": "C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\day_2026-09-10\\ref_mix_r1.csv",
+ "input_channels": [
+  1
+ ],
+ "fill": "mean",
+ "umin": 0.0,
+ "umax": 30.0,
+ "max_rate": 2.0,
+ "output_count": 8,
+ "arch": "gru",
+ "history": 1,
+ "parity": null
+}
