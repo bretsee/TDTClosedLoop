@@ -1,0 +1,47 @@
+{
+  "capture_rig_runopfit10.csv": {
+    "pairs": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "max_gain": 0.038,
+    "gain_ch64": [
+      0.021,
+      0.012,
+      0.006,
+      0.038,
+      0.007,
+      0.008,
+      0.008,
+      0.008
+    ]
+  },
+  "capture_rig_runopfit11.csv": {
+    "pairs": [
+      1,
+      4
+    ],
+    "max_gain": 0.111,
+    "gain_ch64": [
+      0.062,
+      0.111
+    ]
+  },
+  "capture_rig_runopfit12.csv": {
+    "pairs": [
+      4,
+      6
+    ],
+    "max_gain": 0.137,
+    "gain_ch64": [
+      0.137,
+      0.085
+    ]
+  }
+}

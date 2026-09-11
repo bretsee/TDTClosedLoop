@@ -1,0 +1,33 @@
+{
+  "pairs": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "best_z": [
+    2.6,
+    1.6,
+    4.4,
+    5.7,
+    3.9,
+    3.3,
+    4.8,
+    3.9
+  ],
+  "best_channel": [
+    64,
+    18,
+    64,
+    64,
+    64,
+    64,
+    64,
+    64
+  ],
+  "note": "feature-space z at 100 Hz ticks; 8-11.5 ms latencies are from the raw block (see notebook), transfer pending"
+}

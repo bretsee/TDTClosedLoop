@@ -1,0 +1,94 @@
+{
+  "rows": [
+    {
+      "site": "D1",
+      "block": "BSCL20260909BU-260910-185534",
+      "peak_uv": 297.4,
+      "best_channel": 39,
+      "latency_ms": 22.9,
+      "split_half": 0.818,
+      "n_trials": 150
+    },
+    {
+      "site": "D2",
+      "block": "BSCL20260909BU-260910-191958",
+      "peak_uv": 249.2,
+      "best_channel": 39,
+      "latency_ms": 26.2,
+      "split_half": 0.967,
+      "n_trials": 150
+    },
+    {
+      "site": "D3",
+      "block": "BSCL20260909BU-260910-193215",
+      "peak_uv": 320.6,
+      "best_channel": 39,
+      "latency_ms": 27.9,
+      "split_half": 0.935,
+      "n_trials": 150
+    },
+    {
+      "site": "D4",
+      "block": "BSCL20260909BU-260910-192914",
+      "peak_uv": 370.0,
+      "best_channel": 39,
+      "latency_ms": 24.6,
+      "split_half": 0.839,
+      "n_trials": 150
+    },
+    {
+      "site": "P1",
+      "block": "BSCL20260909BU-260910-192302",
+      "peak_uv": 528.6,
+      "best_channel": 39,
+      "latency_ms": 32.8,
+      "split_half": 0.981,
+      "n_trials": 150
+    },
+    {
+      "site": "P2",
+      "block": "BSCL20260909BU-260910-193528",
+      "peak_uv": 470.6,
+      "best_channel": 47,
+      "latency_ms": 22.9,
+      "split_half": 0.963,
+      "n_trials": 150
+    },
+    {
+      "site": "P3",
+      "block": "BSCL20260909BU-260910-193840",
+      "peak_uv": 438.1,
+      "best_channel": 39,
+      "latency_ms": 26.2,
+      "split_half": 0.979,
+      "n_trials": 150
+    },
+    {
+      "site": "MP",
+      "block": "BSCL20260909BU-260910-192604",
+      "peak_uv": 525.0,
+      "best_channel": 47,
+      "latency_ms": 24.6,
+      "split_half": 0.981,
+      "n_trials": 150
+    },
+    {
+      "site": "LP",
+      "block": "BSCL20260909BU-260910-191241",
+      "peak_uv": 473.6,
+      "best_channel": 47,
+      "latency_ms": 21.3,
+      "split_half": 0.846,
+      "n_trials": 150
+    },
+    {
+      "site": "SHAM",
+      "block": "BSCL20260909BU-260910-185201",
+      "peak_uv": 50.0,
+      "best_channel": 39,
+      "latency_ms": 190.1,
+      "split_half": 0.794,
+      "n_trials": 150
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "mpc": {
+    "mpc_r1": 172888.04273709087,
+    "mpc_r2": 175043.87070551523,
+    "mpc_r3": 169884.40081346693,
+    "mpc_r1_late": 172951.97303194652,
+    "mpc_r4b": 302572.87105740036
+  },
+  "choi": {
+    "choi_r1": 47909.550194927,
+    "choi_r2": 47909.550194927,
+    "choi_r3": 47909.550194927,
+    "choi_r1_late": 47909.550194927
+  },
+  "nn_r1b": 655454.9129417569,
+  "unrecorded_exposure_uAticks": {
+    "value": 1300000.0,
+    "SANCTIONED_HARDCODE": true,
+    "source": "LAB_NOTEBOOK_2026-09-10.md -- PZ2-off incident section"
+  }
+}

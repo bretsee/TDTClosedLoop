@@ -50,6 +50,10 @@ def main():
     n_pics = n_runs = 0
 
     for i, slide in enumerate(prs.slides, start=1):
+        pics_on_slide = sum(1 for s in slide.shapes
+                            if s.shape_type == MSO_SHAPE_TYPE.PICTURE)
+        # a two_fig slide's per-picture box is half the content width
+        w_ref = CONTENT_W_IN / max(pics_on_slide, 1)
         for shp in slide.shapes:
             if shp.shape_type == MSO_SHAPE_TYPE.PICTURE:
                 n_pics += 1
@@ -68,11 +72,11 @@ def main():
                             f"slide {i}: aspect distorted (src {ar_src:.3f} "
                             f"vs placed {ar_placed:.3f}) -- width-only insert?")
                 w_in, h_in = W / EMU_PER_IN, H / EMU_PER_IN
-                if w_in < 0.85 * CONTENT_W_IN and h_in < 0.85 * CONTENT_H_IN:
+                if w_in < 0.85 * w_ref and h_in < 0.85 * CONTENT_H_IN:
                     warns.append(
                         f"slide {i}: picture fills only "
-                        f"{w_in/CONTENT_W_IN:.0%} x {h_in/CONTENT_H_IN:.0%} "
-                        f"of the content box -- wrong figsize preset?")
+                        f"{w_in/w_ref:.0%} x {h_in/CONTENT_H_IN:.0%} "
+                        f"of its box -- wrong figsize preset?")
             if shp.has_text_frame:
                 for para in shp.text_frame.paragraphs:
                     for run in para.runs:

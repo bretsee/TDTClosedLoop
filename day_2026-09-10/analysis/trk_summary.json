@@ -1,0 +1,34 @@
+{
+  "findings": [
+    "MPC tracked at lag 0 in every run (r0 0.33-0.40); Choi r0 0.30-0.39 at a wandering best lag.",
+    "Feedback adapts, replay cannot: identical tape ~2 h apart, MPC +0.073 with amplitude slope re-converging to 1.000; Choi +0.013, flat.",
+    "Tracking is genuine reference-following: circular-shift null p < 0.002; mean-drive NN tape r0 0.02.",
+    "Charge reversal vs acute #1: MPC 173k vs Choi 48k \u00b5A-ticks in r1; fidelity robust to a 3\u00d7 input penalty (r4b), frontier drift-confounded -> acute #3 time-controlled sweep."
+  ],
+  "numbers": {
+    "mpc_r0_range": [
+      0.32964608579920956,
+      0.4022340926949135
+    ],
+    "choi_r0_range": [
+      0.2996425923990689,
+      0.39380818266705414
+    ],
+    "mpc_all_lag0": true,
+    "early_late_delta": {
+      "MPC": 0.07258800689570394,
+      "Choi": 0.01309898647988711
+    },
+    "mpc_late_slope": 0.9996316684965273,
+    "null_p_bound": 0.002,
+    "charge_r1": {
+      "mpc": 172888.04273709087,
+      "choi": 47909.550194927
+    },
+    "r4b": {
+      "r0": 0.31310276074752125,
+      "charge": 302572.87105740036
+    },
+    "nn_r0": 0.019731654059887967
+  }
+}

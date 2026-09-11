@@ -1,0 +1,25 @@
+{
+  "findings": [
+    "All 1/8 thalamic pairs evoke cortex under single pulses (feature-space z 2-6; acute #1 had 2/8).",
+    "Tonic drive collapses the actuator space: pulse spectrum is rich (eff. rank 5 at 0.1\u00b7\u03c31) while tonic collapses after \u03c31 (\u03c32/\u03c31 = 0.22; eff. rank 3, only ONE direction above the |corr| 0.1 usability bar -- the day ran rank-1). MIMO/decoupled control needs a burst/duty-cycle redesign -- the acute-#3 lever.",
+    "The rank-1 channel that survives (pair 4 -> ch 64, gain 0.14) was stationary all night (u4 0.132 -> 0.137); the secondary faded (u6 0.116 -> 0.062) -- drift lives in the periphery of the footprint, and feedback absorbs it."
+  ],
+  "numbers": {
+    "pairs_pulse_responsive": 1,
+    "probe_z_range": [
+      1.6,
+      5.7
+    ],
+    "pulse_eff_rank": 5,
+    "tonic_eff_rank": 3,
+    "tonic_max_gain": 0.137,
+    "drift_u4": {
+      "early": 0.132,
+      "late": 0.137
+    },
+    "drift_u6": {
+      "early": 0.116,
+      "late": 0.062
+    }
+  }
+}

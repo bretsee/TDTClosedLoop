@@ -1,0 +1,21 @@
+{
+  "findings": [
+    "All 9 active sites reference-grade: peaks 249-529 uV at 21-33 ms, split-half 0.82-0.98 (150 trials each).",
+    "SHAM null clean: 50 uV drift-shaped, no locked morphology -- thwacker sound/vibration/electronics excluded.",
+    "Surface-tangent planar array is LFP-dominant and speaker-silent by geometry; placement gate for such arrays is the z-score table.",
+    "OFF-response is site-specific: LP -305 uV in the post-release window vs D1 +80 uV."
+  ],
+  "numbers": {
+    "n_sites_active": 9,
+    "peak_uv_min": 249.2,
+    "peak_uv_max": 528.6,
+    "latency_ms_min": 21.3,
+    "latency_ms_max": 32.8,
+    "split_half_min": 0.818,
+    "split_half_max": 0.981,
+    "sham_peak_uv": 50.0,
+    "trials_per_site": 150,
+    "lp_off_peak_uv": -305.1,
+    "d1_off_peak_uv": 79.7
+  }
+}
