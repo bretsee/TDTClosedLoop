@@ -14,6 +14,7 @@ ORDER = [
     "trk_persite.py", "trk_charge.py", "trk_nn_negative.py", "trk_summary.py",
     "rank_probe_map.py", "rank_tonic_gains.py", "rank_pulse_vs_tonic.py",
     "rank_drift.py", "rank_summary.py",
+    "spat_decode.py", "spat_footprint.py", "spat_summary.py",
 ]
 
 

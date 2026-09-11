@@ -28,6 +28,7 @@ def main():
     sci = dk.jload(ANA / "sci_summary.json")
     trk = dk.jload(ANA / "trk_summary.json")
     rank = dk.jload(ANA / "rank_summary.json")
+    spat = dk.jload(ANA / "spat_summary.json")
     sites = dk.jload(ANA / "_sites.json")["rows"]
     charge = dk.jload(ANA / "_charge.json")
     null = dk.jload(ANA / "_null.json")
@@ -54,8 +55,7 @@ def main():
          (0, trk["findings"][3]),                       # charge reversal
          (0, trk["findings"][2]),                       # nulls / NN negative
          (0, sci["findings"][0]),                       # battery
-         (0, "Site-decoding / spatial-match at 64 ch: PENDING raw-block "
-             "transfer (analysis queued)")],
+         (0, spat["findings"][0])],                      # selectivity (now done)
         subtitle="Every claim below is one slide; verbatim findings from the "
                  "analysis summary JSONs")
 
@@ -162,6 +162,18 @@ def main():
     d.fig_slide("Drift bracket", fig("rank_drift.png"),
                 bullets_below=[(0, rank["findings"][2])])
 
+    # -- selectivity (unlocked by the 2026-09-11 block transfer) ----------
+    d.section_slide("Selectivity", kicker="claim 6 · 64-ch arm blocks "
+                                          "transferred 2026-09-11")
+    d.fig_slide("CLAIM: the array tracks time course, not spatial identity",
+                fig("spat_decode.png"),
+                subtitle="Leave-one-out site classification from arm-evoked "
+                         "64-ch patterns, MPC and Choi arms",
+                caption=spat["findings"][0])
+    d.fig_slide("One fixed actuator footprint", fig("spat_footprint.png"),
+                caption=spat["findings"][1] + " — the spatial basis of the "
+                        "selectivity limit, in raw LFP")
+
     # -- provenance + next ------------------------------------------------
     d.bullets_slide(
         "Incidents & provenance (recorded, not hidden)",
@@ -184,9 +196,9 @@ def main():
         subtitle="LAB_NOTEBOOK_2026-09-10.md · BLOCK_LEDGER_2026-09-10.md")
     d.bullets_slide(
         "Pending + acute #3",
-        [(0, "Pending the raw-block batch transfer: site-decoding / spatial-"
-             "match at 64 ch (claim 6), artifact-aware raw-LFP redo, "
-             "ms-resolution probe latencies"),
+        [(0, "Site-decoding + spatial footprint now DONE (blocks transferred "
+             "2026-09-11); remaining offline: artifact-aware raw-LFP redo of "
+             "tracking, ms-resolution probe latencies from raw Wav1"),
          (0, "Acute #3 lever #1: burst / duty-cycled drive to recover the "
              "pulse-rank for true MIMO + the decoupled-target exhibit "
              "(tooling already built and sim-verified)"),

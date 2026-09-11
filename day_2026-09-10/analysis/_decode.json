@@ -1,0 +1,14 @@
+{
+  "MPC": {
+    "accuracy": 0.29,
+    "accuracy_active": 0.2125,
+    "n_events": 300
+  },
+  "Choi": {
+    "accuracy": 0.3,
+    "accuracy_active": 0.22083333333333333,
+    "n_events": 300
+  },
+  "chance": 0.2,
+  "note": "feature-space (rectified LFP), artifact-contaminated; raw-LFP artifact-aware redo is the refinement"
+}

@@ -37,6 +37,33 @@ rig PC, batch-transfer pending — match by run label/time):
 | mpc_r4b | charge-matched MPC (R 0.3, late-night) | 0.313@lag0, 303k µA-ticks (drift-confounded vs r1) |
 | opfit12late2 | closing drift bracket | u4 gain HELD 0.132→0.137; u6 0.116→0.062 |
 
+**Table 3 -- arm-phase raw Synapse blocks (TRANSFERRED 2026-09-11, dir
+`Desktop\Data\Acute_091026-260910_LaterBlocks`).** Matched to run labels by
+stim signature (sSig active-pair set `[2,4,5,7]` = pairs 4+6 under the new
+map; `all-8` = NN tape) + Wav1 liveness + duration. All flat one level.
+
+| Block (time) | Run label | Wav1 | Note |
+|---|---|---|---|
+| 215613 | mpc_r1 | LIVE 239 s | raw 64-ch now available for spatial/decoding |
+| 220332 | choi_r1 | LIVE 256 s | |
+| 221053 | mpc_r2 | LIVE 242 s | |
+| 221543 | choi_r2 | LIVE 242 s | |
+| 222149 | mpc_r3 | LIVE 243 s | |
+| 222643 | choi_r3 | LIVE 264 s | |
+| 223341 | mpc_r1_late | LIVE 255 s | |
+| 223918 | choi_r1_late | LIVE 270 s | |
+| 230004 | mpc_r4cm | DEAD 247 s | PZ2-off void (matches capture audit) |
+| 230537 | nn_r1 (orig) | DEAD 241 s | PZ2-off void; all-8 pair tape |
+| 231143 | opfit12late (orig) | DEAD 139 s | PZ2-off void; 12k-tick reprobe |
+| 231833 | nn_r1b | LIVE 250 s | all-8 pair NN tape |
+| 232426 | mpc_r4b | LIVE 238 s | charge-matched rerun |
+| 233015 | opfit12late2 | LIVE 137 s | closing drift reprobe |
+
+10 live arm blocks unlock the deck-v2 pending analyses (spatial footprint,
+site-decoding, artifact-aware raw-LFP). The 3 DEAD blocks confirm the
+capture-side y-liveness audit independently (recording side was genuinely
+zero, not just the loop feed).
+
 Yesterday's validation blocks (2026-09-09): 144847 = 64-ch dry quiet;
 202840 = MCMap staggered-saw attribution test (PASS all 8 words);
 203705 = S4 wire re-bank rndw (DELIVERY VERIFIED).

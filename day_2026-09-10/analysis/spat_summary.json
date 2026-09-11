@@ -1,0 +1,16 @@
+{
+  "findings": [
+    "Target-vs-no-target IS separable (SHAM decodes ~60%); but among the four biomimetic sites the 64-ch pattern is near chance (MPC 21%, Choi 22% vs 25%): one fixed stim footprint tracks a target's TIME COURSE but cannot SELECT its spatial identity -- the selectivity negative holds at 64 ch.",
+    "Raw-LFP footprints of the two arms are near-identical (r = 0.999): both drive the same cortical territory, as expected for a rank-1 actuator.",
+    "Quantitative basis for the acute-#3 redesign: recover actuator rank (burst/duty-cycle drive) before spatial selection is achievable. Feature-space result; raw-LFP artifact-aware redo next."
+  ],
+  "numbers": {
+    "decode_mpc_all5": 0.29,
+    "decode_mpc_active4": 0.2125,
+    "decode_choi_all5": 0.3,
+    "decode_choi_active4": 0.22083333333333333,
+    "chance_5way": 0.2,
+    "chance_4way": 0.25,
+    "footprint_r": 0.9992408848105904
+  }
+}
