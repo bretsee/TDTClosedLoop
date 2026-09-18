@@ -1,0 +1,96 @@
+[ladder] opfit12 (2026-09-10) inverse, control channel only
+  opfit12  inverse  linear        h=1   y64       R2 {'u4': 0.0002, 'u6': -0.0002}  (4s)
+  opfit12  inverse  linear        h=5   y64       R2 {'u4': 0.0006, 'u6': 0.0015}  (3s)
+  opfit12  inverse  linear        h=25  y64       R2 {'u4': 0.0043, 'u6': -0.0071}  (4s)
+  opfit12  inverse  mlp           h=1   y64       R2 {'u4': 0.0021, 'u6': 0.0062}  (5s)
+  opfit12  inverse  mlp           h=5   y64       R2 {'u4': 0.0109, 'u6': 0.024}  (5s)
+  opfit12  inverse  mlp           h=25  y64       R2 {'u4': 0.0082, 'u6': 0.0539}  (5s)
+  opfit12  inverse  residual_mlp  h=1   y64       R2 {'u4': 0.0018, 'u6': 0.0054}  (7s)
+  opfit12  inverse  residual_mlp  h=5   y64       R2 {'u4': 0.0119, 'u6': 0.0216}  (7s)
+  opfit12  inverse  residual_mlp  h=25  y64       R2 {'u4': 0.0069, 'u6': 0.0499}  (7s)
+  opfit12  inverse  gru           h=1   y64       R2 {'u4': 0.0075, 'u6': 0.0397}  (1s)
+  opfit12  inverse  gru           h=5   y64       R2 {'u4': 0.0086, 'u6': 0.0532}  (1s)
+  opfit12  inverse  gru           h=25  y64       R2 {'u4': 0.0065, 'u6': 0.0583}  (1s)
+[ladder] opfit12 inverse, all 64 channels
+  opfit12  inverse  linear        h=1   all64     R2 {'u4': 0.0071, 'u6': 0.0012}  (4s)
+  opfit12  inverse  linear        h=5   all64     R2 {'u4': -0.0027, 'u6': -0.0055}  (4s)
+  opfit12  inverse  mlp           h=1   all64     R2 {'u4': 0.0041, 'u6': 0.011}  (5s)
+  opfit12  inverse  mlp           h=5   all64     R2 {'u4': -0.0029, 'u6': 0.0182}  (5s)
+  opfit12  inverse  residual_mlp  h=1   all64     R2 {'u4': 0.0017, 'u6': 0.0123}  (6s)
+  opfit12  inverse  residual_mlp  h=5   all64     R2 {'u4': -0.0013, 'u6': 0.0039}  (8s)
+  opfit12  inverse  gru           h=1   all64     R2 {'u4': -0.0003, 'u6': 0.0681}  (1s)
+  opfit12  inverse  gru           h=5   all64     R2 {'u4': -0.0225, 'u6': 0.0404}  (1s)
+[ladder] opfit12 forward (u4,u6 -> y), ceiling check
+  opfit12  forward  linear        h=1   u4,u6     R2 {'y64': -0.004}  (3s)
+  opfit12  forward  linear        h=5   u4,u6     R2 {'y64': -0.0289}  (3s)
+  opfit12  forward  linear        h=25  u4,u6     R2 {'y64': 0.0249}  (3s)
+  opfit12  forward  mlp           h=1   u4,u6     R2 {'y64': -0.0415}  (6s)
+  opfit12  forward  mlp           h=5   u4,u6     R2 {'y64': -0.0073}  (6s)
+  opfit12  forward  mlp           h=25  u4,u6     R2 {'y64': 0.1018}  (5s)
+  opfit12  forward  residual_mlp  h=1   u4,u6     R2 {'y64': -0.0389}  (7s)
+  opfit12  forward  residual_mlp  h=5   u4,u6     R2 {'y64': -0.0064}  (7s)
+  opfit12  forward  residual_mlp  h=25  u4,u6     R2 {'y64': 0.1035}  (6s)
+  opfit12  forward  gru           h=1   u4,u6     R2 {'y64': 0.0506}  (1s)
+  opfit12  forward  gru           h=5   u4,u6     R2 {'y64': 0.0838}  (1s)
+  opfit12  forward  gru           h=25  u4,u6     R2 {'y64': 0.0875}  (1s)
+[ladder] opfit (2026-08-31) inverse (y8) and forward (u1,u4 -> y)
+  opfit    inverse  linear        h=1   y8        R2 {'u1': 0.0019, 'u4': 0.0127}  (2s)
+  opfit    forward  linear        h=1   u1,u4     R2 {'y8': -0.0527}  (2s)
+  opfit    inverse  linear        h=5   y8        R2 {'u1': 0.0037, 'u4': 0.0137}  (2s)
+  opfit    forward  linear        h=5   u1,u4     R2 {'y8': -0.1195}  (2s)
+  opfit    inverse  linear        h=25  y8        R2 {'u1': 0.0062, 'u4': 0.0165}  (2s)
+  opfit    forward  linear        h=25  u1,u4     R2 {'y8': -0.0625}  (2s)
+  opfit    inverse  mlp           h=1   y8        R2 {'u1': 0.0032, 'u4': 0.0219}  (3s)
+  opfit    forward  mlp           h=1   u1,u4     R2 {'y8': -0.0687}  (3s)
+  opfit    inverse  mlp           h=5   y8        R2 {'u1': 0.0042, 'u4': 0.0257}  (3s)
+  opfit    forward  mlp           h=5   u1,u4     R2 {'y8': -0.0515}  (3s)
+  opfit    inverse  mlp           h=25  y8        R2 {'u1': 0.012, 'u4': 0.0176}  (3s)
+  opfit    forward  mlp           h=25  u1,u4     R2 {'y8': 0.2035}  (3s)
+  opfit    inverse  gru           h=1   y8        R2 {'u1': 0.0034, 'u4': 0.0162}  (1s)
+  opfit    forward  gru           h=1   u1,u4     R2 {'y8': 0.0624}  (1s)
+  opfit    inverse  gru           h=5   y8        R2 {'u1': 0.0049, 'u4': 0.0163}  (1s)
+  opfit    forward  gru           h=5   u1,u4     R2 {'y8': 0.0773}  (1s)
+  opfit    inverse  gru           h=25  y8        R2 {'u1': 0.0164, 'u4': 0.0133}  (1s)
+  opfit    forward  gru           h=25  u1,u4     R2 {'y8': 0.1516}  (1s)
+[ladder] opfit10/11 (09-10 operating points), linear only
+  opfit10  inverse  linear        h=1   y64       R2 {'u1': -0.0003, 'u2': -0.0003, 'u3': -0.001, 'u4': -0.0001, 'u5': -0.0007, 'u6': -0.0, 'u7': -0.0016, 'u8': 0.0}  (4s)
+  opfit10  forward  linear        h=1   u1,u2,u3,u4,u5,u6,u7,u8 R2 {'y64': -0.005}  (4s)
+  opfit10  inverse  linear        h=5   y64       R2 {'u1': 0.0004, 'u2': -0.0004, 'u3': -0.0018, 'u4': 0.0006, 'u5': -0.0006, 'u6': 0.0, 'u7': -0.0022, 'u8': -0.0001}  (3s)
+  opfit10  forward  linear        h=5   u1,u2,u3,u4,u5,u6,u7,u8 R2 {'y64': -0.0054}  (4s)
+  opfit10  inverse  linear        h=25  y64       R2 {'u1': -0.0021, 'u2': -0.0006, 'u3': -0.0027, 'u4': -0.0007, 'u5': -0.0014, 'u6': -0.0014, 'u7': -0.0008, 'u8': -0.0007}  (3s)
+  opfit10  forward  linear        h=25  u1,u2,u3,u4,u5,u6,u7,u8 R2 {'y64': -0.0247}  (4s)
+  opfit11  inverse  linear        h=1   y64       R2 {'u1': 0.0001, 'u4': 0.0016}  (4s)
+  opfit11  forward  linear        h=1   u1,u4     R2 {'y64': -0.0026}  (3s)
+  opfit11  inverse  linear        h=5   y64       R2 {'u1': 0.0002, 'u4': 0.0022}  (4s)
+  opfit11  forward  linear        h=5   u1,u4     R2 {'y64': -0.0017}  (3s)
+  opfit11  inverse  linear        h=25  y64       R2 {'u1': 0.0012, 'u4': 0.003}  (3s)
+  opfit11  forward  linear        h=25  u1,u4     R2 {'y64': 0.0808}  (4s)
+[t+229s] ladder done
+  [snr] record  25%  R2 by smoothing {'1': 0.061, '3': 0.0735, '5': 0.0914, '10': 0.1089, '20': 0.0619}
+  [snr] record  50%  R2 by smoothing {'1': 0.0344, '3': 0.0465, '5': 0.0542, '10': 0.0785, '20': 0.0249}
+  [snr] record  75%  R2 by smoothing {'1': 0.0509, '3': 0.0573, '5': 0.0573, '10': 0.0497, '20': -0.0281}
+  [snr] record 100%  R2 by smoothing {'1': 0.0222, '3': 0.0137, '5': 0.0027, '10': -0.0316, '20': -0.1464}
+  [snr] inverse (ridge h25) vs smoothing: {'1': {'u4': 0.0044, 'u6': -0.0124}, '3': {'u4': 0.0046, 'u6': -0.0124}, '5': {'u4': 0.0047, 'u6': -0.0118}, '10': {'u4': 0.0053, 'u6': -0.005}, '20': {'u4': 0.0016, 'u6': -0.0165}}
+  [snr] drift opfit12: mean 49.99->60.22 uV (-0.22 SD); fwd R2 raw +0.022 -> baseline-removed +0.067; states {'(8,8)': 49.8, '(8,22)': 48.88, '(22,8)': 54.61, '(22,22)': 58.85}
+  [snr] drift opfit: mean 96.62->67.99 uV (+0.30 SD); fwd R2 raw -0.097 -> baseline-removed -0.009; states {'(10,10)': 58.65, '(10,30)': 95.62, '(30,10)': 55.62, '(30,30)': 141.02}
+  [snr] pair 1: 228 trials, single-event z 0.169, z(all) 2.55, N for z>=3: 326
+  [snr] pair 2: 228 trials, single-event z 0.075, z(all) 1.13, N for z>=3: 1048
+  [snr] pair 3: 228 trials, single-event z 0.298, z(all) 4.49, N for z>=3: 99
+  [snr] pair 4: 228 trials, single-event z 0.370, z(all) 5.58, N for z>=3: 65
+  [snr] pair 5: 228 trials, single-event z 0.237, z(all) 3.59, N for z>=3: 166
+  [snr] pair 6: 228 trials, single-event z 0.227, z(all) 3.42, N for z>=3: 171
+  [snr] pair 7: 228 trials, single-event z 0.281, z(all) 4.24, N for z>=3: 117
+  [snr] pair 8: 228 trials, single-event z 0.257, z(all) 3.89, N for z>=3: 138
+  [snr] MI bound: fwd R2(y64) 0.103 -> inverse R2 <= 0.104; all-64 sum -> <= 0.113
+[t+239s] snr done
+  [alt-fwd] linear: val R2 +0.024 resid 44.2 uV  MPC tape under model r +0.139 (noisy +0.035; measured +0.330)  CE inversion r +0.915 (noisy +0.215)  u_opt u4 17.9+-7.0  direct {'linear_h5': {'r_under_forward_model': 0.0844, 'r_with_model_noise': -0.0031, 'u4_mean': 14.96, 'u4_std': 0.15, 'u6_mean': 15.05, 'u6_std': 0.08}, 'mlp_h5': {'r_under_forward_model': 0.1294, 'r_with_model_noise': 0.0035, 'u4_mean': 15.27, 'u4_std': 0.35, 'u6_mean': 16.03, 'u6_std': 0.6}, 'gru_h5': {'r_under_forward_model': 0.1113, 'r_with_model_noise': -0.0006, 'u4_mean': 15.0, 'u4_std': 0.3, 'u6_mean': 14.45, 'u6_std': 0.97}, 'linear_h25': {'r_under_forward_model': 0.0279, 'r_with_model_noise': -0.0006, 'u4_mean': 14.94, 'u4_std': 0.22, 'u6_mean': 14.77, 'u6_std': 0.8}}
+  [alt-fwd] mlp: val R2 +0.115 resid 46.7 uV  MPC tape under model r +0.538 (noisy +0.205; measured +0.330)  CE inversion r +0.998 (noisy +0.352)  u_opt u4 9.4+-4.7  direct {'linear_h5': {'r_under_forward_model': 0.3467, 'r_with_model_noise': 0.0038, 'u4_mean': 14.96, 'u4_std': 0.15, 'u6_mean': 15.05, 'u6_std': 0.08}, 'mlp_h5': {'r_under_forward_model': -0.0219, 'r_with_model_noise': -0.002, 'u4_mean': 15.27, 'u4_std': 0.35, 'u6_mean': 16.03, 'u6_std': 0.6}, 'gru_h5': {'r_under_forward_model': -0.0698, 'r_with_model_noise': -0.0021, 'u4_mean': 15.0, 'u4_std': 0.3, 'u6_mean': 14.45, 'u6_std': 0.97}, 'linear_h25': {'r_under_forward_model': 0.0516, 'r_with_model_noise': -0.0002, 'u4_mean': 14.94, 'u4_std': 0.22, 'u6_mean': 14.77, 'u6_std': 0.8}}
+  [clone] A_reference_only linear: cross-run R2 u4 +0.769 u6 +0.851  within-r3 u4 +0.770 u6 +0.855
+  [clone] A_reference_only mlp: cross-run R2 u4 +0.996 u6 +0.989  within-r3 u4 +0.997 u6 +0.991
+  [clone] B_reference_plus_y64 linear: cross-run R2 u4 +0.771 u6 +0.855  within-r3 u4 +0.773 u6 +0.856
+  [clone] B_reference_plus_y64 mlp: cross-run R2 u4 +0.998 u6 +0.997  within-r3 u4 +0.998 u6 +0.997
+[t+278s] alt done
+wrote C:\Users\brets\Documents\Repositories\TDTClosedLoop\day_2026-09-10\analysis\nn_diag_ladder.png (2480x840 px)
+wrote C:\Users\brets\Documents\Repositories\TDTClosedLoop\day_2026-09-10\analysis\nn_diag_snr.png (2480x840 px)
+wrote C:\Users\brets\Documents\Repositories\TDTClosedLoop\day_2026-09-10\analysis\nn_diag_clone.png (2480x840 px)
+wrote C:\Users\brets\Documents\Repositories\TDTClosedLoop\day_2026-09-10\analysis\_nn_diag.json  (278.5 s)
