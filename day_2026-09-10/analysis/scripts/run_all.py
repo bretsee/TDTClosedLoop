@@ -11,9 +11,10 @@ ORDER = [
     "sci_gallery.py", "sci_persite.py", "sci_rasters.py", "sci_offresp.py",
     "sci_summary.py",
     "trk_per_run.py", "trk_early_late.py", "trk_sliding.py", "trk_null.py",
-    "trk_persite.py", "trk_charge.py", "trk_nn_negative.py", "trk_summary.py",
+    "trk_persite.py", "trk_charge.py", "trk_nn_negative.py", "stim_patterns.py",
+    "trk_summary.py",
     "rank_probe_map.py", "rank_tonic_gains.py", "rank_pulse_vs_tonic.py",
-    "rank_drift.py", "rank_summary.py",
+    "rank_drift.py", "rank_array_status.py", "rank_summary.py",
     "spat_decode.py", "spat_footprint.py", "spat_summary.py",
 ]
 

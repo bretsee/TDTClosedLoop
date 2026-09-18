@@ -1,0 +1,361 @@
+{
+  "acute2": {
+    "block": "BSCL20260909BU-260910-200410",
+    "min_amp": 13.0,
+    "per_pair": [
+      {
+        "pair": 1,
+        "electrodes": [
+          16,
+          12
+        ],
+        "tip_mm": 7.4,
+        "n": 228,
+        "best_ch": 64,
+        "z": 26.4,
+        "peak_uv": -72.0,
+        "lat_ms": 9.8,
+        "knee_uA": 6,
+        "footprint_ch_z3": 49,
+        "halfmax_ch": 4,
+        "unique_halfmax_ch": 1,
+        "tonic_gain_8pair": 0.021,
+        "mode1_share": 0.142
+      },
+      {
+        "pair": 2,
+        "electrodes": [
+          15,
+          11
+        ],
+        "tip_mm": 7.6,
+        "n": 228,
+        "best_ch": 64,
+        "z": 14.5,
+        "peak_uv": -42.9,
+        "lat_ms": 9.8,
+        "knee_uA": 13,
+        "footprint_ch_z3": 15,
+        "halfmax_ch": 4,
+        "unique_halfmax_ch": 2,
+        "tonic_gain_8pair": 0.012,
+        "mode1_share": 0.067
+      },
+      {
+        "pair": 3,
+        "electrodes": [
+          14,
+          10
+        ],
+        "tip_mm": 7.8,
+        "n": 228,
+        "best_ch": 64,
+        "z": 35.1,
+        "peak_uv": -106.5,
+        "lat_ms": 9.8,
+        "knee_uA": 9,
+        "footprint_ch_z3": 55,
+        "halfmax_ch": 3,
+        "unique_halfmax_ch": 0,
+        "tonic_gain_8pair": 0.006,
+        "mode1_share": 0.147
+      },
+      {
+        "pair": 4,
+        "electrodes": [
+          13,
+          9
+        ],
+        "tip_mm": 8.0,
+        "n": 228,
+        "best_ch": 64,
+        "z": 39.1,
+        "peak_uv": -115.7,
+        "lat_ms": 9.8,
+        "knee_uA": 9,
+        "footprint_ch_z3": 60,
+        "halfmax_ch": 4,
+        "unique_halfmax_ch": 0,
+        "tonic_gain_8pair": 0.038,
+        "mode1_share": 0.146
+      },
+      {
+        "pair": 5,
+        "electrodes": [
+          4,
+          8
+        ],
+        "tip_mm": 8.0,
+        "n": 228,
+        "best_ch": 64,
+        "z": 28.5,
+        "peak_uv": -85.7,
+        "lat_ms": 11.5,
+        "knee_uA": 13,
+        "footprint_ch_z3": 58,
+        "halfmax_ch": 1,
+        "unique_halfmax_ch": 0,
+        "tonic_gain_8pair": 0.007,
+        "mode1_share": 0.149
+      },
+      {
+        "pair": 6,
+        "electrodes": [
+          3,
+          7
+        ],
+        "tip_mm": 8.0,
+        "n": 228,
+        "best_ch": 64,
+        "z": 37.9,
+        "peak_uv": -104.4,
+        "lat_ms": 9.8,
+        "knee_uA": 9,
+        "footprint_ch_z3": 9,
+        "halfmax_ch": 1,
+        "unique_halfmax_ch": 0,
+        "tonic_gain_8pair": 0.008,
+        "mode1_share": 0.084
+      },
+      {
+        "pair": 7,
+        "electrodes": [
+          2,
+          6
+        ],
+        "tip_mm": 8.0,
+        "n": 228,
+        "best_ch": 64,
+        "z": 23.8,
+        "peak_uv": -71.5,
+        "lat_ms": 9.8,
+        "knee_uA": 13,
+        "footprint_ch_z3": 57,
+        "halfmax_ch": 3,
+        "unique_halfmax_ch": 0,
+        "tonic_gain_8pair": 0.008,
+        "mode1_share": 0.136
+      },
+      {
+        "pair": 8,
+        "electrodes": [
+          1,
+          5
+        ],
+        "tip_mm": 8.0,
+        "n": 228,
+        "best_ch": 64,
+        "z": 41.8,
+        "peak_uv": -112.1,
+        "lat_ms": 9.8,
+        "knee_uA": 6,
+        "footprint_ch_z3": 59,
+        "halfmax_ch": 1,
+        "unique_halfmax_ch": 0,
+        "tonic_gain_8pair": 0.008,
+        "mode1_share": 0.129
+      }
+    ],
+    "footprint_corr": [
+      [
+        1.0,
+        0.623,
+        0.97,
+        0.968,
+        0.957,
+        0.632,
+        0.919,
+        0.862
+      ],
+      [
+        0.623,
+        1.0,
+        0.655,
+        0.544,
+        0.591,
+        0.817,
+        0.406,
+        0.382
+      ],
+      [
+        0.97,
+        0.655,
+        1.0,
+        0.97,
+        0.972,
+        0.696,
+        0.919,
+        0.879
+      ],
+      [
+        0.968,
+        0.544,
+        0.97,
+        1.0,
+        0.985,
+        0.61,
+        0.975,
+        0.935
+      ],
+      [
+        0.957,
+        0.591,
+        0.972,
+        0.985,
+        1.0,
+        0.681,
+        0.961,
+        0.94
+      ],
+      [
+        0.632,
+        0.817,
+        0.696,
+        0.61,
+        0.681,
+        1.0,
+        0.547,
+        0.566
+      ],
+      [
+        0.919,
+        0.406,
+        0.919,
+        0.975,
+        0.961,
+        0.547,
+        1.0,
+        0.98
+      ],
+      [
+        0.862,
+        0.382,
+        0.879,
+        0.935,
+        0.94,
+        0.566,
+        0.98,
+        1.0
+      ]
+    ],
+    "offdiag_corr_median": 0.8705918457876303,
+    "offdiag_corr_min": 0.3817678882734263,
+    "sv": [
+      1.0,
+      0.399,
+      0.193,
+      0.101,
+      0.064,
+      0.049,
+      0.044,
+      0.023
+    ],
+    "eff_rank": 4,
+    "sv_ungated": [
+      1.0,
+      0.389,
+      0.223,
+      0.083,
+      0.05,
+      0.037,
+      0.023,
+      0.018
+    ],
+    "eff_rank_ungated": 3,
+    "tonic_sv": [
+      1.0,
+      0.2151,
+      0.1005,
+      0.0754,
+      0.0683,
+      0.0416,
+      0.0339,
+      0.0323
+    ],
+    "tonic_eff_rank": 3,
+    "tonic_best_gain": {
+      "4": 0.137,
+      "6": 0.085
+    }
+  },
+  "acute1": {
+    "block": "BSClosedLoop32-260831-183856",
+    "per_pair": [
+      {
+        "pair": 1,
+        "best_ch": 6,
+        "z": 11.9,
+        "peak_uv": 68.2,
+        "lat_ms": 13.1
+      },
+      {
+        "pair": 2,
+        "best_ch": 15,
+        "z": 1.9,
+        "peak_uv": -18.6,
+        "lat_ms": 18.0
+      },
+      {
+        "pair": 3,
+        "best_ch": 1,
+        "z": 4.2,
+        "peak_uv": -25.5,
+        "lat_ms": 11.5
+      },
+      {
+        "pair": 4,
+        "best_ch": 2,
+        "z": 22.7,
+        "peak_uv": -100.6,
+        "lat_ms": 18.0
+      },
+      {
+        "pair": 5,
+        "best_ch": 2,
+        "z": 3.0,
+        "peak_uv": -24.1,
+        "lat_ms": 11.5
+      },
+      {
+        "pair": 6,
+        "best_ch": 1,
+        "z": 9.3,
+        "peak_uv": -43.3,
+        "lat_ms": 11.5
+      },
+      {
+        "pair": 7,
+        "best_ch": 17,
+        "z": 0.9,
+        "peak_uv": -15.7,
+        "lat_ms": 14.7
+      },
+      {
+        "pair": 8,
+        "best_ch": 7,
+        "z": 0.6,
+        "peak_uv": 16.3,
+        "lat_ms": 13.1
+      }
+    ],
+    "offdiag_corr_median": 0.21592279875974868,
+    "sv": [
+      1.0,
+      0.531,
+      0.375,
+      0.204,
+      0.049,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "eff_rank": 4
+  },
+  "findings": [
+    "Acute #2: 8/8 pairs pulse-responsive (z 15-42), knees 6-13 \u00b5A, latencies 10-12 ms; acute #1: 3/8.",
+    "Footprints are highly shared: median pairwise corr 0.87 (min 0.38); pulse eff rank 4 of 8 (\u03c32/\u03c31 0.40); every pair peaks on ch64 -> one dominant cortical mode.",
+    "Half-max footprint size per pair [4, 4, 3, 4, 1, 1, 3, 1] ch; channels private to one pair [1, 2, 0, 0, 0, 0, 0, 0] -> the ladder buys almost no private cortical territory at 200 \u00b5m pitch.",
+    "Tonic 8-pair drive: max |corr| 0.038 (all < 0.1) vs 2-pair 0.137; the carrier, not the electrode, removes the rank (tonic \u03c32/\u03c31 0.22).",
+    "Verdict: the contoured array is WELL PLACED (8/8 recruit at <=13 \u00b5A) but its pairs are REDUNDANT actuators for a 200 \u00b5m-pitch surface LFP readout; rank will come from burst/duty-cycled timing across pairs and from a readout that resolves the footprint differences (modes 2-4 exist in the pulse data), not from more contacts along the same contour."
+  ]
+}
