@@ -110,3 +110,12 @@ burst-plant efficacy + recovery curves, run_audit lines for the four 09-10 artif
 - `sweep_channels.m` still aligns with d=1 for its correlation scan (harmless; it does not export).
 - The QP hits its 200-iteration cap for 1-2 ticks after an R switch (warm start far from the new
   optimum); converged on every other tick. Fine for 20-event blocks.
+- **QP conditioning at small effort ratios (seen in the deck's telemetry figure):** in the offset-free
+  sim at `--effort-ratio 0.01` (R ≈ 5e-3 against Q=1e12·G² ≈ 0.5) FISTA sat at the 200-iteration cap
+  for the first ~17 s and converged on 43% of ticks overall; tracking was still on target (the
+  iterate is feasible at every step) but the per-tick cost is not at its optimum there. Rig arms use
+  R=100 / ρ≈0.1 where it converges in a handful of iterations. If a small ρ is ever wanted live,
+  raise `--qp-iters` or loosen the 1e-7 step tolerance; the telemetry column now makes this visible.
+- Weekly deck built: `PythonIntanAnalysis/outputs/Synthesis/ClosedLoop_weekly_2026-10-09.pptx`
+  (24 slides, 9 figures recomputed from `day_2026-10-09/`, check_deck PASS; script
+  `scripts/build_weekly_deck_2026-10-09.py`).
