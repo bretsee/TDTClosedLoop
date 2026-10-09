@@ -61,7 +61,32 @@ def main():
                          "Microprobes 2x8 map "
                          "'16:12,15:11,14:10,13:9,4:8,3:7,2:6,1:5'. Default = "
                          "legacy (2k-1,2k).")
+    ap.add_argument("--design-meta", default=None,
+                    help="design_burst_probe.py _meta.json of the played design. Makes the "
+                         "audit BURST-AWARE: multi-tick runs whose length is a designed "
+                         "burst length (e.g. 3, 10) are bursts, not stalls; each probe's "
+                         "delivered-pulse window is sized to its burst length and scored "
+                         "missed/short/exact/long against B pulses instead of 0/1/2+.")
     args = ap.parse_args()
+
+    # Burst-aware expectations from the design meta (2026-10-09). Without it a
+    # 3- or 10-tick burst is reported as a 'multi-tick pulse' stall and its
+    # Scle window (22 ms) only sees the first ~2 carrier latches.
+    burst_lens = {1}
+    burst_by_word = {}          # word index -> list of designed burst_ticks in event order
+    if args.design_meta:
+        import json
+        with open(args.design_meta) as f:
+            meta = json.load(f)
+        evs = sorted(meta.get("events", []), key=lambda e: e.get("tick", 0))
+        for e in evs:
+            b = int(e.get("burst_ticks", 1))
+            burst_lens.add(b)
+            burst_by_word.setdefault(int(e.get("pair", 1)) - 1, []).append(b)
+        if not evs and "burst_ticks" in meta:
+            burst_lens.add(int(meta["burst_ticks"]))
+        print("design meta %s: kind=%s, designed burst lengths %s ticks, %d events"
+              % (args.design_meta, meta.get("kind"), sorted(burst_lens), len(evs)))
 
     if args.pairs:
         pair_table = []
@@ -107,14 +132,26 @@ def main():
             tot_d += designed[w]
             loss = "  designed %3d -> lost %d" % (designed[w], designed[w] - n_ev)
         tot_w += n_ev
-        tot_multi += len(multi)
-        print("  word %d: %3d events (%3d single, %d multi %s)%s"
-              % (w + 1, n_ev, n_single, len(multi), multi, loss))
+        if len(burst_lens) > 1:
+            # Bursts: a run whose length is a designed burst length is intended;
+            # a run of any other length (B+1 = hold-last stretched it) is a stall.
+            lens_all = [1] * n_single + list(multi)
+            hist = dict(zip(*np.unique(np.array(lens_all, int), return_counts=True))) if lens_all else {}
+            stalled = [L for L in multi if L not in burst_lens]
+            tot_multi += len(stalled)
+            print("  word %d: %3d events, run lengths %s%s%s"
+                  % (w + 1, n_ev, {int(k): int(v) for k, v in hist.items()},
+                     ("  STRETCHED %s" % stalled) if stalled else "", loss))
+        else:
+            tot_multi += len(multi)
+            print("  word %d: %3d events (%3d single, %d multi %s)%s"
+                  % (w + 1, n_ev, n_single, len(multi), multi, loss))
     if tot_multi:
-        note("warn", "%d multi-tick pulse(s) on the wire -- hold-last stretched a "
+        note("warn", "%d %s on the wire -- hold-last stretched a "
              "probe during a server stall; excluded automatically by "
              "fit_impulse_model's isolation filter, but the extra charge WAS "
-             "delivered" % tot_multi)
+             "delivered" % (tot_multi, "run(s) of a non-designed length"
+                            if len(burst_lens) > 1 else "multi-tick pulse(s)"))
     if designed and tot_d > tot_w:
         pct = 100.0 * (tot_d - tot_w) / max(1, tot_d)
         sev = "warn" if pct < 8 else "FAIL"
@@ -137,15 +174,23 @@ def main():
         if pk > 0 else np.array([])
     print("\nper-probe delivered-pulse audit (carrier ticks inside each probe's Scle-high span):")
     n_miss = n_single = n_double = n_probe = 0
+    n_short = n_exact = n_long = 0
     latch_delays = []
     for w in range(min(n_words, S.shape[0])):
         onU = np.flatnonzero((U[w][1:] > 1e-9) & (U[w][:-1] <= 1e-9)) + 1
         hi = S[w] > 1e-9
-        counts = []
-        for t in ts[onU]:
+        counts, expect_b = [], []
+        designed_b = burst_by_word.get(w, [])
+        for k, t in enumerate(ts[onU]):
+            # Expected burst length for this probe: by event order within the
+            # word (the design is played verbatim, so order is preserved even
+            # when a probe is lost); 1 when no meta was given.
+            B = designed_b[k] if k < len(designed_b) else 1
+            win_s = 0.012 + 0.010 * B           # B carrier periods + 12 ms slack
             i0 = int(max(0.0, t - 0.001) * fsS)
-            i1 = min(len(hi), int((t + 0.022) * fsS))
+            i1 = min(len(hi), int((t + win_s) * fsS))
             seg = hi[i0:i1]
+            expect_b.append(B)
             if not seg.any():
                 counts.append(0)
                 continue
@@ -157,11 +202,23 @@ def main():
                 idx = int(np.searchsorted(carrier, t0))
                 if idx < len(carrier):
                     latch_delays.append(carrier[idx] - t)   # command arrival -> latch
-        c = np.bincount(np.array(counts) if counts else np.zeros(0, int), minlength=3)
         n_probe += len(counts)
-        n_miss += int(c[0]); n_single += int(c[1]); n_double += int(c[2:].sum())
-        print("  word %d: %3d probes -> missed %2d, single %3d, double+ %2d"
-              % (w + 1, len(counts), c[0], c[1], c[2:].sum()))
+        if len(burst_lens) > 1:
+            cnt = np.array(counts, int); exb = np.array(expect_b, int)
+            miss = int((cnt == 0).sum()); short = int(((cnt > 0) & (cnt < exb)).sum())
+            exact = int((cnt == exb).sum()); long_ = int((cnt > exb).sum())
+            n_miss += miss; n_short += short; n_exact += exact; n_long += long_
+            n_single += exact; n_double += long_
+            print("  word %d: %3d probes (B %s) -> missed %2d, short %2d, exact %3d, long %2d"
+                  % (w + 1, len(counts), sorted(set(expect_b)), miss, short, exact, long_))
+        else:
+            c = np.bincount(np.array(counts) if counts else np.zeros(0, int), minlength=3)
+            n_miss += int(c[0]); n_single += int(c[1]); n_double += int(c[2:].sum())
+            print("  word %d: %3d probes -> missed %2d, single %3d, double+ %2d"
+                  % (w + 1, len(counts), c[0], c[1], c[2:].sum()))
+    if n_probe and len(burst_lens) > 1:
+        print("  TOTAL %d probes: missed %d, short %d, exact %d, long %d (B-aware)"
+              % (n_probe, n_miss, n_short, n_exact, n_long))
     if n_probe:
         pm, pd = 100.0 * n_miss / n_probe, 100.0 * n_double / n_probe
         print("  TOTAL %d probes: missed %d (%.1f%%), single %d (%.1f%%), double+ %d (%.1f%%)"

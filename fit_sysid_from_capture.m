@@ -55,7 +55,15 @@ function result = fit_sysid_from_capture(captureFile, opts)
     if nargin < 2 || isempty(opts)
         opts = struct();
     end
-    opts = set_default(opts, 'inputDelayTicks', 1);
+    % inputDelayTicks: alignment shift BEFORE the ARX (which adds nk = 1 more),
+    % so the fitted dead time is inputDelayTicks + 1 ticks in the capture's row
+    % frame. Was 1 (transport lag only) until 2026-10-09; rig/check_dead_time.py
+    % on the 09-10 pulse probe (capture_rig_runrnd1, 7/7 responsive pairs) puts
+    % the first feature movement at lag 3 = 1 transport tick + ~2 ticks of
+    % thalamocortical latency, and the 09-10 tonic plant scores centred only
+    % when fitted at 2. Run check_dead_time on the day's probe and pass
+    % onset-1 explicitly if it differs.
+    opts = set_default(opts, 'inputDelayTicks', 2);
     opts = set_default(opts, 'skipTicks',       50);
     opts = set_default(opts, 'useInputs',       []);
     opts = set_default(opts, 'useOutputs',      1);
@@ -71,6 +79,18 @@ function result = fit_sysid_from_capture(captureFile, opts)
     % order 5 if left unchecked). Fewer states also means a smaller QP in
     % mpc_test. Set to 0 to always take the outright best fit.
     opts = set_default(opts, 'parsimonyTolerance', 1.0);
+    % Delay states (2026-10-09). The causal alignment below shifts u by
+    % inputDelayTicks AND the ARX regresses with nk=1, so the fitted relation is
+    % u(k) -> y(k + inputDelayTicks + 1). The controllers (mpc_test.m,
+    % cpp_controller) predict x(k+1) = A x(k) + B u(k), y(k) = C x(k): ONE tick
+    % from the last command to the current feature. Exporting the core A,B,C
+    % therefore handed them a model one tick optimistic -- an order-1 fit has no
+    % spare b-coefficient to absorb it (the 09-10 plant_opfit12). With
+    % delayStates=true the model is returned with inputDelayTicks x m pure-delay
+    % states appended, so A,B,C are in the controller's row frame exactly. The
+    % DC gain, the validation fit and the core order are unchanged. Set false
+    % only to reproduce pre-10-09 exports.
+    opts = set_default(opts, 'delayStates', true);
 
     % Ts is MEASURED from the capture below, not assumed: wall-clock runs tick
     % at ~10 ms, frame-locked runs (--tick-frames 6) at 9.8304 ms. The model
@@ -152,6 +172,7 @@ function result = fit_sysid_from_capture(captureFile, opts)
             so = opts;
             so.useOutputs = outs(oi);
             so.save = false;
+            so.delayStates = false;   % augment the STACK once below (shared inputs)
             fprintf('\n===== output %d (%d of %d) =====\n', outs(oi), oi, numel(outs));
             subs{oi} = fit_sysid_from_capture(captureFile, so);
         end
@@ -171,8 +192,17 @@ function result = fit_sysid_from_capture(captureFile, opts)
         end
         sysM = struct('A', A, 'B', B, 'C', C, 'D', zeros(numel(outs), size(B, 2)), ...
                       'Ts', subs{1}.Ts, 'uOffset', subs{1}.uOffset, 'yOffset', yOff);
+        sysM.coreOrder  = size(A, 1);
+        sysM.delayTicks = 0;
+        dM = round(opts.inputDelayTicks);
+        if opts.delayStates && dM > 0
+            sysM = augment_delay_states(sysM, dM);
+            sysM.delayTicks = dM;
+            fprintf('\nDelay states: appended %d x %d pure-delay states to the stack ', dM, size(B, 2));
+            fprintf('(controller row frame: command at k acts on y at k+%d).\n', dM + 1);
+        end
         fprintf('\nMIMO stacked model: n=%d states, m=%d inputs, p=%d outputs.\n', ...
-                size(A, 1), size(B, 2), numel(outs));
+                size(sysM.A, 1), size(B, 2), numel(outs));
         fprintf('  per-output orders [%s], valFit%% [%s]\n', ...
                 num2str(orders), num2str(valFits2, '%.2f '));
         fprintf('  yOffset = %s\n', mat2str(yOff, 4));
@@ -224,7 +254,7 @@ function result = fit_sysid_from_capture(captureFile, opts)
         na = opts.orders(i);
         try
             [a, B] = arx_ls(Ytr, Utr, na, na, opts.nk);
-            sysi = arx_to_ss(a, B, Ts);
+            sysi = arx_to_ss(a, B, Ts, opts.nk);
         catch fitErr
             fprintf('  %5d   (fit failed: %s)\n', na, fitErr.identifier);
             continue;
@@ -280,6 +310,20 @@ function result = fit_sysid_from_capture(captureFile, opts)
     best.sys.yOffset = yOffset;   % 1 x p, raw feature units (volts)
     fprintf('Offsets stored in sys: uOffset=%s yOffset=%s\n', ...
             mat2str(uOffset, 4), mat2str(yOffset, 4));
+
+    % Row-frame realization: append the alignment delay as pure-delay states so
+    % the exported A,B,C obey the controller's one-tick convention (see the
+    % delayStates default above). Validation fit above is the core model's and
+    % is unchanged by this; check_dead_time.py measures the row-frame truth.
+    best.sys.coreOrder  = best.order;
+    best.sys.delayTicks = 0;
+    d = round(opts.inputDelayTicks);
+    if opts.delayStates && d > 0
+        best.sys = augment_delay_states(best.sys, d);
+        best.sys.delayTicks = d;
+        fprintf(['Delay states: appended %d x %d pure-delay states (controller row ' ...
+                 'frame: command at k acts on y at k+%d).\n'], d, size(best.sys.B, 2), d + 1);
+    end
 
     fprintf('\nChosen: order %d, validation fit %.2f%%\n', best.order, best.valFit);
     describe_model(best.sys, Ts);
@@ -344,7 +388,7 @@ function [a, B] = arx_ls(y, U, na, nb, nk)
     B = reshape(theta(na+1:end), nb, nu);
 end
 
-function sys = arx_to_ss(a, B, Ts)
+function sys = arx_to_ss(a, B, Ts, nk)
 % Observable canonical realization of
 %     y(k) = -a1 y(k-1) ... -an y(k-n) + sum_ch b_ch(z^-1) u_ch
 % giving a strictly proper (D = 0) discrete state-space model.
@@ -354,23 +398,53 @@ function sys = arx_to_ss(a, B, Ts)
 %         ...                        ...   ]
 %        -an  0  0 ... 0]
 
-    n = numel(a);
-    nb = size(B, 1);
-    nu = size(B, 2);
+    if nargin < 4 || isempty(nk), nk = 1; end
+    % nk > 1 means b(z^-1) starts with nk-1 zero coefficients; the canonical
+    % form needs those zero rows explicitly (and enough states to hold them).
+    % Before 2026-10-09 b was placed from row 1 whatever nk was, which realized
+    % the wrong delay silently for any nk > 1.
+    Bz = [zeros(nk - 1, size(B, 2)); B];
+    na = numel(a);
+    nb = size(Bz, 1);
+    nu = size(Bz, 2);
+    n  = max(na, nb);
 
     A = zeros(n, n);
-    A(:, 1) = -a(:);
+    A(1:na, 1) = -a(:);           % a padded with zeros for orders beyond na
     if n > 1
         A(1:n-1, 2:n) = eye(n-1);
     end
 
     Bfull = zeros(n, nu);
-    Bfull(1:min(n, nb), :) = B(1:min(n, nb), :);
+    Bfull(1:nb, :) = Bz;
 
     C = zeros(1, n);
     C(1) = 1;
 
     sys = struct('A', A, 'B', Bfull, 'C', C, 'D', zeros(1, nu), 'Ts', Ts);
+end
+
+function sysA = augment_delay_states(sys, d)
+% Append d pure input-delay states so that, with x~ = [x; u(k-1); ...; u(k-d)],
+%     x~(k+1) = A~ x~(k) + B~ u(k),   y(k) = C~ x~(k)
+% realizes y(k) = C x(k-d) where x(k+1) = A x(k) + B u(k) is the core model
+% fitted on d-shifted data. DC gain C (I-A)^-1 B is unchanged (pure delay has
+% unit DC gain). For d = 1: A~ = [A B; 0 0], B~ = [0; I].
+    n = size(sys.A, 1); m = size(sys.B, 2); p = size(sys.C, 1);
+    nA = n + d * m;
+    A = zeros(nA, nA); B = zeros(nA, m); C = zeros(p, nA);
+    A(1:n, 1:n) = sys.A;
+    last = n + (d - 1) * m;                       % block holding u(k-d)
+    A(1:n, last+1:last+m) = sys.B;                % x+ = A x + B u(k-d)
+    B(n+1:n+m, :) = eye(m);                       % u(k-1)+ = u(k)
+    for j = 2:d
+        rows = n + (j-1)*m + 1 : n + j*m;         % u(k-j)
+        cols = n + (j-2)*m + 1 : n + (j-1)*m;     % u(k-j+1)
+        A(rows, cols) = eye(m);
+    end
+    C(:, 1:n) = sys.C;
+    sysA = sys;
+    sysA.A = A; sysA.B = B; sysA.C = C; sysA.D = zeros(p, m);
 end
 
 function yhat = simulate_ss(sys, U)
@@ -465,6 +539,10 @@ function describe_model(sys, Ts)
     fprintf('\nModel summary:\n');
     fprintf('  states %d, inputs %d, outputs %d, Ts %g s\n', ...
             n, size(sys.B, 2), size(sys.C, 1), Ts);
+    if isfield(sys, 'delayTicks')
+        fprintf('  dead time %d tick(s) in the controller row frame (%d delay state(s) + nk)\n', ...
+                sys.delayTicks + 1, sys.delayTicks * size(sys.B, 2));
+    end
 
     % DC gain computed directly: C*(I-A)^-1*B + D (no Control System Toolbox).
     M = eye(n) - sys.A;

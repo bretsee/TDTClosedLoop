@@ -44,8 +44,16 @@ function out = crossval_model(fitFile, valFile, channel, opts)
     Y = table2array(T(:, startsWith(names, 'y')));
 
     % Identical alignment and warm-up discard to the fitter, or the comparison
-    % is not like for like.
+    % is not like for like. Since 2026-10-09 the fitter returns the model in
+    % the controller's row frame (delay states embedded, sys.delayTicks > 0):
+    % such a model is scored on UNshifted data, otherwise the delay is counted
+    % twice.
     d = opts.inputDelayTicks;
+    if isfield(r.sys, 'delayTicks') && r.sys.delayTicks > 0
+        d = 0;
+        fprintf('  model carries %d delay tick(s) -> scoring in the row frame (no shift)\n', ...
+                r.sys.delayTicks);
+    end
     if d > 0
         U = U(1:end-d, :);
         Y = Y(1+d:end, :);

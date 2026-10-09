@@ -160,7 +160,7 @@ def validate(path, U=None, meta=None):
         gaps = rise[1:] - fall[:-1]
         amps = sorted(set(np.round(U[rise, k], 2).tolist()))
         print("  u%d: %4d bursts, len ticks %s, min gap %s ticks, amps %s, charge %.0f"
-              % (k + 1, len(rise), dict(zip(*np.unique(lens, return_counts=True))) if len(lens) else {},
+              % (k + 1, len(rise), {int(a): int(b) for a, b in zip(*np.unique(lens, return_counts=True))} if len(lens) else {},
                  int(gaps.min()) if len(gaps) else "-", amps[:8] if len(amps) <= 8 else "%d distinct" % len(amps),
                  U[:, k].sum()))
         if len(gaps) and gaps.min() < 1:

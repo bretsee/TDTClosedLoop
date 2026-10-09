@@ -86,6 +86,9 @@ struct Options {
     std::vector<int> feature_map;
     std::vector<int> stim_pairs;        // controller output i -> wire slot pairs[i]
     int preview_ticks = 20;             // mpc --reference horizon preview window
+    double effort_ratio = -1.0;         // mpc: R_j = rho * sum_i Q_i G_ij^2 (off when < 0)
+    std::string r_schedule_file;        // mpc: tick,r1[,r2..] -- effort weights by tick
+    bool r_weight_given = false;
 
     MpcConfig mpc;
     NnConfig  nn;
@@ -178,21 +181,42 @@ static void usage() {
         "                            validate_impulse_design.py, play here -- no\n"
         "                            MATLAB in the real-time path). Zeros after the\n"
         "                            last row. max-packets defaults to the row count.\n"
+        "                            If PATH_meta.json exists (design_burst_probe.py)\n"
+        "                            its nTicks must equal the row count (FATAL).\n"
         "  --target V                MPC setpoint\n"
         "  --target-file PATH        re-read setpoint live from a text file\n"
         "  --reference PATH          mpc: per-tick target from r1..rp columns of a\n"
-        "                            reference CSV (build_touch_reference.py output).\n"
-        "                            NO horizon preview -- the MATLAB server remains\n"
-        "                            the primary tracking path; this is the backup.\n"
+        "                            reference CSV (build_touch_reference.py output),\n"
+        "                            fed to the horizon as a sliding --preview window\n"
+        "                            (parity with the MATLAB server's refPreviewTicks).\n"
         "                            Holds the last row after the trajectory ends.\n"
+        "  --capture PATH            per-tick u/y CSV, STREAMED (a row per tick, flushed\n"
+        "                            every 100) so check_y_liveness --watch can read it\n"
+        "                            live; latency log defaults to server_lat_<name> in\n"
+        "                            the same directory.\n"
         "  --feature-map 7,3         which feature indices are the model outputs (1-based)\n"
         "  --pairs 3                 map controller output k to bipolar pair slot k\n"
         "                            (1-based; word k on the wire drives pair k). A\n"
         "                            1-output model with no --pairs drives pair 1.\n"
         "  --horizon N (20)  --control-horizon N (2)  --preview N (20, mpc --reference)\n"
         "  --q-weight V|a,b,..  --r-weight V|a,b,..  per-output/input weights (MIMO)\n"
+        "  --effort-ratio RHO        mpc: set R_j = RHO * sum_i Q_i*G_ij^2 from the model's\n"
+        "                            DC gain G, so RHO is dimensionless: SISO steady state\n"
+        "                            settles at r/(1+RHO) (shortfall RHO/(1+RHO)). Replaces\n"
+        "                            guessing --q-weight 1e12 against volt-scale features.\n"
+        "                            Not combinable with --r-weight.\n"
+        "  --r-schedule PATH         mpc: CSV tick,r1[,r2..]; at each listed tick the effort\n"
+        "                            weights are replaced (Hessian rebuilt, warm start kept).\n"
+        "                            Tier-C interleaved R sweep within one run; rW0 in the\n"
+        "                            latency log records the weight in force per tick.\n"
         "  --target V|a,b,..    per-output targets   --no-observer  deliberate feedforward\n"
         "  --q-scale V (0.01)\n"
+        "  --dist-observer           mpc: offset-free MPC -- estimate a constant output\n"
+        "                            disturbance alongside the state (observer only; the\n"
+        "                            cost is unchanged). Removes the tracking bias from\n"
+        "                            plant-gain drift / baseline shift. DEFAULT OFF =\n"
+        "                            the Choi-comparable formulation. --dist-q V (1e-3)\n"
+        "                            sets how fast the estimate may move.\n"
         "  --umin V (0)      --umax V (40)     --max-rate V (0 = no slew limit)\n"
         "  --exc-kind prbs|multilevel|steps|chirp   --exc-clock N (5)\n"
         "  --exc-hold N (50) --exc-levels N (4)     --exc-seed N\n"
@@ -230,7 +254,12 @@ static bool parse_args(int argc, char** argv, Options& o) {
         else if (a == "--q-weight")        { parse_double_list(next("--q-weight"), o.mpc.q_weights);
                                              if (o.mpc.q_weights.size() == 1) { o.mpc.q_weight = o.mpc.q_weights[0]; o.mpc.q_weights.clear(); } }
         else if (a == "--r-weight")        { parse_double_list(next("--r-weight"), o.mpc.r_weights);
+                                             o.r_weight_given = true;
                                              if (o.mpc.r_weights.size() == 1) { o.mpc.r_weight = o.mpc.r_weights[0]; o.mpc.r_weights.clear(); } }
+        else if (a == "--effort-ratio")    o.effort_ratio = std::atof(next("--effort-ratio").c_str());
+        else if (a == "--dist-observer")   o.mpc.dist_observer = true;
+        else if (a == "--dist-q")          o.mpc.dist_q = std::atof(next("--dist-q").c_str());
+        else if (a == "--r-schedule")      o.r_schedule_file = next("--r-schedule");
         else if (a == "--q-scale")         o.mpc.qScale = std::atof(next("--q-scale").c_str());
         else if (a == "--umin")            { o.mpc.umin = o.nn.umin = o.exc.umin = std::atof(next("--umin").c_str()); }
         else if (a == "--umax")            { o.mpc.umax = o.nn.umax = o.exc.umax = std::atof(next("--umax").c_str()); }
@@ -374,6 +403,67 @@ static int selftest() {
               std::fabs(tight.first - 5.0) < 0.25,
               "y " + std::to_string(tight.first) + " u " + std::to_string(tight.second));
 
+        // Telemetry, DC gain and a mid-run effort-weight change (2026-10-09).
+        // The DC gain of this plant is B/(1-A) = 0.19977; set_r_weights must
+        // rebuild the Hessian so the same controller that was tracking tightly
+        // settles short once R = 1 is in force.
+        {
+            MpcConfig c = cfg;
+            c.r_weight = 1e-4;
+            MpcController m(M, c, 1);
+            m.set_target({5.0});
+            double x = 0.0;
+            for (int k = 0; k < 600; ++k) {
+                const double u = m.step({x})[0];
+                x = M.A(0,0) * x + M.B(0,0) * u;
+            }
+            const MpcController::Telemetry t = m.telemetry();
+            const double g = m.dc_gain()(0, 0);
+            const bool ok = t.iters > 0 && std::isfinite(t.cost) && t.rW0 == 1e-4 &&
+                            std::fabs(g - 0.00975 / (1.0 - 0.9512)) < 1e-9 && t.active_frac >= 0.0;
+            check("telemetry + DC gain populated", ok,
+                  "iters " + std::to_string(t.iters) + " cost " + std::to_string(t.cost) +
+                  " rW0 " + std::to_string(t.rW0) + " g " + std::to_string(g));
+            const double y_before = x;
+            m.set_r_weights({1.0});
+            for (int k = 0; k < 4000; ++k) {
+                const double u = m.step({x})[0];
+                x = M.A(0,0) * x + M.B(0,0) * u;
+            }
+            check("set_r_weights rebuilds the Hessian mid-run",
+                  m.telemetry().rW0 == 1.0 && y_before > 4.5 && x > 0.05 && x < 1.0,
+                  "y " + std::to_string(y_before) + " -> " + std::to_string(x) + " after R 1e-4 -> 1");
+        }
+
+        // Offset-free MPC (2026-10-09): the TRUE plant has 1.5x the model's gain
+        // and a +0.5 output bias (what gain drift / baseline shift look like).
+        // With the plain observer the controller hits the model's target and
+        // misses the real one; with the disturbance state it must land on it.
+        {
+            auto run_mismatch = [&](bool dist) {
+                MpcConfig c = cfg;
+                c.r_weight = 1e-4;
+                c.dist_observer = dist;
+                MpcController m(M, c, 1);
+                m.set_target({5.0});
+                double x = 0.0;
+                double y = 0.5;
+                for (int k = 0; k < 4000; ++k) {
+                    const double u = m.step({y})[0];
+                    x = M.A(0,0) * x + 1.5 * M.B(0,0) * u;
+                    y = x + 0.5;
+                }
+                return std::pair<double, bool>(y, m.dist_observer_active());
+            };
+            const std::pair<double, bool> off = run_mismatch(false);
+            const std::pair<double, bool> on  = run_mismatch(true);
+            const double err_off = std::fabs(off.first - 5.0), err_on = std::fabs(on.first - 5.0);
+            check("disturbance observer removes mismatch bias",
+                  on.second && err_on < 0.1 && err_on < 0.25 * err_off,
+                  "y plain " + std::to_string(off.first) + " vs dist " + std::to_string(on.first) +
+                  " (target 5, plant gain 1.5x + bias 0.5)");
+        }
+
         // The command must MOVE with the measurement -- the exact property whose
         // absence meant the MATLAB controller ran open-loop for months.
         double umin_seen = 1e30, umax_seen = -1e30;
@@ -506,6 +596,43 @@ int main(int argc, char** argv) {
                 std::printf("WARNING: design has %zu u columns but output-count is %d; "
                             "rows will be %s\n", playU[0].size(), o.output_count,
                             (int)playU[0].size() < o.output_count ? "zero-padded" : "truncated");
+            // Design sidecar (design_burst_probe.py writes <design>_meta.json):
+            // the loop's --max-control-ticks is typed by hand from the same
+            // nTicks, so a stale or truncated CSV must not play silently.
+            {
+                std::string meta = o.play_file;
+                const size_t dot = meta.rfind('.');
+                if (dot != std::string::npos && meta.find('/', dot) == std::string::npos &&
+                    meta.find('\\', dot) == std::string::npos)
+                    meta.erase(dot);
+                meta += "_meta.json";
+                std::ifstream mf(meta);
+                if (mf) {
+                    std::stringstream ss; ss << mf.rdbuf();
+                    const std::string txt = ss.str();
+                    long long nTicks = -1;
+                    const size_t kp = txt.find("\"nTicks\"");
+                    if (kp != std::string::npos) {
+                        const size_t colon = txt.find(':', kp);
+                        if (colon != std::string::npos) nTicks = std::atoll(txt.c_str() + colon + 1);
+                    }
+                    std::string kind = "?";
+                    const size_t kk = txt.find("\"kind\"");
+                    if (kk != std::string::npos) {
+                        const size_t q1 = txt.find('"', txt.find(':', kk) + 1);
+                        const size_t q2 = (q1 == std::string::npos) ? q1 : txt.find('"', q1 + 1);
+                        if (q1 != std::string::npos && q2 != std::string::npos) kind = txt.substr(q1 + 1, q2 - q1 - 1);
+                    }
+                    std::printf("openloop: design meta %s: kind=%s nTicks=%lld\n",
+                                meta.c_str(), kind.c_str(), nTicks);
+                    if (nTicks >= 0 && nTicks != (long long)playU.size()) {
+                        std::printf("FATAL: design meta nTicks=%lld but %s has %zu rows -- "
+                                    "stale or truncated design; regenerate before playing.\n",
+                                    nTicks, o.play_file.c_str(), playU.size());
+                        return 2;
+                    }
+                }
+            }
             if (o.capture_file.empty()) {
                 o.capture_file = "capture_openloop_cpp.csv";
                 std::printf("openloop: capture defaulted to %s\n", o.capture_file.c_str());
@@ -573,6 +700,44 @@ int main(int argc, char** argv) {
             if (!mpc->observer_active() && o.mpc.use_observer)
                 std::printf("WARNING: the controller will ignore its measurement. "
                             "Do not trust closed-loop behaviour.\n");
+            if (o.mpc.dist_observer)
+                std::printf("Disturbance observer: %s (dist_q %g)\n",
+                            mpc->dist_observer_active() ? "ACTIVE (offset-free MPC)"
+                            : "*** REQUESTED BUT NOT ACCEPTED -- plain observer in use ***",
+                            o.mpc.dist_q);
+            {
+                // DC gain and, optionally, effort weights derived from it.
+                const Mat G = mpc->dc_gain();
+                std::printf("DC gain G (p x m, feature units per uA):");
+                for (int r = 0; r < M.p; ++r) {
+                    std::printf(" [");
+                    for (int c = 0; c < M.m; ++c) std::printf("%s%.4g", c ? " " : "", G(r, c));
+                    std::printf("]");
+                }
+                std::printf("\n");
+                if (o.effort_ratio >= 0.0) {
+                    if (o.r_weight_given) {
+                        std::printf("FATAL: --effort-ratio and --r-weight both given; choose one.\n");
+                        return 2;
+                    }
+                    std::vector<double> R((size_t)M.m, 0.0);
+                    for (int c = 0; c < M.m; ++c) {
+                        double s = 0.0;
+                        for (int r = 0; r < M.p; ++r) {
+                            const double Qi = (r < (int)o.mpc.q_weights.size()) ? o.mpc.q_weights[(size_t)r]
+                                                                                 : o.mpc.q_weight;
+                            s += Qi * G(r, c) * G(r, c);
+                        }
+                        R[(size_t)c] = o.effort_ratio * s;
+                    }
+                    mpc->set_r_weights(R);
+                    std::printf("Effort ratio %.4g -> r-weights [", o.effort_ratio);
+                    for (int c = 0; c < M.m; ++c) std::printf("%s%.4g", c ? " " : "", R[(size_t)c]);
+                    std::printf("]; SISO steady state settles at r/(1+rho) = %.1f%% of target "
+                                "(shortfall %.1f%%).\n", 100.0 / (1.0 + o.effort_ratio),
+                                100.0 * o.effort_ratio / (1.0 + o.effort_ratio));
+                }
+            }
             mpc_ptr = mpc.get();
             controller.reset(mpc.release());
             if (!o.reference_file.empty()) {
@@ -611,6 +776,107 @@ int main(int argc, char** argv) {
     } catch (const std::exception& e) {
         std::printf("FATAL: %s\n", e.what());
         return 3;
+    }
+
+    // ---- capture + latency log (opened BEFORE the socket) -----------------
+    // The capture is STREAMED: one row per tick, flushed every 100 rows, so
+    // rig/check_y_liveness.py --watch can read it during the first minute of a
+    // run (the 09-10 PZ2-off incident was only caught post hoc because the
+    // old code buffered the whole capture and wrote it at exit). Opening it
+    // here, before "ready", means a bad path fails before the operator types
+    // 'go' instead of after the stim has been delivered.
+    std::ofstream capf;
+    if (!o.capture_file.empty()) {
+        capf.open(o.capture_file, std::ios::out | std::ios::trunc);
+        if (!capf) {
+            std::printf("FATAL: cannot open capture file %s for writing (does the "
+                        "directory exist?)\n", o.capture_file.c_str());
+            return 5;
+        }
+        capf.precision(9);
+    }
+    // Latency log: default it whenever a capture is requested (the 08-31 choi
+    // arm runs shipped no per-run latency CSV because the flag was omitted).
+    // The prefix goes on the BASENAME: "server_lat_" + "day_x/capture.csv"
+    // named a directory that does not exist and the log was lost silently
+    // (no server_lat file exists for any 09-10 arm run).
+    if (o.log_file.empty() && !o.capture_file.empty()) {
+        const size_t slash = o.capture_file.find_last_of("/\\");
+        const std::string dir  = (slash == std::string::npos) ? "" : o.capture_file.substr(0, slash + 1);
+        const std::string base = (slash == std::string::npos) ? o.capture_file : o.capture_file.substr(slash + 1);
+        o.log_file = dir + "server_lat_" + base;
+        std::printf("Latency log defaulted to %s\n", o.log_file.c_str());
+    }
+    std::ofstream logf;
+    if (!o.log_file.empty()) {
+        logf.open(o.log_file);
+        if (!logf) std::printf("WARNING: cannot open latency log %s -- timing will NOT be logged\n",
+                               o.log_file.c_str());
+        else {
+            // One '#' banner line: the run configuration rig/run_audit.py checks
+            // after the fact (observer/offsets/weights used to live only in the
+            // terminal scrollback).
+            logf << "# mode=" << o.mode;
+            if (mpc_ptr) {
+                const MpcConfig& c = mpc_ptr->config();
+                logf << " model=" << o.model_path
+                     << " n=" << mpc_ptr->n_states() << " observer="
+                     << (mpc_ptr->observer_active() ? "ACTIVE" : (c.use_observer ? "OFF" : "DELIBERATE_OFF"))
+                     << " pole=" << mpc_ptr->observer_pole()
+                     << " offsets=" << (mpc_ptr->offsets_applied() ? "applied" : "none")
+                     << " N=" << c.N << " Nu=" << c.Nu << " q=[";
+                if (c.q_weights.empty()) logf << c.q_weight;
+                else for (size_t i = 0; i < c.q_weights.size(); ++i) logf << (i ? " " : "") << c.q_weights[i];
+                logf << "] r=[";
+                if (c.r_weights.empty()) logf << c.r_weight;
+                else for (size_t i = 0; i < c.r_weights.size(); ++i) logf << (i ? " " : "") << c.r_weights[i];
+                logf << "] umin=" << c.umin << " umax=" << c.umax
+                     << " effort_ratio=" << o.effort_ratio
+                     << " r_schedule=" << (o.r_schedule_file.empty() ? "none" : o.r_schedule_file)
+                     << " preview=" << o.preview_ticks
+                     << " dist_observer=" << (mpc_ptr->dist_observer_active() ? 1 : 0);
+            }
+            logf << "\n";
+            logf << "seq,gap_ms,computeMs,turnaroundMs,qpCost,qpIters,qpConv,activeFrac,innov0,rW0\n";
+        }
+    }
+
+    // --r-schedule: effort weights by tick (Tier-C interleaved R sweep).
+    struct RSched { long long tick; std::vector<double> r; };
+    std::vector<RSched> rsched;
+    size_t rsched_next = 0;
+    if (!o.r_schedule_file.empty()) {
+        if (!mpc_ptr) { std::printf("FATAL: --r-schedule needs --mode mpc\n"); return 2; }
+        std::ifstream f(o.r_schedule_file);
+        if (!f) { std::printf("FATAL: cannot open --r-schedule %s\n", o.r_schedule_file.c_str()); return 2; }
+        std::string line;
+        std::getline(f, line);
+        std::vector<std::string> hdr;
+        { std::stringstream ss(line); std::string c; while (std::getline(ss, c, ',')) hdr.push_back(c); }
+        int tick_col = -1; std::vector<int> r_cols;
+        for (size_t i = 0; i < hdr.size(); ++i) {
+            std::string h = hdr[i];
+            while (!h.empty() && (h.back() == '\r' || h.back() == ' ')) h.pop_back();
+            if (h == "tick") tick_col = (int)i;
+            else if (h.size() >= 2 && h[0] == 'r' && std::isdigit((unsigned char)h[1])) r_cols.push_back((int)i);
+        }
+        if (tick_col < 0 || r_cols.empty()) { std::printf("FATAL: --r-schedule needs columns tick,r1[,r2..]\n"); return 2; }
+        while (std::getline(f, line)) {
+            if (line.empty() || line[0] == '#') continue;
+            std::vector<std::string> cells;
+            { std::stringstream ss(line); std::string c; while (std::getline(ss, c, ',')) cells.push_back(c); }
+            if ((int)cells.size() <= tick_col) continue;
+            RSched row; row.tick = std::atoll(cells[(size_t)tick_col].c_str());
+            for (int c : r_cols) if (c < (int)cells.size()) row.r.push_back(std::atof(cells[(size_t)c].c_str()));
+            if (!rsched.empty() && row.tick < rsched.back().tick) {
+                std::printf("FATAL: --r-schedule ticks must be non-decreasing (row tick %lld)\n", row.tick);
+                return 2;
+            }
+            rsched.push_back(row);
+        }
+        std::printf("mpc: r-schedule %s -- %zu change(s), first at tick %lld, %zu weight column(s)\n",
+                    o.r_schedule_file.c_str(), rsched.size(),
+                    rsched.empty() ? 0LL : rsched.front().tick, r_cols.size());
     }
 
     // ---- socket ----------------------------------------------------------
@@ -656,24 +922,8 @@ int main(int argc, char** argv) {
     std::vector<double> turnarounds;
     turnarounds.reserve(o.max_packets > 0 ? (size_t)o.max_packets : 20000);
 
-    std::vector<std::vector<double>> cap_u, cap_y;
-    std::vector<unsigned> cap_seq;
-    std::vector<double> cap_t;
-
-    // Latency log: default it whenever a capture is requested (the 08-31 choi
-    // arm runs shipped no per-run latency CSV because the flag was omitted).
-    if (o.log_file.empty() && !o.capture_file.empty()) {
-        o.log_file = "server_lat_" + o.capture_file;
-        std::printf("Latency log defaulted to %s\n", o.log_file.c_str());
-    }
-    std::ofstream logf;
-    if (!o.log_file.empty()) { logf.open(o.log_file); logf << "seq,gap_ms,computeMs,turnaroundMs\n"; }
+    size_t cap_rows = 0;          // streamed capture rows written so far
     double last_wake_ms = -1.0;
-
-    // Bound the capture (parity with matlab_controller_server's capCapacity):
-    // an unbounded run must not grow memory without limit.
-    const size_t cap_capacity = (o.max_packets > 0) ? (size_t)o.max_packets : 200000;
-    bool cap_full_warned = false;
 
     const auto t_start = std::chrono::steady_clock::now();
     auto now_ms = [&]() {
@@ -721,6 +971,14 @@ int main(int argc, char** argv) {
             u = excitation->at((int)(packets - 1));
             if ((int)u.size() != o.output_count) u.resize((size_t)o.output_count, 0.0);
         } else {
+            while (mpc_ptr && rsched_next < rsched.size() && rsched[rsched_next].tick <= packets) {
+                mpc_ptr->set_r_weights(rsched[rsched_next].r);
+                std::printf("tick %lld: r_weight -> [", packets);
+                for (size_t i = 0; i < rsched[rsched_next].r.size(); ++i)
+                    std::printf("%s%g", i ? " " : "", rsched[rsched_next].r[i]);
+                std::printf("]\n");
+                ++rsched_next;
+            }
             if (mpc_ptr && !refRows.empty()) {
                 // Sliding preview window into the horizon (parity with the
                 // MATLAB server's refPreviewTicks): rows k..k+K-1, holding the
@@ -758,20 +1016,32 @@ int main(int argc, char** argv) {
         const double turn_ms = now_ms() - t_wake;
         turnarounds.push_back(turn_ms);
 
-        if (logf) logf << rq.seq << "," << gap_ms << "," << compute_ms << "," << turn_ms << "\n";
-
-        if (!o.capture_file.empty()) {
-            if (cap_u.size() < cap_capacity) {
-                cap_seq.push_back(rq.seq);
-                cap_t.push_back(now_ms());
-                cap_u.push_back(u);
-                cap_y.push_back(rq.features);
-            } else if (!cap_full_warned) {
-                std::printf("WARNING: capture buffer full at %zu rows; later ticks "
-                            "are NOT captured (raise --max-packets to size it).\n",
-                            cap_capacity);
-                cap_full_warned = true;
+        if (logf) {
+            logf << rq.seq << "," << gap_ms << "," << compute_ms << "," << turn_ms;
+            if (mpc_ptr) {
+                const MpcController::Telemetry& t = mpc_ptr->telemetry();
+                logf << "," << t.cost << "," << t.iters << "," << (t.converged ? 1 : 0)
+                     << "," << t.active_frac << "," << t.innov0 << "," << t.rW0;
+            } else {
+                logf << ",0,0,1,0,0,0";
             }
+            logf << "\n";
+        }
+
+        if (capf) {
+            if (cap_rows == 0) {
+                // Header on the first packet: the feature width is only known now.
+                capf << "tick,seq,t_ms";
+                for (size_t i = 0; i < u.size(); ++i) capf << ",u" << (i + 1);
+                for (size_t i = 0; i < rq.features.size(); ++i) capf << ",y" << (i + 1);
+                capf << "\n";
+            }
+            ++cap_rows;
+            capf << cap_rows << "," << rq.seq << "," << now_ms();
+            for (double v : u) capf << "," << v;
+            for (double v : rq.features) capf << "," << v;
+            capf << "\n";
+            if (cap_rows % 100 == 0) capf.flush();
         }
 
         if (packets <= 5 || packets % 100 == 0) {
@@ -801,20 +1071,10 @@ int main(int argc, char** argv) {
                     t.size(), sum / t.size(), t[t.size() / 2],
                     t[(size_t)(0.95 * (t.size() - 1))], t.back());
     }
-    if (!o.capture_file.empty() && !cap_u.empty()) {
-        std::ofstream f(o.capture_file);
-        f << "tick,seq,t_ms";
-        for (size_t i = 0; i < cap_u[0].size(); ++i) f << ",u" << (i + 1);
-        for (size_t i = 0; i < cap_y[0].size(); ++i) f << ",y" << (i + 1);
-        f << "\n";
-        f.precision(9);
-        for (size_t k = 0; k < cap_u.size(); ++k) {
-            f << (k + 1) << "," << cap_seq[k] << "," << cap_t[k];
-            for (double v : cap_u[k]) f << "," << v;
-            for (double v : cap_y[k]) f << "," << v;
-            f << "\n";
-        }
-        std::printf("Wrote %zu capture rows to %s\n", cap_u.size(), o.capture_file.c_str());
+    if (capf) {
+        capf.flush();
+        capf.close();
+        std::printf("Wrote %zu capture rows to %s\n", cap_rows, o.capture_file.c_str());
     }
     if (logf) std::printf("Wrote timing log to %s\n", o.log_file.c_str());
 

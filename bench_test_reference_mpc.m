@@ -415,6 +415,39 @@ function bench_test_reference_mpc
     mpc_test([]);
     fails = fails + report('MIMO featureChannel arity', ok, detail);
 
+    % ---- 16. delay-state realization (2026-10-09) ------------------------
+    % The fitter aligns u by inputDelayTicks AND regresses with nk = 1; the
+    % controllers assume one tick. A capture with a KNOWN row-frame dead time
+    % of 3 must come back as a model whose row-frame free-run scores best at
+    % shift 0 (delay states on) and one tick EARLY with the pre-10-09 export.
+    addpath(fullfile(fileparts(mfilename('fullpath')), 'rig'));
+    synthFile = fullfile(tempdir, 'bench_synth_delay.csv');
+    truth = make_synthetic_delay_capture(synthFile, 3);
+    fitOpts = struct('useInputs', truth.useInputs, 'useOutputs', truth.useOutputs, ...
+                     'orders', 1:3, 'inputDelayTicks', truth.deadTicks - 1);
+    evalc('rD = fit_sysid_from_capture(synthFile, fitOpts);');
+    Tsy = readtable(synthFile);
+    Usy = table2array(Tsy(:, {'u4', 'u6'}));
+    ysy = Tsy.y1;
+    fitsD = arrayfun(@(s) shifted_fit(ysy, rowframe_sim(rD.sys, Usy), s), -2:2);
+    [~, ib] = max(fitsD);
+    nExpect = rD.order + 2 * (truth.deadTicks - 1);
+    ok = (ib - 3) == 0 && fitsD(3) > 90 && size(rD.sys.A, 1) == nExpect && ...
+         rD.sys.delayTicks == truth.deadTicks - 1;
+    detail = sprintf('fit%% by shift -2..+2 = [%s], n=%d (core %d + %d delay)', ...
+                     num2str(fitsD, '%.1f '), size(rD.sys.A, 1), rD.order, nExpect - rD.order);
+    fails = fails + report('delay-state realization', ok, detail);
+
+    fitOpts.delayStates = false;
+    evalc('r0 = fit_sysid_from_capture(synthFile, fitOpts);');
+    fits0 = arrayfun(@(s) shifted_fit(ysy, rowframe_sim(r0.sys, Usy), s), -2:2);
+    [~, ib0] = max(fits0);
+    ok = (ib0 - 3) == truth.deadTicks - 1 && fits0(3) < fitsD(3);
+    detail = sprintf('best shift %+d (expect %+d), fit%% by shift = [%s]', ...
+                     ib0 - 3, truth.deadTicks - 1, num2str(fits0, '%.1f '));
+    fails = fails + report('legacy export is early', ok, detail);
+    delete(synthFile);
+
     fprintf('\n%s\n', ternary(fails == 0, 'ALL BENCH TESTS PASS', ...
                               sprintf('%d BENCH TEST(S) FAILED', fails)));
     if fails > 0
@@ -427,6 +460,33 @@ function u = run_settled(y, r)
     for k = 1:15
         u = mpc_test(y, r);
     end
+end
+
+function yh = rowframe_sim(sys, U)
+    % Free-run in the CONTROLLER's convention: x(k+1) = A x(k) + B (u(k)-uOff),
+    % y(k) = C x(k) + yOff, driven by the capture's own command rows.
+    uOff = zeros(1, size(U, 2)); yOff = 0;
+    if isfield(sys, 'uOffset'), uOff = sys.uOffset(:).'; end
+    if isfield(sys, 'yOffset'), yOff = sys.yOffset(1);   end
+    x = zeros(size(sys.A, 1), 1);
+    yh = zeros(size(U, 1), 1);
+    for k = 1:size(U, 1)
+        uc = (U(k, :) - uOff).';
+        yh(k) = sys.C(1, :) * x + sys.D(1, :) * uc + yOff;
+        x = sys.A * x + sys.B * uc;
+    end
+end
+
+function f = shifted_fit(y, yh, s)
+    % NRMSE fit% with the model output advanced by s ticks (s > 0: the model
+    % answers earlier than the data). A correctly framed model peaks at s = 0.
+    n = numel(y);
+    if s > 0
+        y = y(1+s:n); yh = yh(1:n-s);
+    elseif s < 0
+        y = y(1:n+s); yh = yh(1-s:n);
+    end
+    f = 100 * (1 - norm(y - yh) / norm(y - mean(y)));
 end
 
 function n = report(name, ok, detail)

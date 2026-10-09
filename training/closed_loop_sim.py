@@ -95,6 +95,17 @@ def main() -> int:
     ap.add_argument("--output-count", type=int, default=8,
                     help="reply width; the rig is 8 bipolar pairs")
     ap.add_argument("--noise", type=float, default=0.0, help="measurement noise std")
+    # Plant-mismatch knobs (2026-10-09). All no-ops by default, so the sim plant
+    # IS the model exactly as before; set them to see what the controller does
+    # when the prep is not the model (gain drift, baseline shift, extra lag).
+    ap.add_argument("--gain-scale", type=float, default=1.0,
+                    help="multiply the plant's B by this (model gain error; 1 = none)")
+    ap.add_argument("--bias", type=float, default=0.0,
+                    help="constant added to every plant output (baseline shift)")
+    ap.add_argument("--drift-per-tick", type=float, default=0.0,
+                    help="ramp added to every plant output: drift * k")
+    ap.add_argument("--extra-delay", type=int, default=0,
+                    help="extra ticks of pure delay on u before the plant (dead-time error)")
     ap.add_argument("--pairs", default="",
                     help="comma-separated 1-based reply slots carrying the plant's "
                          "m inputs -- MUST mirror cpp_controller --pairs, else the "
@@ -111,6 +122,9 @@ def main() -> int:
                     help="write the commanded u trajectory to this CSV "
                          "(tick,u1..uM design format, replayable via "
                          "cpp_controller --mode openloop --play)")
+    ap.add_argument("--launch-log", default="",
+                    help="file for the launched server's stdout (default: next to the "
+                         "--capture given in --launch-args, else closed_loop_sim_server.log)")
     ap.add_argument("--launch", action="store_true",
                     help="start cpp_controller in mpc mode automatically")
     ap.add_argument("--launch-args", nargs=argparse.REMAINDER, default=[],
@@ -151,7 +165,18 @@ def main() -> int:
                "--max-packets", str(args.ticks),
                "--request-port", str(args.request_port),
                "--reply-port", str(args.reply_port)] + list(args.launch_args)
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        # The server's stdout goes to a FILE, never a pipe nobody reads: with
+        # stdout=PIPE the server blocked on printf once ~4 KB of "Reply #" lines
+        # filled the Windows pipe buffer (~1600 ticks) and the sim reported
+        # "controller stopped responding" (found 2026-10-09).
+        la = list(args.launch_args)
+        cap_arg = la[la.index("--capture") + 1] if "--capture" in la and la.index("--capture") + 1 < len(la) else ""
+        launch_log = args.launch_log or (
+            str(Path(cap_arg).with_name("server_" + Path(cap_arg).stem + ".log"))
+            if cap_arg else "closed_loop_sim_server.log")
+        launch_fh = open(launch_log, "w")
+        proc = subprocess.Popen(cmd, stdout=launch_fh, stderr=subprocess.STDOUT, text=True)
+        print(f"Launched {cmd[0]} (stdout -> {launch_log})")
         time.sleep(0.6)
 
     rx = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -163,13 +188,20 @@ def main() -> int:
     u = np.zeros(m)
     rng = np.random.default_rng(0)
     ys, us, rtts, timeouts = [], [], [], 0
+    Bp = B * args.gain_scale
+    delay_fifo = [np.zeros(m) for _ in range(max(0, args.extra_delay))]
+    if args.gain_scale != 1.0 or args.bias or args.drift_per_tick or args.extra_delay:
+        print(f"Plant MISMATCH: gain x{args.gain_scale}, bias {args.bias}, "
+              f"drift {args.drift_per_tick}/tick, extra delay {args.extra_delay} tick(s)")
 
     U_hist = []
+    Y_hist = []
     try:
         for k in range(args.ticks):
             # Raw-frame plant: y = yOffset + C x + D (u - uOffset),
             # x+ = A x + B (u - uOffset). Zero offsets = the legacy sim exactly.
             y = (yOff + C @ x + D @ (u - uOff)).ravel()
+            y = y + args.bias + args.drift_per_tick * k
             if args.noise > 0:
                 y = y + rng.normal(0, args.noise, y.shape)
 
@@ -200,10 +232,15 @@ def main() -> int:
             # One-tick command lag, matching the real localhost path: the command
             # computed from y(k) is not applied until k+1. Omitting this would
             # make the simulation optimistic relative to the rig.
-            x = (A @ x + B @ (u - uOff)).ravel()
+            u_plant = u
+            if delay_fifo:
+                delay_fifo.append(u.copy())
+                u_plant = delay_fifo.pop(0)
+            x = (A @ x + Bp @ (u_plant - uOff)).ravel()
             ys.append(float(y[0]))
             us.append(float(u[0]))
             U_hist.append(u.copy())
+            Y_hist.append(y[:p].copy())
     finally:
         rx.close(); tx.close()
         if proc:
@@ -234,7 +271,12 @@ def main() -> int:
     tail = slice(max(0, len(ys_a) - 200), None)
     print(f"\nTicks completed      : {len(ys_a)}  (timeouts {timeouts})")
     print(f"Round-trip           : mean {np.mean(rtts):.3f} ms, p95 {np.percentile(rtts,95):.3f} ms")
-    print(f"Output y  final/mean : {ys_a[-1]:.4f} / {ys_a[tail].mean():.4f}   target {args.target}")
+    print(f"Output y  final/mean : {ys_a[-1]:.4g} / {ys_a[tail].mean():.4g}   target {args.target}")
+    if p > 1:
+        Y_a = np.array(Y_hist)
+        for j in range(p):
+            print(f"  output {j+1} (feature {int(feat_idx[j])+1}) final/mean : "
+                  f"{Y_a[-1, j]:.4g} / {Y_a[tail, j].mean():.4g}")
     print(f"Command u final/mean : {us_a[-1]:.4f} / {us_a[tail].mean():.4f}")
     U_a = np.array(U_hist)
     ranges = U_a.max(axis=0) - U_a.min(axis=0)

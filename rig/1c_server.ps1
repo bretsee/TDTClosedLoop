@@ -48,7 +48,11 @@ param(
     # design). For tissue probing pass ONE pair, e.g. -Channels 3.
     [int[]]    $Channels    = $null,
     # Reuse an existing design CSV without regenerating (path override).
-    [string]   $Design      = ''
+    [string]   $Design      = '',
+    # Allow design_run<Run>.csv to be reused silently when it already exists.
+    # Without this switch an existing design for the SAME run label prompts:
+    # on 2026-09-10 rnd1 replayed the stale 08-31 seven-amplitude design.
+    [switch]   $Reuse
 )
 
 $repo = Split-Path -Parent $PSScriptRoot
@@ -96,7 +100,18 @@ if ($Schedule -eq 'random') {
     }
 }
 
-if ([string]::IsNullOrWhiteSpace($Design)) { $Design = "design_run$Run.csv" }
+$designGiven = -not [string]::IsNullOrWhiteSpace($Design)
+if (-not $designGiven) { $Design = "design_run$Run.csv" }
+if ((-not $designGiven) -and (-not $Reuse) -and (Test-Path $Design)) {
+    $info = Get-Item $Design
+    $rows = ((Get-Content $Design | Measure-Object -Line).Lines - 1)
+    Write-Host "WARNING: $Design already exists (written $($info.LastWriteTime), $rows rows)." -ForegroundColor Yellow
+    Write-Host "         It will be REPLAYED AS-IS, not regenerated with today's -PulseAmps/-Channels/-Seed." -ForegroundColor Yellow
+    Write-Host "         (09-10 rnd1 replayed a stale 08-31 design this way.) Use a fresh -Run label," -ForegroundColor Yellow
+    Write-Host "         delete the file, pass -Design <path>, or -Reuse to skip this prompt." -ForegroundColor Yellow
+    $answer = Read-Host "         Type 'reuse' to play the existing design"
+    if ($answer -ne 'reuse') { Write-Host "Aborted. Nothing was sent."; exit 1 }
+}
 $capture = "capture_rig_run$Run.csv"
 $latlog  = "server_lat_run$Run.csv"
 

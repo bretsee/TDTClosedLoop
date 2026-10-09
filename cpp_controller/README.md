@@ -6,7 +6,7 @@ runs against it **unchanged and unrebuilt** with `--controller localhost`.
 
 ```powershell
 build_cpp_controller.bat
-cpp_controller.exe --selftest          # 12 offline checks, no hardware
+cpp_controller.exe --selftest          # 16 offline checks, no hardware
 ```
 
 ## Why it exists
@@ -100,9 +100,22 @@ responding when it is in fact exactly at its optimum. Lower `--r-weight` (or
 raise `--q-weight`) to close the gap — at `--r-weight 1e-4` the same code tracks
 a setpoint of 5 to within 0.14%.
 
+## 2026-10-09 additions (all flag-gated; defaults reproduce the Choi-comparable formulation)
+
+| flag | what it does |
+|---|---|
+| `--effort-ratio RHO` | sets `R_j = RHO * sum_i Q_i G_ij^2` from the model's DC gain `G`, so the effort weight is dimensionless: a SISO loop settles at `r/(1+RHO)` (shortfall `RHO/(1+RHO)`). Replaces guessing `--q-weight 1e12` against volt-scale features. Not combinable with `--r-weight`. |
+| `--dist-observer [--dist-q V]` | **offset-free MPC**: the Kalman observer is augmented with a constant output-disturbance state (`y = C x + d`), estimated by the same Riccati iteration on `[A 0; 0 I]`, `[C I]`. The prediction includes `dhat`, so plant-gain drift / baseline shift no longer bias the horizon. Cost, F, G, H untouched. **C++-only**: `mpc_test.m` has no equivalent; MATLAB comparison arms run with it off and the bench covers default-off parity. |
+| `--r-schedule PATH` | CSV `tick,r1[,r2..]`; at each listed tick the effort weights are replaced (Hessian rebuilt, warm start kept) — the Tier-C interleaved R sweep inside one run. `rW0` in the latency log records the weight in force every tick. |
+| latency log | now `seq,gap_ms,computeMs,turnaroundMs,qpCost,qpIters,qpConv,activeFrac,innov0,rW0`, preceded by one `#` banner line with the run configuration (model, observer state/pole, offsets, N/Nu, weights, flags). `rig/run_audit.py` reads it. Defaults to `server_lat_<capture name>` in the capture's directory (was silently lost for `day_*/` captures). |
+| `--capture` | **streamed** (one row per tick, flushed every 100) so `rig/check_y_liveness.py --watch` works during the run; opened before the socket so a bad path fails before `ready`. |
+| `--play` | refuses a design whose `<design>_meta.json` `nTicks` differs from the row count. |
+
+Dead time: models exported since 2026-10-09 carry delay states so that `x(k+1) = A x(k) + B u(k)` holds in this server's convention (see `fit_sysid_from_capture.m` `delayStates` and `rig/check_dead_time.py`). Old `.lti` files still load; they are one tick optimistic.
+
 ## Self-test
 
-`--selftest` runs 12 offline checks covering the wire codec, the QP against
+`--selftest` runs 16 offline checks covering the wire codec, the QP against
 closed-form optima, the Cholesky solve, the observer (including that it *refuses*
 an unstable-unobservable model rather than silently returning zero gain), the
 closed-loop trade-off above, and the excitation channel mask. Run it after any

@@ -1,0 +1,27 @@
+LTI 1
+# exported from struct argument on 2026-10-09 15:36:36
+# delayTicks 2 coreOrder 1 (controller row frame: u(k) acts on y(k+3))
+Ts 0.01
+n 5
+m 2
+p 1
+A
+0.62552531151803903 0 0 2.7375540356155805e-07 1.0614664988499409e-08 
+0 0 0 0 0 
+0 0 0 0 0 
+0 1 0 0 0 
+0 0 1 0 0 
+B
+0 0 
+1 0 
+0 1 
+0 0 
+0 0 
+C
+1 0 0 0 0 
+D
+0 0 
+uOffset
+15.029814598296309 15.031568398196091 
+yOffset
+5.3052259952892958e-05 

@@ -32,6 +32,14 @@ function u = mpc_test(y_feat, r_now)
 % Model slot (optional): MPC_MODEL_INDEX (base workspace or in AllModels.mat)
 % selects which AllModels(k).sys to control from; default 10.
 %
+% NOT IN THIS FILE (2026-10-09): cpp_controller's --dist-observer (offset-free
+% MPC: a constant output-disturbance state in the Kalman observer) and
+% --effort-ratio / --r-schedule exist only in the C++ server. This MATLAB
+% reference keeps the original formulation so MATLAB-vs-C++ comparison arms
+% are run with those flags OFF; bench_test_reference_mpc covers default-off
+% parity. Models fitted since 2026-10-09 carry delay states (fit_sysid
+% 'delayStates'), which this file consumes unchanged through A, B, C.
+%
 % Operating point: if the model struct carries uOffset/yOffset (stored by
 % fit_sysid_from_capture, which fits on mean-removed data), the controller
 % runs its observer/QP in centered coordinates and converts at the measurement

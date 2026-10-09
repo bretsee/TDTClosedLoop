@@ -195,8 +195,13 @@ MPC_TARGET = <desired feature value>;   % base workspace; get_reference reads it
 - **One-tick (10 ms) command lag is structural on the localhost path.** The C++
   loop polls for the in-flight reply at the start of the tick *after* it sent the
   request, so the command applied at tick k was computed from the features of
-  tick k-1. This is why the capture fitter uses `inputDelayTicks = 1`. The
-  embedded path has no such lag but drops ticks (see the notebook).
+  tick k-1. The embedded path has no such lag but drops ticks (see the notebook).
+  **Dead time (2026-10-09):** the command logged at tick k first moves the
+  feature at tick k+3 on the 09-10 prep (1 transport tick + ~2 ticks of
+  thalamocortical latency; `rig/check_dead_time.py` on the pulse probe), so the
+  fitter default is now `inputDelayTicks = 2` (+ nk = 1) and the exported model
+  carries delay states so that cpp_controller's `x(k+1) = A x(k) + B u(k)`
+  convention holds. Measure it on each prep's gate probe and pass onset-1.
 - **The freshness thresholds are loose.** `LOCALHOST_FRESH_OUTPUT_US = 100 ms`
   and `LOCALHOST_MAX_HOLD_OUTPUT_US = 250 ms`
   (`MpcPo8eUdpClosedLoop.cpp:1147-1148`) mean a 100 ms-old command still counts

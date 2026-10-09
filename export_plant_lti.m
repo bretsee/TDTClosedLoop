@@ -23,25 +23,34 @@ function outPath = export_plant_lti(outPath, modelIndex)
 
     Ts = 0.01;   % fallback; the model's own Ts (stamped by fit_sysid) wins
 
-    if evalin('base', 'exist(''AllModels'', ''var'')')
-        AllModels = evalin('base', 'AllModels');
+    if isstruct(modelIndex) || isa(modelIndex, 'ss')
+        % Direct export of a model struct (e.g. r.sys from fit_sysid_from_capture)
+        % without going through AllModels.mat -- lets a candidate plant be
+        % exported and tried in cpp_controller without touching the saved slots.
+        sys = modelIndex;
+        source = 'struct argument';
     else
-        matPath = fullfile(pwd, 'AllModels.mat');
-        if ~isfile(matPath)
-            error('export_plant_lti:MissingAllModels', ...
-                  'AllModels not in the base workspace and %s not found.', matPath);
+        if evalin('base', 'exist(''AllModels'', ''var'')')
+            AllModels = evalin('base', 'AllModels');
+        else
+            matPath = fullfile(pwd, 'AllModels.mat');
+            if ~isfile(matPath)
+                error('export_plant_lti:MissingAllModels', ...
+                      'AllModels not in the base workspace and %s not found.', matPath);
+            end
+            loaded = load(matPath, 'AllModels');
+            AllModels = loaded.AllModels;
         end
-        loaded = load(matPath, 'AllModels');
-        AllModels = loaded.AllModels;
-    end
 
-    if numel(AllModels) < modelIndex || ~isfield(AllModels, 'sys')
-        error('export_plant_lti:BadAllModels', ...
-              'AllModels has no entry %d with a .sys field.', modelIndex);
-    end
-    sys = AllModels(modelIndex).sys;
-    if isempty(sys)
-        error('export_plant_lti:EmptyModel', 'AllModels(%d).sys is empty.', modelIndex);
+        if numel(AllModels) < modelIndex || ~isfield(AllModels, 'sys')
+            error('export_plant_lti:BadAllModels', ...
+                  'AllModels has no entry %d with a .sys field.', modelIndex);
+        end
+        sys = AllModels(modelIndex).sys;
+        if isempty(sys)
+            error('export_plant_lti:EmptyModel', 'AllModels(%d).sys is empty.', modelIndex);
+        end
+        source = sprintf('AllModels(%d).sys', modelIndex);
     end
 
     if isa(sys, 'ss')
@@ -62,7 +71,7 @@ function outPath = export_plant_lti(outPath, modelIndex)
         end
     else
         error('export_plant_lti:UnsupportedModel', ...
-              'AllModels(%d).sys must be an ss object or a struct with A,B,C,D.', modelIndex);
+              '%s must be an ss object or a struct with A,B,C,D.', source);
     end
 
     n = size(A, 1); m = size(B, 2); p = size(C, 1);
@@ -101,7 +110,16 @@ function outPath = export_plant_lti(outPath, modelIndex)
     cleanup = onCleanup(@() fclose(fid)); %#ok<NASGU>
 
     fprintf(fid, 'LTI 1\n');
-    fprintf(fid, '# exported from AllModels(%d).sys on %s\n', modelIndex, datestr(now, 31));
+    fprintf(fid, '# exported from %s on %s\n', source, datestr(now, 31));
+    % Provenance of the row-frame realization, as a COMMENT only: every parser
+    % (model_io.hpp, closed_loop_sim.py, choi_synthesis.py) strips '#' lines,
+    % whereas a new trailing key would make model_io.hpp throw.
+    if isstruct(sys) && isfield(sys, 'delayTicks')
+        core = n;
+        if isfield(sys, 'coreOrder'), core = sys.coreOrder; end
+        fprintf(fid, '# delayTicks %d coreOrder %d (controller row frame: u(k) acts on y(k+%d))\n', ...
+                sys.delayTicks, core, sys.delayTicks + 1);
+    end
     fprintf(fid, 'Ts %.17g\n', Ts);
     fprintf(fid, 'n %d\nm %d\np %d\n', n, m, p);
     write_block(fid, 'A', A);

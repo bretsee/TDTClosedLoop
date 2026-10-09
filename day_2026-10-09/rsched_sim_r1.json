@@ -1,0 +1,75 @@
+{
+ "schedule": "day_2026-09-10/schedule_mix_r1.json",
+ "block_events": 20,
+ "levels": [
+  100.0,
+  30.0,
+  10.0
+ ],
+ "anchor_r": 1.0,
+ "lead_ticks": 172,
+ "period_ticks": 220,
+ "n_events": 100,
+ "blocks": [
+  {
+   "block": 1,
+   "r": 100.0,
+   "events": [
+    1,
+    20
+   ],
+   "onset_first": 203,
+   "onset_last": 4383,
+   "start_tick": 173,
+   "end_tick": 4572
+  },
+  {
+   "block": 2,
+   "r": 30.0,
+   "events": [
+    21,
+    40
+   ],
+   "onset_first": 4603,
+   "onset_last": 8783,
+   "start_tick": 4573,
+   "end_tick": 8972
+  },
+  {
+   "block": 3,
+   "r": 10.0,
+   "events": [
+    41,
+    60
+   ],
+   "onset_first": 9003,
+   "onset_last": 13183,
+   "start_tick": 8973,
+   "end_tick": 13372
+  },
+  {
+   "block": 4,
+   "r": 100.0,
+   "events": [
+    61,
+    80
+   ],
+   "onset_first": 13403,
+   "onset_last": 17583,
+   "start_tick": 13373,
+   "end_tick": 17772
+  },
+  {
+   "block": 5,
+   "r": 30.0,
+   "events": [
+    81,
+    100
+   ],
+   "onset_first": 17803,
+   "onset_last": 21983,
+   "start_tick": 17773,
+   "end_tick": 22172
+  }
+ ]
+}
