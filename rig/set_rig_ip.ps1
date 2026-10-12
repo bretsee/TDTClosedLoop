@@ -10,12 +10,31 @@
 # become the default route, or it will take over internet traffic from Wi-Fi.
 
 param(
-    [string]$Nic     = "Ethernet",
+    [string]$Nic     = "",          # default: auto-detect (see Resolve-RigNic)
     [string]$IP      = "10.1.0.1",
     [int]   $Prefix  = 24,
     [switch]$Revert,
     [switch]$Apply
 )
+# Auto-detect the rig NIC when none is given (2026-10-12: onboard Realtek is dead,
+# the RZ2 now hangs off a USB adapter named 'Ethernet 2'): prefer the adapter that
+# already holds an address on the RZ2 /24, else the only physical wired adapter
+# whose link is Up.
+function Resolve-RigNic([string]$Given, [string]$Subnet) {
+    if ($Given) { return $Given }
+    $wired = Get-NetAdapter -Physical -ErrorAction SilentlyContinue |
+        Where-Object { $_.PhysicalMediaType -match '802.3' -or $_.InterfaceDescription -match 'Ethernet' } |
+        Where-Object { $_.InterfaceDescription -notmatch 'Wi-?Fi|Wireless|Bluetooth' }
+    $onSubnet = Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+        Where-Object { $_.IPAddress -like "$Subnet.*" -and ($wired.Name -contains $_.InterfaceAlias) }
+    if ($onSubnet) { return @($onSubnet)[0].InterfaceAlias }
+    $up = @($wired | Where-Object { $_.Status -eq 'Up' })
+    if ($up.Count -ge 1) { return $up[0].Name }
+    if ($wired) { return @($wired)[0].Name }
+    return "Ethernet"
+}
+$Nic = Resolve-RigNic $Nic ($IP -replace '\.\d+$', '')
+
 
 $ErrorActionPreference = 'Stop'
 
