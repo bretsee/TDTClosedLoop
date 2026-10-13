@@ -80,6 +80,11 @@ do {
             }
         }
     }
-    if ($pass -eq 1) { Write-Host ("{0} initial sync done ({1:n0} s); {2} block(s) local. Watching every {3} s..." -f (Get-Date -Format HH:mm:ss), ((Get-Date) - $t0).TotalSeconds, $known.Count, $EveryS) -ForegroundColor Cyan }
+    if ($pass -eq 1) {
+        $tail = if ($Watch -and -not $Once) { ("Watching every {0} s..." -f $EveryS) } else { "" }
+        Write-Host ("{0} initial sync done ({1:n0} s); {2} block(s) local. {3}" -f (Get-Date -Format HH:mm:ss), ((Get-Date) - $t0).TotalSeconds, $known.Count, $tail) -ForegroundColor Cyan
+    }
     if ($Watch -and -not $Once) { Start-Sleep -Seconds $EveryS }
 } while ($Watch -and -not $Once)
+# robocopy exit codes below 8 mean "copied / nothing to do"; do not let them leak as a failure.
+exit 0

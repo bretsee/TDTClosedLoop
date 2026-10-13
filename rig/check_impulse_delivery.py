@@ -26,6 +26,7 @@ level: pass the INNER directory.
 
 import argparse
 import csv
+import os
 import sys
 
 import numpy as np
@@ -61,6 +62,7 @@ def main():
                          "Microprobes 2x8 map "
                          "'16:12,15:11,14:10,13:9,4:8,3:7,2:6,1:5'. Default = "
                          "legacy (2k-1,2k).")
+    ap.add_argument("--json", default=None, help="write the per-word counts + verdict to this JSON")
     ap.add_argument("--design-meta", default=None,
                     help="design_burst_probe.py _meta.json of the played design. Makes the "
                          "audit BURST-AWARE: multi-tick runs whose length is a designed "
@@ -96,8 +98,10 @@ def main():
     else:
         pair_table = [(2 * w, 2 * w + 1) for w in range(8)]
 
-    import tdt
-    d = tdt.read_block(args.block, evtype=["streams", "scalars"])
+    # .npz = synthetic block from rig/make_synthetic_block.py (known faults); else TDT.
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from blockutil import load_block
+    d = load_block(args.block, evtype=["streams", "scalars"])
     issues = []
 
     def note(sev, msg):
@@ -121,6 +125,8 @@ def main():
     print("\nper-word wire audit:")
     expected = set(np.round(args.amps, 6))
     tot_d = tot_w = tot_multi = 0
+    rep = dict(block=str(args.block), design_meta=args.design_meta, burst_aware=len(burst_lens) > 1,
+               words=[], stretched_runs=0, legacy_multi=0)
     for w in range(n_words):
         n_ev, n_single, multi, _ = pulse_events(U[w])
         vals = set(np.round(U[w][U[w] > 1e-9], 6))
@@ -139,11 +145,13 @@ def main():
             hist = dict(zip(*np.unique(np.array(lens_all, int), return_counts=True))) if lens_all else {}
             stalled = [L for L in multi if L not in burst_lens]
             tot_multi += len(stalled)
+            rep["stretched_runs"] += len(stalled)
             print("  word %d: %3d events, run lengths %s%s%s"
                   % (w + 1, n_ev, {int(k): int(v) for k, v in hist.items()},
                      ("  STRETCHED %s" % stalled) if stalled else "", loss))
         else:
             tot_multi += len(multi)
+            rep["legacy_multi"] += len(multi)
             print("  word %d: %3d events (%3d single, %d multi %s)%s"
                   % (w + 1, n_ev, n_single, len(multi), multi, loss))
     if tot_multi:
@@ -211,11 +219,18 @@ def main():
             n_single += exact; n_double += long_
             print("  word %d: %3d probes (B %s) -> missed %2d, short %2d, exact %3d, long %2d"
                   % (w + 1, len(counts), sorted(set(expect_b)), miss, short, exact, long_))
+            # per burst length, for the known-answer comparison
+            byB = {}
+            for cnt_i, b_i in zip(cnt.tolist(), exb.tolist()):
+                k = "missed" if cnt_i == 0 else ("short" if cnt_i < b_i else ("exact" if cnt_i == b_i else "long"))
+                byB.setdefault(str(b_i), {"missed": 0, "short": 0, "exact": 0, "long": 0})[k] += 1
+            rep["words"].append(dict(word=w + 1, probes=len(counts), missed=miss, short=short, exact=exact, long=long_, by_B=byB))
         else:
             c = np.bincount(np.array(counts) if counts else np.zeros(0, int), minlength=3)
             n_miss += int(c[0]); n_single += int(c[1]); n_double += int(c[2:].sum())
             print("  word %d: %3d probes -> missed %2d, single %3d, double+ %2d"
                   % (w + 1, len(counts), c[0], c[1], c[2:].sum()))
+            rep["words"].append(dict(word=w + 1, probes=len(counts), missed=int(c[0]), single=int(c[1]), double=int(c[2:].sum())))
     if n_probe and len(burst_lens) > 1:
         print("  TOTAL %d probes: missed %d, short %d, exact %d, long %d (B-aware)"
               % (n_probe, n_miss, n_short, n_exact, n_long))
@@ -305,6 +320,15 @@ def main():
     print("\nVERDICT: %s (%d hard failure(s), %d warning(s))"
           % ("DELIVERY BROKEN" if hard else "DELIVERY VERIFIED",
              hard, len(issues) - hard))
+    if args.json:
+        import json as _json
+        rep.update(totals=dict(probes=n_probe, missed=n_miss, short=n_short, exact=n_exact, long=n_long,
+                               single=n_single, double=n_double),
+                   verdict="DELIVERY BROKEN" if hard else "DELIVERY VERIFIED",
+                   issues=[dict(sev=s, msg=m) for s, m in issues])
+        with open(args.json, "w") as fh:
+            _json.dump(rep, fh, indent=1)
+        print("wrote %s" % args.json)
     return 1 if hard else 0
 
 

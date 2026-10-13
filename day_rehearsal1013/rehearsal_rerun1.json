@@ -1,0 +1,406 @@
+{
+ "day": "rehearsal1013",
+ "started": "2026-10-13 02:13:05",
+ "scratch": "C:\\Users\\brets\\AppData\\Local\\Temp\\rehearsal_pujx24m_",
+ "phases": [
+  {
+   "phase": "gate",
+   "model": "day_rehearsal1013\\plant_duty.lti",
+   "runs": [
+    {
+     "A": ".\\cpp_controller.exe --mode openloop --play design_rungate.csv --output-count 8 --capture capture_rig_rungate1.csv",
+     "B": ".\\rig\\2_loop.ps1 -Sim -InputChannels 64 -TimeoutMs 10 -TickFrames 6 -Run gate1 -Design design_rungate.csv -Capture capture_rig_rungate1.csv",
+     "run": "gate1",
+     "ok": true,
+     "secs": 259.1,
+     "loop_summary": [
+      "Exit reason: reached max control ticks (26277).",
+      "Summary: packets=26277 controlTicks=26277 droppedControlTicks=0 finalBuffered=65536/65536 nominalWindowSamples=6 minWindowSamples=5 undersampledWindows=1 channelMode=exact(in=64 card=64)",
+      "Localhost summary: submitted=26277 replies=26276 failures=0 timeouts=0 staleDropped=0 skippedWhileBusy=0 freshTicks=26276 heldTicks=0 zeroTicks=1 freshReplyTransitions=26276 policyTransitions=2 inFlight=true lastReplySeq=26276",
+      "Exit reason: reached max control ticks (26277).",
+      "Summary: packets=26277 controlTicks=26277 droppedControlTicks=0 finalBuffered=65536/65536 nominalWindowSamples=6 ",
+      "Localhost summary: submitted=26277 replies=26276 failures=0 timeouts=0 staleDropped=0 skippedWhileBusy=0 "
+     ],
+     "controller": "controller exit rc=0",
+     "server_log": "C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\day_rehearsal1013\\server_gate1.log",
+     "fatal": [],
+     "liveness": [
+      "y-liveness: LIVE     capture_rig_rungate1.csv  rows 3034  dead ch 0/64  median|y| 696  banks ch1-32=7e+02 ch33-64=7e+02"
+     ],
+     "b_rc": 0
+    }
+   ],
+   "checks": [
+    {
+     "cmd": "& $py rig\\run_audit.py --run gate1 --loop-log loop_rungate1.log --capture capture_rig_rungate1.csv --design design_rungate.csv --sim",
+     "rc": 1,
+     "secs": 0.6,
+     "tail": [
+      "AUDIT gate1: WARN | fresh@2 ticks=26277/26277 dropped=0 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.00 u_std=1.13 qpConv=100%",
+      "  WARN: undersampledWindows=1",
+      "  info: activeFrac=0.0 backlog=5 u_active=['u1', 'u2', 'u3', 'u4', 'u5', 'u6', 'u7', 'u8']"
+     ],
+     "audit": "AUDIT gate1: WARN | fresh@2 ticks=26277/26277 dropped=0 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.00 u_std=1.13 qpConv=100%"
+    },
+    {
+     "cmd": "& $py rig\\placement_gate.py --mode thalamic --block day_rehearsal1013\\synthetic_block_gate_clean.npz --min-amp 13",
+     "rc": 0,
+     "secs": 1.5,
+     "tail": [
+      "     6  8.0  RESPONSIVE  79.1  ch34       +20    24.6       13   84",
+      "     7  8.0  RESPONSIVE  64.5  ch19       +16    22.9       13   84",
+      "     8  8.0  RESPONSIVE  82.8  ch33       +10    24.6       13   84",
+      "  responsive 8, weak 0, silent [], footprint eff rank 3 (sv 1.00, 0.22, 0.12, 0.00)",
+      "==============================================================================",
+      "  figure: C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\galleries\\synthetic_block_gate_clean\\gate_thalamic.png"
+     ]
+    },
+    {
+     "cmd": "& $py rig\\check_impulse_delivery.py --block day_rehearsal1013\\synthetic_block_gate_clean.npz --capture day_rehearsal1013\\synthetic_block_gate_clean_capture.csv --amps 13 18 25 --pairs \"16:12,15:11,14:10,13:9,4:8,3:7,2:6,1:5\" --design-meta design_rungate_meta.json   # wire gate re-bank",
+     "rc": 0,
+     "secs": 2.1,
+     "tail": [
+      "  word 7 -> pair 7 (ch2,ch6): inversion EXACT, attribution OK (focality 591x)",
+      "  word 8 -> pair 8 (ch1,ch5): inversion EXACT, attribution OK (focality 590x)",
+      "  PAIR MAPPING CONFIRMED: word k -> the --pairs table, exact inversion",
+      "Plse carrier: 101.725 Hz (24000 pulses; base/100 = 244.141, base/240 = 101.725)",
+      "  acquisition samples per stim period: 6.000 (at --fs-acq 610.3516)",
+      "VERDICT: DELIVERY VERIFIED (0 hard failure(s), 0 warning(s))"
+     ]
+    },
+    {
+     "cmd": "& $py rig\\check_dead_time.py --capture capture_rig_rungate1.csv --y-channel 34 --json day_rehearsal1013\\dead_time_gate1.json   # -> inputDelayTicks for the fit",
+     "rc": 0,
+     "secs": 1.0,
+     "tail": [
+      "      onset: NONE above null (channel did not respond at |rho| > thr)",
+      "  u8 [pulse (90 trials)]: null thr 4.494; |profile| by lag 0..8:",
+      "      0:-0.658  1:+0.167  2:+1.33  3:+0.523  4:-1.55  5:-0.662  6:+0.271  7:+1.03  8:+0.63",
+      "      onset: NONE above null (channel did not respond at |rho| > thr)",
+      "Fastest onset 4 tick(s) => recommended inputDelayTicks = 3 (nk supplies one tick; with delayStates=true the export then has dead time 4).",
+      "wrote day_rehearsal1013\\dead_time_gate1.json"
+     ]
+    },
+    {
+     "cmd": "& $py rig\\ingest_block.py --label \"gate depth 1 probe\" --day rehearsal1013",
+     "rc": 0,
+     "secs": 5.7,
+     "tail": [
+      "pair8_amp25     n  27   peak    +44.2 uV @  24.6 ms   best ch 56   split-half 0.994",
+      "wrote:   C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\galleries\\synthetic_block_gate_clean  (24 group PNG pairs + index.png + stats.json)",
+      "created ledger C:\\Users\\brets\\AppData\\Local\\Temp\\rehearsal_pujx24m_\\BLOCK_LEDGER_rehearsal1013.md",
+      "ledger:  C:\\Users\\brets\\AppData\\Local\\Temp\\rehearsal_pujx24m_\\BLOCK_LEDGER_rehearsal1013.md",
+      "appended row 1: | 1 | `synthetic_block_gate_clean` | gate depth 1 probe | PENDING: `galleries\\synthetic_block_gate_clean\\` |",
+      "next: look at galleries\\synthetic_block_gate_clean\\index.png, then replace the PENDING cell with key results"
+     ]
+    }
+   ],
+   "skipped": [],
+   "audit": "AUDIT gate1: WARN | fresh@2 ticks=26277/26277 dropped=0 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.00 u_std=1.13 qpConv=100%",
+   "secs": 270.1,
+   "ok": false
+  },
+  {
+   "phase": "fit",
+   "model": "day_rehearsal1013\\plant_duty.lti",
+   "runs": [],
+   "checks": [
+    {
+     "cmd": "matlab -batch \"cd('C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop'); r = fit_sysid_from_capture('capture_rig_rundutyid.csv', struct('useInputs',[1 3 4 6],'useOutputs',[34 40],'orders',1:3)); export_plant_lti('day_rehearsal1013\\plant_duty.lti', r.sys)\"",
+     "rc": 0,
+     "secs": 4.2,
+     "tail": [
+      "Not saved. Re-run with opts.save = true to write this into AllModels(10).sys.",
+      "Wrote day_rehearsal1013\\plant_duty.lti  (n=10 m=4 p=2 Ts=0.01 uOff=[0.6138 0.6136 0.5929 0.5864] yOff=[636.6 636.8])",
+      "Check the native controller agrees on this model:",
+      "  cpp_controller.exe --mode mpc --model day_rehearsal1013\\plant_duty.lti --target 0",
+      "ans =",
+      "    'day_rehearsal1013\\plant_duty.lti'"
+     ]
+    },
+    {
+     "cmd": "& $py rig\\check_dead_time.py --capture capture_rig_rundutyid.csv --u-channels 1 3 4 6 --y-channel 34 --lti day_rehearsal1013\\plant_duty.lti   # VERDICT must be OK/centred",
+     "rc": 0,
+     "secs": 2.8,
+     "tail": [
+      "      onset: NONE above null (channel did not respond at |rho| > thr)",
+      "No input produced a detectable response; nothing to recommend.",
+      "day_rehearsal1013\\plant_duty.lti: n=10 m=4 p=2",
+      "  row-frame free-run fit 0.00%; fit vs model-output shift s=-2..+2: -2:-0.02  -1:-0.00  +0:0.00  +1:-0.01  +2:-0.03",
+      "  residual-vs-u xcorr lags 0..5: u1 +0.004 -0.001 -0.005 +0.001 +0.007 +0.007; u3 +0.004 +0.004 +0.001 +0.002 +0.005 +0.009; u4 +0.007 +0.007 +0.003 +0.004 +0.007 +0.009; u6 +0.005 +0.014 +0.007 -0.001 -0.001 +0.008",
+      "  VERDICT: OK: centred in the controller row frame (max residual |rho| 0.014)"
+     ]
+    },
+    {
+     "cmd": "& $py rig\\check_mimo_rank.py --model day_rehearsal1013\\plant_duty.lti",
+     "rc": 0,
+     "secs": 0.1,
+     "tail": [
+      "     3.101e-01   1.041e+00   9.687e-01   5.987e-01",
+      "  singular values: 2.261e+00  3.227e-01   (ratios to max: 1.000  0.143)",
+      "  effective rank 2 of p=2 at thresh 0.1; condition 7.0",
+      "    mode 1: output dir [-0.73  +0.69]  <- input dir [+0.23  +0.57  +0.62  +0.49]  gain 2.261e+00",
+      "    mode 2: output dir [+0.69  +0.73]  <- input dir [-0.18  +0.66  +0.04  -0.73]  gain 3.227e-01",
+      "VERDICT: PASS"
+     ]
+    },
+    {
+     "cmd": ".\\cpp_controller.exe --mode mpc --model day_rehearsal1013\\plant_duty.lti --target 0 --check-model   # Observer: ACTIVE, pole < 1, DC gain printed; exits by itself",
+     "rc": 0,
+     "secs": 0.0,
+     "tail": [
+      "Operating-point offsets: uOff=[0.6138 0.6136 0.5929 0.5864] yOff=[636.6 636.8] -- controller runs CENTERED, commands/measurements raw.",
+      "Observer: *** INACTIVE -- OPEN LOOP *** (|pole| = 1.103329)   target = 0",
+      "WARNING: the controller will ignore its measurement. Do not trust closed-loop behaviour.",
+      "DC gain G (p x m, feature units per uA): [-0.4124 -0.7863 -1.003 -0.9705] [0.3101 1.041 0.9687 0.5987]",
+      "NOTE: no --pairs given; a 1-output model drives PAIR 1 only.",
+      "CHECK OK: mode=mpc model=day_rehearsal1013\\plant_duty.lti built; exiting (--check-model)."
+     ]
+    }
+   ],
+   "skipped": [],
+   "secs": 7.2,
+   "ok": true
+  },
+  {
+   "phase": "refs",
+   "model": "day_rehearsal1013\\plant_duty.lti",
+   "runs": [],
+   "checks": [
+    {
+     "cmd": "& $py training\\closed_loop_sim.py --plant day_rehearsal1013\\plant_duty.lti --ticks 2000 --pairs 1,3,4,6 --feature-map 34,40 --output-count 8 --launch --launch-args --pairs 1,3,4,6 --feature-map 34,40 --q-weight 1e12,1e12 --r-weight 100,100 --control-horizon 20 --umax 30 --reference day_rehearsal1013\\ref_mix_r1.csv --capture day_rehearsal1013\\capture_sim_refcheck.csv",
+     "rc": 1,
+     "secs": 42.8,
+     "tail": [
+      "Plant inputs read from reply slots [1, 3, 4, 6]",
+      "Plant outputs sent on feature channels [34, 40] (frame width 40)",
+      "Operating point: uOffset=[0.61379741 0.61362836 0.59290659 0.58641469] yOffset=[636.64690398 636.76322348] (raw-frame sim)",
+      "Launched C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\cpp_controller.exe (stdout -> day_rehearsal1013\\server_capture_sim_refcheck.log)",
+      "controller stopped responding",
+      "no data collected"
+     ]
+    }
+   ],
+   "skipped": [
+    "& $py rig\\build_interleaved_run.py --templates-dir C:\\Users\\brets\\Documents\\Repositories\\NNController\\outputs\\BiomimeticInversion\\touch\\Acute_2026-09-10 --sites LP P1 MP P3 D1 SHAM --channels 34 40 --baseline <V> --model day_rehearsal1013\\plant_duty.lti --runs 3 --events 100 --total-ticks 22200 --umax 30 --pairs 1 3 4 6 --out-dir day_rehearsal1013   (placeholder)"
+   ],
+   "secs": 42.8,
+   "ok": false
+  },
+  {
+   "phase": "arm:mpc",
+   "model": "day_rehearsal1013\\plant_duty.lti",
+   "runs": [
+    {
+     "A": ".\\cpp_controller.exe --mode mpc --model day_rehearsal1013\\plant_duty.lti --output-count 8 --pairs 1,3,4,6 --feature-map 34,40 --q-weight 1e12,1e12 --r-weight 100,100 --control-horizon 20 --umin 0 --umax 30 --reference day_rehearsal1013\\ref_mix_r1.csv --capture day_rehearsal1013\\capture_mpc_mixr1.csv --max-packets 22200",
+     "B": ".\\rig\\2_loop.ps1 -Sim -InputChannels 64 -TimeoutMs 10 -TickFrames 6 -Run mpc_mixr1 -Ticks 22200 -Capture day_rehearsal1013\\capture_mpc_mixr1.csv",
+     "run": "mpc_mixr1",
+     "ok": false,
+     "reason": "controller exited before ready (rc=3)",
+     "server_log": "C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\day_rehearsal1013\\server_mpc_mixr1.log",
+     "secs": 20.0,
+     "server_tail": [
+      "Operating-point offsets: uOff=[0.6138 0.6136 0.5929 0.5864] yOff=[636.6 636.8] -- controller runs CENTERED, commands/measurements raw.",
+      "Feature map (1-based): 34 40 ",
+      "Observer: *** INACTIVE -- OPEN LOOP *** (|pole| = 1.103329)   target = 0",
+      "WARNING: the controller will ignore its measurement. Do not trust closed-loop behaviour.",
+      "DC gain G (p x m, feature units per uA): [-0.4124 -0.7863 -1.003 -0.9705] [0.3101 1.041 0.9687 0.5987]",
+      "FATAL: cannot open day_rehearsal1013\\ref_mix_r1.csv"
+     ]
+    }
+   ],
+   "checks": [
+    {
+     "cmd": "& $py rig\\run_audit.py --run mpc_mixr1 --loop-log loop_runmpc_mixr1.log --capture day_rehearsal1013\\capture_mpc_mixr1.csv --ref day_rehearsal1013\\ref_mix_r1.csv --active-u u1,u3,u4,u6 --sim",
+     "rc": 1,
+     "secs": 0.1,
+     "tail": [
+      "    sys.exit(main())",
+      "             ^^^^^^",
+      "  File \"C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\rig\\run_audit.py\", line 308, in main",
+      "    with open(args.ref) as f:",
+      "         ^^^^^^^^^^^^^^",
+      "FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\\\ref_mix_r1.csv'"
+     ],
+     "audit": null
+    },
+    {
+     "cmd": "& $py rig\\tracking_metrics.py --capture day_rehearsal1013\\capture_mpc_mixr1.csv --ref day_rehearsal1013\\ref_mix_r1.csv --y-channels 34 40 --label mpc_r1 --json day_rehearsal1013\\tracking_mpc_r1.json --png day_rehearsal1013\\tracking_mpc_r1.png",
+     "rc": 1,
+     "secs": 0.1,
+     "tail": [
+      "    h, M = read_csv_matrix(path)",
+      "           ^^^^^^^^^^^^^^^^^^^^^",
+      "  File \"C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\rig\\tracking_metrics.py\", line 46, in read_csv_matrix",
+      "    with open(path, newline=\"\") as f:",
+      "         ^^^^^^^^^^^^^^^^^^^^^^",
+      "FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\\\capture_mpc_mixr1.csv'"
+     ]
+    },
+    {
+     "cmd": "& $py rig\\ingest_block.py --label \"mpc r1 arm\" --mode arm --schedule day_rehearsal1013\\schedule_mix_r1.json --day rehearsal1013",
+     "rc": 0,
+     "secs": 0.2,
+     "tail": [
+      "running: C:\\Users\\brets\\Documents\\Repositories\\PythonIntanAnalysis\\.venv\\Scripts\\python.exe C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\rig\\plot_trial_responses.py --block day_rehearsal1013\\synthetic_block_burst1_clean.npz --mode arm --schedule day_rehearsal1013\\schedule_mix_r1.json",
+      "FAIL: schedule not found: day_rehearsal1013\\schedule_mix_r1.json",
+      "WARN: plot_trial_responses exited 1 -- output incomplete; ledger row appended anyway (fix and rerun by hand)",
+      "ledger:  C:\\Users\\brets\\AppData\\Local\\Temp\\rehearsal_pujx24m_\\BLOCK_LEDGER_rehearsal1013.md",
+      "appended row 2: | 2 | `synthetic_block_burst1_clean` | mpc r1 arm | PENDING: `galleries\\synthetic_block_burst1_clean\\` |",
+      "next: look at galleries\\synthetic_block_burst1_clean\\index.png, then replace the PENDING cell with key results"
+     ]
+    }
+   ],
+   "skipped": [],
+   "audit": null,
+   "secs": 20.4,
+   "ok": false
+  },
+  {
+   "phase": "arm:choi",
+   "model": "day_rehearsal1013\\plant_duty.lti",
+   "runs": [
+    {
+     "A": ".\\cpp_controller.exe --mode openloop --play day_rehearsal1013\\design_choi_mix_r1.csv --output-count 8 --capture day_rehearsal1013\\capture_choi_mixr1.csv",
+     "B": ".\\rig\\2_loop.ps1 -Sim -InputChannels 64 -TimeoutMs 10 -TickFrames 6 -Run choi_mixr1 -Ticks 22200 -Capture day_rehearsal1013\\capture_choi_mixr1.csv",
+     "run": "choi_mixr1",
+     "ok": false,
+     "reason": "controller exited before ready (rc=3)",
+     "server_log": "C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\day_rehearsal1013\\server_choi_mixr1.log",
+     "secs": 20.0,
+     "server_tail": [
+      "FATAL: cannot open day_rehearsal1013\\design_choi_mix_r1.csv"
+     ]
+    }
+   ],
+   "checks": [
+    {
+     "cmd": "& $py rig\\run_audit.py --run choi_mixr1 --loop-log loop_runchoi_mixr1.log --capture day_rehearsal1013\\capture_choi_mixr1.csv --ref day_rehearsal1013\\ref_mix_r1.csv --active-u u1,u3,u4,u6 --sim",
+     "rc": 1,
+     "secs": 0.1,
+     "tail": [
+      "    sys.exit(main())",
+      "             ^^^^^^",
+      "  File \"C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\rig\\run_audit.py\", line 308, in main",
+      "    with open(args.ref) as f:",
+      "         ^^^^^^^^^^^^^^",
+      "FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\\\ref_mix_r1.csv'"
+     ],
+     "audit": null
+    },
+    {
+     "cmd": "& $py rig\\tracking_metrics.py --capture day_rehearsal1013\\capture_choi_mixr1.csv --ref day_rehearsal1013\\ref_mix_r1.csv --y-channels 34 40 --label choi_r1 --json day_rehearsal1013\\tracking_choi_r1.json --png day_rehearsal1013\\tracking_choi_r1.png",
+     "rc": 1,
+     "secs": 0.1,
+     "tail": [
+      "    h, M = read_csv_matrix(path)",
+      "           ^^^^^^^^^^^^^^^^^^^^^",
+      "  File \"C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\rig\\tracking_metrics.py\", line 46, in read_csv_matrix",
+      "    with open(path, newline=\"\") as f:",
+      "         ^^^^^^^^^^^^^^^^^^^^^^",
+      "FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\\\capture_choi_mixr1.csv'"
+     ]
+    },
+    {
+     "cmd": "& $py rig\\ingest_block.py --label \"choi r1 arm\" --mode arm --schedule day_rehearsal1013\\schedule_mix_r1.json --day rehearsal1013",
+     "rc": 0,
+     "secs": 0.1,
+     "tail": [
+      "running: C:\\Users\\brets\\Documents\\Repositories\\PythonIntanAnalysis\\.venv\\Scripts\\python.exe C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\rig\\plot_trial_responses.py --block day_rehearsal1013\\synthetic_block_burst1_clean.npz --mode arm --schedule day_rehearsal1013\\schedule_mix_r1.json",
+      "FAIL: schedule not found: day_rehearsal1013\\schedule_mix_r1.json",
+      "WARN: plot_trial_responses exited 1 -- output incomplete; ledger row appended anyway (fix and rerun by hand)",
+      "ledger:  C:\\Users\\brets\\AppData\\Local\\Temp\\rehearsal_pujx24m_\\BLOCK_LEDGER_rehearsal1013.md",
+      "appended row 3: | 3 | `synthetic_block_burst1_clean` | choi r1 arm | PENDING: `galleries\\synthetic_block_burst1_clean\\` |",
+      "next: look at galleries\\synthetic_block_burst1_clean\\index.png, then replace the PENDING cell with key results"
+     ]
+    }
+   ],
+   "skipped": [],
+   "audit": null,
+   "secs": 20.4,
+   "ok": false
+  },
+  {
+   "phase": "rsweep",
+   "model": "day_rehearsal1013\\plant_duty.lti",
+   "runs": [
+    {
+     "A": ".\\cpp_controller.exe --mode mpc --model day_rehearsal1013\\plant_duty.lti --output-count 8 --pairs 1,3,4,6 --feature-map 34,40 --q-weight 1e12,1e12 --r-weight 100,100 --r-schedule day_rehearsal1013\\rsched_r1.csv --control-horizon 20 --umin 0 --umax 30 --reference day_rehearsal1013\\ref_mix_r1.csv --capture day_rehearsal1013\\capture_mpc_rsweep_r1.csv --max-packets 22200",
+     "B": ".\\rig\\2_loop.ps1 -Sim -InputChannels 64 -TimeoutMs 10 -TickFrames 6 -Run mpc_rsweep_r1 -Ticks 22200 -Capture day_rehearsal1013\\capture_mpc_rsweep_r1.csv",
+     "run": "mpc_rsweep_r1",
+     "ok": false,
+     "reason": "controller exited before ready (rc=3)",
+     "server_log": "C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\day_rehearsal1013\\server_mpc_rsweep_r1.log",
+     "secs": 20.0,
+     "server_tail": [
+      "Operating-point offsets: uOff=[0.6138 0.6136 0.5929 0.5864] yOff=[636.6 636.8] -- controller runs CENTERED, commands/measurements raw.",
+      "Feature map (1-based): 34 40 ",
+      "Observer: *** INACTIVE -- OPEN LOOP *** (|pole| = 1.103329)   target = 0",
+      "WARNING: the controller will ignore its measurement. Do not trust closed-loop behaviour.",
+      "DC gain G (p x m, feature units per uA): [-0.4124 -0.7863 -1.003 -0.9705] [0.3101 1.041 0.9687 0.5987]",
+      "FATAL: cannot open day_rehearsal1013\\ref_mix_r1.csv"
+     ]
+    }
+   ],
+   "checks": [
+    {
+     "cmd": "& $py rig\\build_r_schedule.py --schedule day_rehearsal1013\\schedule_mix_r1.json --block-events 20 --r 100 30 10 --m 4 --out day_rehearsal1013\\rsched_r1.csv",
+     "rc": 1,
+     "secs": 0.0,
+     "tail": [
+      "    sys.exit(main())",
+      "             ^^^^^^",
+      "  File \"C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\rig\\build_r_schedule.py\", line 47, in main",
+      "    with open(args.schedule) as f:",
+      "         ^^^^^^^^^^^^^^^^^^^",
+      "FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\\\schedule_mix_r1.json'"
+     ]
+    },
+    {
+     "cmd": "& $py rig\\run_audit.py --run mpc_rsweep_r1 --loop-log loop_runmpc_rsweep_r1.log --capture day_rehearsal1013\\capture_mpc_rsweep_r1.csv --ref day_rehearsal1013\\ref_mix_r1.csv --sim",
+     "rc": 1,
+     "secs": 0.1,
+     "tail": [
+      "    sys.exit(main())",
+      "             ^^^^^^",
+      "  File \"C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\rig\\run_audit.py\", line 308, in main",
+      "    with open(args.ref) as f:",
+      "         ^^^^^^^^^^^^^^",
+      "FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\\\ref_mix_r1.csv'"
+     ],
+     "audit": null
+    },
+    {
+     "cmd": "& $py rig\\analyze_r_sweep.py --capture day_rehearsal1013\\capture_mpc_rsweep_r1.csv --ref day_rehearsal1013\\ref_mix_r1.csv --rsched day_rehearsal1013\\rsched_r1.json --y-channels 34 40 --u-channels 1 3 4 6 --hold 0 --lat day_rehearsal1013\\server_lat_capture_mpc_rsweep_r1.csv --json day_rehearsal1013\\rsweep_r1.json --png day_rehearsal1013\\rsweep_r1.png",
+     "rc": 1,
+     "secs": 0.1,
+     "tail": [
+      "    sys.exit(main())",
+      "             ^^^^^^",
+      "  File \"C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\rig\\analyze_r_sweep.py\", line 73, in main",
+      "    with open(args.rsched) as f:",
+      "         ^^^^^^^^^^^^^^^^^",
+      "FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\\\rsched_r1.json'"
+     ]
+    },
+    {
+     "cmd": "& $py rig\\ingest_block.py --label \"mpc R-sweep r1 arm\" --mode arm --schedule day_rehearsal1013\\schedule_mix_r1.json --day rehearsal1013",
+     "rc": 0,
+     "secs": 0.1,
+     "tail": [
+      "running: C:\\Users\\brets\\Documents\\Repositories\\PythonIntanAnalysis\\.venv\\Scripts\\python.exe C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\rig\\plot_trial_responses.py --block day_rehearsal1013\\synthetic_block_burst1_clean.npz --mode arm --schedule day_rehearsal1013\\schedule_mix_r1.json",
+      "FAIL: schedule not found: day_rehearsal1013\\schedule_mix_r1.json",
+      "WARN: plot_trial_responses exited 1 -- output incomplete; ledger row appended anyway (fix and rerun by hand)",
+      "ledger:  C:\\Users\\brets\\AppData\\Local\\Temp\\rehearsal_pujx24m_\\BLOCK_LEDGER_rehearsal1013.md",
+      "appended row 4: | 4 | `synthetic_block_burst1_clean` | mpc R-sweep r1 arm | PENDING: `galleries\\synthetic_block_burst1_clean\\` |",
+      "next: look at galleries\\synthetic_block_burst1_clean\\index.png, then replace the PENDING cell with key results"
+     ]
+    }
+   ],
+   "skipped": [],
+   "audit": null,
+   "secs": 20.4,
+   "ok": false
+  }
+ ]
+}

@@ -1,0 +1,22 @@
+{
+  "source_npz": "C:\\Users\\brets\\Documents\\Repositories\\NNController\\outputs\\BiomimeticInversion\\touch\\Acute_2026-09-10\\BSCL20260909BU-260910-185534.npz",
+  "channels_1based": [
+    34,
+    40
+  ],
+  "baseline_volts": 634.319,
+  "scale": 1.0,
+  "repeats": 1,
+  "gap_secs": 0.0,
+  "lead_secs": 0.0,
+  "event_ticks": 20,
+  "total_ticks": 20,
+  "total_secs": 0.2,
+  "event_peak_delta_volts": [
+    0.00019621083333333335,
+    9.695805555555556e-05
+  ],
+  "feature_window_samples": 6,
+  "template_samples_per_tick": 6,
+  "tick_native_hz": 101.7253
+}

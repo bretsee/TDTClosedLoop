@@ -90,6 +90,11 @@ def resolve_block_dir(p):
 
 
 def read_block(path, stores):
+    if str(path).lower().endswith(".npz"):
+        # synthetic block (rig/make_synthetic_block.py) for the sim rehearsal
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from blockutil import read_synthetic_block
+        return read_synthetic_block(path)
     import tdt
     try:
         blk = tdt.read_block(path, store=list(stores))
@@ -307,11 +312,14 @@ def main():
         return fail("--mode arm requires --schedule <schedule.json>")
     if args.schedule and not os.path.isfile(args.schedule):
         return fail("schedule not found: %s" % args.schedule)
-    if not os.path.isdir(args.block):
+    is_npz = args.block.lower().endswith(".npz")
+    if not is_npz and not os.path.isdir(args.block):
         return fail("block directory not found: %s" % args.block)
 
-    block_dir = resolve_block_dir(args.block)
+    block_dir = args.block if is_npz else resolve_block_dir(args.block)
     block_name = os.path.basename(os.path.normpath(block_dir))
+    if is_npz:
+        block_name = block_name[:-4]
     print("block:   %s   mode: %s" % (block_dir, args.mode))
 
     stores = {"thwack": ("Wav1", "nThw"),

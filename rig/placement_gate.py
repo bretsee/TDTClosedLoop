@@ -81,6 +81,8 @@ def fail(msg):
 # block helpers (same conventions as plot_trial_responses.py)
 # --------------------------------------------------------------------------
 def resolve_block_dir(p):
+    if str(p).lower().endswith(".npz"):
+        return p                                # synthetic block (rig/make_synthetic_block.py)
     if glob.glob(os.path.join(p, "*.tsq")):
         return p
     kids = [os.path.join(p, k) for k in os.listdir(p)
@@ -90,9 +92,9 @@ def resolve_block_dir(p):
 
 
 def newest_block_dir(data_root):
-    dirs = [os.path.join(data_root, d) for d in os.listdir(data_root)
-            if os.path.isdir(os.path.join(data_root, d))]
-    return max(dirs, key=os.path.getmtime) if dirs else None
+    """Newest folder holding a .tsq (depth <= 2); empty tank dirs are skipped (rig/blockutil)."""
+    from blockutil import newest_block_dir as _newest
+    return _newest(data_root)
 
 
 def _find_store(blk, name):
@@ -104,6 +106,9 @@ def _find_store(blk, name):
 
 
 def read_block(path, stores):
+    if str(path).lower().endswith(".npz"):          # synthetic block (rig/make_synthetic_block.py)
+        from blockutil import read_synthetic_block
+        return read_synthetic_block(path)
     import tdt
     try:
         blk = tdt.read_block(path, store=list(stores))
@@ -555,6 +560,8 @@ def print_summary(res):
 def run_one(mode, block, args, plt):
     block_dir = resolve_block_dir(block)
     name = os.path.basename(os.path.normpath(block_dir))
+    if name.lower().endswith(".npz"):
+        name = name[:-4]
     out_dir = os.path.join(args.out_root, name)
     os.makedirs(out_dir, exist_ok=True)
     chmap = list(range(1, 65))
@@ -611,7 +618,7 @@ def main():
     if args.newest:
         block = newest_block_dir(args.data_root)
         print("newest block: %s" % block)
-    if not block or not os.path.isdir(block):
+    if not block or not (os.path.isdir(block) or (block.lower().endswith(".npz") and os.path.isfile(block))):
         return fail("block directory not found: %s" % block)
     rc, _ = run_one(args.mode, block, args, plt)
     return rc

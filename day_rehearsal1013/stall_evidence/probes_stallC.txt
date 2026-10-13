@@ -1,0 +1,5 @@
+B_start_ms=372499914
+probe at=20 start_ms=372519962 end_ms=372520304 cmd="C:\Users\brets\Documents\Repositories\PythonIntanAnalysis\.venv\Scripts\python.exe" -c "import numpy, pandas"
+probe at=40 start_ms=372539965 end_ms=372539978 cmd=echo hi
+probe at=55 start_ms=372554935 end_ms=372555084 cmd=powershell -NoProfile -Command 1
+B_exit_ms=372589464

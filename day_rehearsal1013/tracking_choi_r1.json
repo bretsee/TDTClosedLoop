@@ -1,0 +1,60 @@
+{
+ "label": "choi_r1",
+ "ref": "day_rehearsal1013\\ref_mix_r1.csv",
+ "capture": "day_rehearsal1013\\capture_choi_mixr1.csv",
+ "lti": null,
+ "n_ticks": 22150,
+ "skip_ticks": 50,
+ "y_channels": [
+  34,
+  40
+ ],
+ "u_channels": [
+  6
+ ],
+ "per_channel": [
+  {
+   "ref_col": 1,
+   "y_channel": 34,
+   "rmse": 286.0019230524813,
+   "nrmse_ptp": 910834.1498398654,
+   "nrmse_std": 10848300.837679077,
+   "pearson_lag0": 0.0022935110807114204,
+   "pearson_best": -0.00552984195464122,
+   "best_lag_ticks": 2,
+   "slope_y_on_r": 24879.91963729262,
+   "slope_u_on_r": {
+    "u6": 391.4197709089893
+   },
+   "tracking_index": 1.000231446230474,
+   "eta": {
+    "n_transients": 83,
+    "peak_delay_ticks": 69,
+    "peak_ratio": -218945.2379211949
+   },
+   "verdict": "NOT TRACKING"
+  },
+  {
+   "ref_col": 2,
+   "y_channel": 40,
+   "rmse": 286.04736364446387,
+   "nrmse_ptp": 2364027.7980197314,
+   "nrmse_std": 35893383.918956675,
+   "pearson_lag0": -0.0012774321909553227,
+   "pearson_best": -0.005874040239547676,
+   "best_lag_ticks": 6,
+   "slope_y_on_r": -45849.93141696536,
+   "slope_u_on_r": {
+    "u6": 1199.0136527209315
+   },
+   "tracking_index": 0.9969683601477208,
+   "eta": {
+    "n_transients": 83,
+    "peak_delay_ticks": 5,
+    "peak_ratio": -702722.7848533301
+   },
+   "verdict": "NOT TRACKING"
+  }
+ ],
+ "overall": "NOT TRACKING"
+}

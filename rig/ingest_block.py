@@ -39,6 +39,8 @@ import re
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # rig/blockutil
+
 RIG_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(RIG_DIR)
 DEFAULT_DATA_ROOT = r"C:\Users\brets\Desktop\Data"
@@ -72,12 +74,11 @@ def infer_mode(label):
 
 
 def newest_block_dir(data_root):
-    """Newest directory (by mtime) under data_root."""
-    dirs = [os.path.join(data_root, d) for d in os.listdir(data_root)
-            if os.path.isdir(os.path.join(data_root, d))]
-    if not dirs:
-        return None
-    return max(dirs, key=os.path.getmtime)
+    """Newest directory under data_root that actually holds a block (.tsq at
+    depth <= 2). An empty tank folder (e.g. Desktop\\Data\\Acute3 created before
+    the first recording) can no longer be picked -- 2026-10-13, rig/blockutil."""
+    from blockutil import newest_block_dir as _newest
+    return _newest(data_root)
 
 
 def resolve_block_dir(p):
@@ -139,6 +140,9 @@ def main():
     ap.add_argument("--schedule", default=None,
                     help="schedule JSON, passed through for arm mode")
     ap.add_argument("--data-root", default=DEFAULT_DATA_ROOT)
+    ap.add_argument("--block", default=None,
+                    help="explicit block (directory, or a synthetic .npz for the sim rehearsal) "
+                         "instead of the newest under --data-root")
     ap.add_argument("--t-min", type=float, default=None,
                     help="passed through to probe mode")
     ap.add_argument("--ledger", default=None,
@@ -157,12 +161,20 @@ def main():
     if not os.path.isdir(args.data_root):
         return fail("data root not found: %s" % args.data_root)
 
-    top = newest_block_dir(args.data_root)
-    if top is None:
-        return fail("no block directories under %s" % args.data_root)
-    block_dir = resolve_block_dir(top)
+    if args.block:
+        top = args.block
+        if not (os.path.isdir(top) or top.lower().endswith(".npz")):
+            return fail("--block not found: %s" % top)
+    else:
+        top = newest_block_dir(args.data_root)
+        if top is None:
+            return fail("no block directories under %s" % args.data_root)
+    is_npz = top.lower().endswith(".npz")
+    block_dir = top if is_npz else resolve_block_dir(top)
     block_name = os.path.basename(os.path.normpath(block_dir))
-    if not glob.glob(os.path.join(block_dir, "*.tsq")):
+    if is_npz:
+        block_name = block_name[:-4]
+    elif not glob.glob(os.path.join(block_dir, "*.tsq")):
         print("WARN: newest directory %s holds no .tsq at either level -- "
               "is Synapse still writing it?" % top)
     print("newest block: %s" % block_name)

@@ -1,0 +1,85 @@
+{
+ "block": "day_rehearsal1013\\synthetic_block_burst1_clean.npz",
+ "design_meta": null,
+ "burst_aware": false,
+ "words": [
+  {
+   "word": 1,
+   "probes": 76,
+   "missed": 0,
+   "single": 26,
+   "double": 50
+  },
+  {
+   "word": 2,
+   "probes": 79,
+   "missed": 0,
+   "single": 32,
+   "double": 47
+  },
+  {
+   "word": 3,
+   "probes": 77,
+   "missed": 0,
+   "single": 29,
+   "double": 48
+  },
+  {
+   "word": 4,
+   "probes": 77,
+   "missed": 0,
+   "single": 24,
+   "double": 53
+  },
+  {
+   "word": 5,
+   "probes": 74,
+   "missed": 0,
+   "single": 26,
+   "double": 48
+  },
+  {
+   "word": 6,
+   "probes": 72,
+   "missed": 0,
+   "single": 30,
+   "double": 42
+  },
+  {
+   "word": 7,
+   "probes": 73,
+   "missed": 0,
+   "single": 23,
+   "double": 50
+  },
+  {
+   "word": 8,
+   "probes": 77,
+   "missed": 0,
+   "single": 30,
+   "double": 47
+  }
+ ],
+ "stretched_runs": 0,
+ "legacy_multi": 385,
+ "totals": {
+  "probes": 605,
+  "missed": 0,
+  "short": 0,
+  "exact": 0,
+  "long": 0,
+  "single": 220,
+  "double": 385
+ },
+ "verdict": "DELIVERY VERIFIED",
+ "issues": [
+  {
+   "sev": "warn",
+   "msg": "385 multi-tick pulse(s) on the wire -- hold-last stretched a probe during a server stall; excluded automatically by fit_impulse_model's isolation filter, but the extra charge WAS delivered"
+  },
+  {
+   "sev": "warn",
+   "msg": "carrier-latch races: 0.0% probes delivered 0 pulses, 63.6% delivered 2 -- command edges landing near carrier latches (beat under wall-clock ticking; jitter/phase under frame-locked). Excluded trials are measurable; see the phase recommendation below"
+  }
+ ]
+}

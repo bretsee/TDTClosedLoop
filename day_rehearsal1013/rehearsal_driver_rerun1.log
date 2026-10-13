@@ -1,0 +1,100 @@
+﻿
+=== gate ===
+  A: .\cpp_controller.exe --mode openloop --play design_rungate.csv --output-count 8 --capture capture_rig_rungate1.csv
+  B: .\rig\2_loop.ps1 -Sim -InputChannels 64 -TimeoutMs 10 -TickFrames 6 -Run gate1 -Design design_rungate.csv -Capture capture_rig_rungate1.csv
+  -> OK  259 s  Exit reason: reached max control ticks (26277).
+  $ & $py rig\run_audit.py --run gate1 --loop-log loop_rungate1.log --capture capture_rig_rungate1.csv --design design_rungate.csv --sim
+    rc=1 1 s  AUDIT gate1: WARN | fresh@2 ticks=26277/26277 dropped=0 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.00 u_std=1.13 qpConv=100%
+  $ & $py rig\placement_gate.py --mode thalamic --block day_rehearsal1013\synthetic_block_gate_clean.npz --min-amp 13
+    rc=0 2 s    figure: C:\Users\brets\Documents\Repositories\TDTClosedLoop\galleries\synthetic_block_gate_clean\gate_thalamic.png
+  $ & $py rig\check_impulse_delivery.py --block day_rehearsal1013\synthetic_block_gate_clean.npz --capture day_rehearsal1013\synthetic_block_gate_clean_capture.csv --amps 13 18 25 --pairs "16:12,15:11,14:10,13:9,4:8,3:7,2:6,1:5" --design-meta design_rungate_meta.json
+    rc=0 2 s  VERDICT: DELIVERY VERIFIED (0 hard failure(s), 0 warning(s))
+  $ & $py rig\check_dead_time.py --capture capture_rig_rungate1.csv --y-channel 34 --json day_rehearsal1013\dead_time_gate1.json
+    rc=0 1 s  wrote day_rehearsal1013\dead_time_gate1.json
+  $ & $py rig\ingest_block.py --label "gate depth 1 probe" --day rehearsal1013
+    rc=0 6 s  next: look at galleries\synthetic_block_gate_clean\index.png, then replace the PENDING cell with key results
+
+=== fit ===
+  $ matlab -batch "cd('C:\Users\brets\Documents\Repositories\TDTClosedLoop'); r = fit_sysid_from_capture('capture_rig_rundutyid.csv', struct('useInputs',[1 3 4 6],'useOutputs',[34 40],'orders',1:3)); export_plant_lti('day_rehearsal1013\plant_duty.lti', r.sys)"
+    rc=0 4 s      'day_rehearsal1013\plant_duty.lti'
+  $ & $py rig\check_dead_time.py --capture capture_rig_rundutyid.csv --u-channels 1 3 4 6 --y-channel 34 --lti day_rehearsal1013\plant_duty.lti
+    rc=0 3 s    VERDICT: OK: centred in the controller row frame (max residual |rho| 0.014)
+  $ & $py rig\check_mimo_rank.py --model day_rehearsal1013\plant_duty.lti
+    rc=0 0 s  VERDICT: PASS
+  $ .\cpp_controller.exe --mode mpc --model day_rehearsal1013\plant_duty.lti --target 0 --check-model
+    rc=0 0 s  CHECK OK: mode=mpc model=day_rehearsal1013\plant_duty.lti built; exiting (--check-model).
+
+=== refs ===
+  $ & $py training\closed_loop_sim.py --plant day_rehearsal1013\plant_duty.lti --ticks 2000 --pairs 1,3,4,6 --feature-map 34,40 --output-count 8 --launch --launch-args --pairs 1,3,4,6 --feature-map 34,40 --q-weight 1e12,1e12 --r-weight 100,100 --control-horizon 20 --umax 30 --reference day_rehearsal1013\ref_mix_r1.csv --capture day_rehearsal1013\capture_sim_refcheck.csv
+    rc=1 43 s  no data collected
+
+=== arm:mpc ===
+  A: .\cpp_controller.exe --mode mpc --model day_rehearsal1013\plant_duty.lti --output-count 8 --pairs 1,3,4,6 --feature-map 34,40 --q-weight 1e12,1e12 --r-weight 100,100 --control-horizon 20 --umin 0 --umax 30 --reference day_rehearsal1013\ref_mix_r1.csv --capture day_rehearsal1013\capture_mpc_mixr1.csv --max-packets 22200
+  B: .\rig\2_loop.ps1 -Sim -InputChannels 64 -TimeoutMs 10 -TickFrames 6 -Run mpc_mixr1 -Ticks 22200 -Capture day_rehearsal1013\capture_mpc_mixr1.csv
+  -> BAD 20 s  controller exited before ready (rc=3)
+  $ & $py rig\run_audit.py --run mpc_mixr1 --loop-log loop_runmpc_mixr1.log --capture day_rehearsal1013\capture_mpc_mixr1.csv --ref day_rehearsal1013\ref_mix_r1.csv --active-u u1,u3,u4,u6 --sim
+    rc=1 0 s  FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\ref_mix_r1.csv'
+  $ & $py rig\tracking_metrics.py --capture day_rehearsal1013\capture_mpc_mixr1.csv --ref day_rehearsal1013\ref_mix_r1.csv --y-channels 34 40 --label mpc_r1 --json day_rehearsal1013\tracking_mpc_r1.json --png day_rehearsal1013\tracking_mpc_r1.png
+    rc=1 0 s  FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\capture_mpc_mixr1.csv'
+  $ & $py rig\ingest_block.py --label "mpc r1 arm" --mode arm --schedule day_rehearsal1013\schedule_mix_r1.json --day rehearsal1013
+    rc=0 0 s  next: look at galleries\synthetic_block_burst1_clean\index.png, then replace the PENDING cell with key results
+
+=== arm:choi ===
+  A: .\cpp_controller.exe --mode openloop --play day_rehearsal1013\design_choi_mix_r1.csv --output-count 8 --capture day_rehearsal1013\capture_choi_mixr1.csv
+  B: .\rig\2_loop.ps1 -Sim -InputChannels 64 -TimeoutMs 10 -TickFrames 6 -Run choi_mixr1 -Ticks 22200 -Capture day_rehearsal1013\capture_choi_mixr1.csv
+  -> BAD 20 s  controller exited before ready (rc=3)
+  $ & $py rig\run_audit.py --run choi_mixr1 --loop-log loop_runchoi_mixr1.log --capture day_rehearsal1013\capture_choi_mixr1.csv --ref day_rehearsal1013\ref_mix_r1.csv --active-u u1,u3,u4,u6 --sim
+    rc=1 0 s  FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\ref_mix_r1.csv'
+  $ & $py rig\tracking_metrics.py --capture day_rehearsal1013\capture_choi_mixr1.csv --ref day_rehearsal1013\ref_mix_r1.csv --y-channels 34 40 --label choi_r1 --json day_rehearsal1013\tracking_choi_r1.json --png day_rehearsal1013\tracking_choi_r1.png
+    rc=1 0 s  FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\capture_choi_mixr1.csv'
+  $ & $py rig\ingest_block.py --label "choi r1 arm" --mode arm --schedule day_rehearsal1013\schedule_mix_r1.json --day rehearsal1013
+    rc=0 0 s  next: look at galleries\synthetic_block_burst1_clean\index.png, then replace the PENDING cell with key results
+
+=== rsweep ===
+  $ & $py rig\build_r_schedule.py --schedule day_rehearsal1013\schedule_mix_r1.json --block-events 20 --r 100 30 10 --m 4 --out day_rehearsal1013\rsched_r1.csv
+    rc=1 0 s  FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\schedule_mix_r1.json'
+  A: .\cpp_controller.exe --mode mpc --model day_rehearsal1013\plant_duty.lti --output-count 8 --pairs 1,3,4,6 --feature-map 34,40 --q-weight 1e12,1e12 --r-weight 100,100 --r-schedule day_rehearsal1013\rsched_r1.csv --control-horizon 20 --umin 0 --umax 30 --reference day_rehearsal1013\ref_mix_r1.csv --capture day_rehearsal1013\capture_mpc_rsweep_r1.csv --max-packets 22200
+  B: .\rig\2_loop.ps1 -Sim -InputChannels 64 -TimeoutMs 10 -TickFrames 6 -Run mpc_rsweep_r1 -Ticks 22200 -Capture day_rehearsal1013\capture_mpc_rsweep_r1.csv
+  -> BAD 20 s  controller exited before ready (rc=3)
+  $ & $py rig\run_audit.py --run mpc_rsweep_r1 --loop-log loop_runmpc_rsweep_r1.log --capture day_rehearsal1013\capture_mpc_rsweep_r1.csv --ref day_rehearsal1013\ref_mix_r1.csv --sim
+    rc=1 0 s  FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\ref_mix_r1.csv'
+  $ & $py rig\analyze_r_sweep.py --capture day_rehearsal1013\capture_mpc_rsweep_r1.csv --ref day_rehearsal1013\ref_mix_r1.csv --rsched day_rehearsal1013\rsched_r1.json --y-channels 34 40 --u-channels 1 3 4 6 --hold 0 --lat day_rehearsal1013\server_lat_capture_mpc_rsweep_r1.csv --json day_rehearsal1013\rsweep_r1.json --png day_rehearsal1013\rsweep_r1.png
+    rc=1 0 s  FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\rsched_r1.json'
+  $ & $py rig\ingest_block.py --label "mpc R-sweep r1 arm" --mode arm --schedule day_rehearsal1013\schedule_mix_r1.json --day rehearsal1013
+    rc=0 0 s  next: look at galleries\synthetic_block_burst1_clean\index.png, then replace the PENDING cell with key results
+
+=== REHEARSAL rehearsal1013 ===
+  gate       FAIL    270 s  runs 1  checks 5 (bad 1)  AUDIT gate1: WARN | fresh@2 ticks=26277/26277 dropped=0 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.00 u_std=1.13 qpConv=100%
+      rc=1  & $py rig\run_audit.py --run gate1 --loop-log loop_rungate1.log --capture capture_rig_rungate1.csv --design de
+           WARN: undersampledWindows=1
+           info: activeFrac=0.0 backlog=5 u_active=['u1', 'u2', 'u3', 'u4', 'u5', 'u6', 'u7', 'u8']
+  fit        OK        7 s  runs 0  checks 4 (bad 0)  
+  refs       FAIL     43 s  runs 0  checks 1 (bad 1)  
+      rc=1  & $py training\closed_loop_sim.py --plant day_rehearsal1013\plant_duty.lti --ticks 2000 --pairs 1,3,4,6 --feat
+         controller stopped responding
+         no data collected
+  arm:mpc    FAIL     20 s  runs 1  checks 3 (bad 2)  
+      rc=1  & $py rig\run_audit.py --run mpc_mixr1 --loop-log loop_runmpc_mixr1.log --capture day_rehearsal1013\capture_mp
+                  ^^^^^^^^^^^^^^
+         FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\ref_mix_r1.csv'
+      rc=1  & $py rig\tracking_metrics.py --capture day_rehearsal1013\capture_mpc_mixr1.csv --ref day_rehearsal1013\ref_mi
+                  ^^^^^^^^^^^^^^^^^^^^^^
+         FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\capture_mpc_mixr1.csv'
+  arm:choi   FAIL     20 s  runs 1  checks 3 (bad 2)  
+      rc=1  & $py rig\run_audit.py --run choi_mixr1 --loop-log loop_runchoi_mixr1.log --capture day_rehearsal1013\capture_
+                  ^^^^^^^^^^^^^^
+         FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\ref_mix_r1.csv'
+      rc=1  & $py rig\tracking_metrics.py --capture day_rehearsal1013\capture_choi_mixr1.csv --ref day_rehearsal1013\ref_m
+                  ^^^^^^^^^^^^^^^^^^^^^^
+         FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\capture_choi_mixr1.csv'
+  rsweep     FAIL     20 s  runs 1  checks 4 (bad 3)  
+      rc=1  & $py rig\build_r_schedule.py --schedule day_rehearsal1013\schedule_mix_r1.json --block-events 20 --r 100 30 1
+                  ^^^^^^^^^^^^^^^^^^^
+         FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\schedule_mix_r1.json'
+      rc=1  & $py rig\run_audit.py --run mpc_rsweep_r1 --loop-log loop_runmpc_rsweep_r1.log --capture day_rehearsal1013\ca
+                  ^^^^^^^^^^^^^^
+         FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\ref_mix_r1.csv'
+      rc=1  & $py rig\analyze_r_sweep.py --capture day_rehearsal1013\capture_mpc_rsweep_r1.csv --ref day_rehearsal1013\ref
+                  ^^^^^^^^^^^^^^^^^
+         FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\rsched_r1.json'
+json: day_rehearsal1013\rehearsal_rerun1.json

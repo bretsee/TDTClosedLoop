@@ -1,0 +1,244 @@
+{
+ "block": "day_rehearsal1013\\synthetic_block_burst1_clean.npz",
+ "design_meta": "design_runburst1_meta.json",
+ "burst_aware": true,
+ "words": [
+  {
+   "word": 1,
+   "probes": 76,
+   "missed": 0,
+   "short": 0,
+   "exact": 76,
+   "long": 0,
+   "by_B": {
+    "10": {
+     "missed": 0,
+     "short": 0,
+     "exact": 29,
+     "long": 0
+    },
+    "1": {
+     "missed": 0,
+     "short": 0,
+     "exact": 26,
+     "long": 0
+    },
+    "3": {
+     "missed": 0,
+     "short": 0,
+     "exact": 21,
+     "long": 0
+    }
+   }
+  },
+  {
+   "word": 2,
+   "probes": 79,
+   "missed": 0,
+   "short": 0,
+   "exact": 79,
+   "long": 0,
+   "by_B": {
+    "10": {
+     "missed": 0,
+     "short": 0,
+     "exact": 19,
+     "long": 0
+    },
+    "3": {
+     "missed": 0,
+     "short": 0,
+     "exact": 28,
+     "long": 0
+    },
+    "1": {
+     "missed": 0,
+     "short": 0,
+     "exact": 32,
+     "long": 0
+    }
+   }
+  },
+  {
+   "word": 3,
+   "probes": 77,
+   "missed": 0,
+   "short": 0,
+   "exact": 77,
+   "long": 0,
+   "by_B": {
+    "3": {
+     "missed": 0,
+     "short": 0,
+     "exact": 23,
+     "long": 0
+    },
+    "1": {
+     "missed": 0,
+     "short": 0,
+     "exact": 29,
+     "long": 0
+    },
+    "10": {
+     "missed": 0,
+     "short": 0,
+     "exact": 25,
+     "long": 0
+    }
+   }
+  },
+  {
+   "word": 4,
+   "probes": 77,
+   "missed": 0,
+   "short": 0,
+   "exact": 77,
+   "long": 0,
+   "by_B": {
+    "3": {
+     "missed": 0,
+     "short": 0,
+     "exact": 31,
+     "long": 0
+    },
+    "1": {
+     "missed": 0,
+     "short": 0,
+     "exact": 24,
+     "long": 0
+    },
+    "10": {
+     "missed": 0,
+     "short": 0,
+     "exact": 22,
+     "long": 0
+    }
+   }
+  },
+  {
+   "word": 5,
+   "probes": 74,
+   "missed": 0,
+   "short": 0,
+   "exact": 74,
+   "long": 0,
+   "by_B": {
+    "3": {
+     "missed": 0,
+     "short": 0,
+     "exact": 21,
+     "long": 0
+    },
+    "10": {
+     "missed": 0,
+     "short": 0,
+     "exact": 27,
+     "long": 0
+    },
+    "1": {
+     "missed": 0,
+     "short": 0,
+     "exact": 26,
+     "long": 0
+    }
+   }
+  },
+  {
+   "word": 6,
+   "probes": 72,
+   "missed": 0,
+   "short": 0,
+   "exact": 72,
+   "long": 0,
+   "by_B": {
+    "1": {
+     "missed": 0,
+     "short": 0,
+     "exact": 30,
+     "long": 0
+    },
+    "10": {
+     "missed": 0,
+     "short": 0,
+     "exact": 19,
+     "long": 0
+    },
+    "3": {
+     "missed": 0,
+     "short": 0,
+     "exact": 23,
+     "long": 0
+    }
+   }
+  },
+  {
+   "word": 7,
+   "probes": 73,
+   "missed": 0,
+   "short": 0,
+   "exact": 73,
+   "long": 0,
+   "by_B": {
+    "3": {
+     "missed": 0,
+     "short": 0,
+     "exact": 32,
+     "long": 0
+    },
+    "10": {
+     "missed": 0,
+     "short": 0,
+     "exact": 18,
+     "long": 0
+    },
+    "1": {
+     "missed": 0,
+     "short": 0,
+     "exact": 23,
+     "long": 0
+    }
+   }
+  },
+  {
+   "word": 8,
+   "probes": 77,
+   "missed": 0,
+   "short": 0,
+   "exact": 77,
+   "long": 0,
+   "by_B": {
+    "1": {
+     "missed": 0,
+     "short": 0,
+     "exact": 30,
+     "long": 0
+    },
+    "3": {
+     "missed": 0,
+     "short": 0,
+     "exact": 21,
+     "long": 0
+    },
+    "10": {
+     "missed": 0,
+     "short": 0,
+     "exact": 26,
+     "long": 0
+    }
+   }
+  }
+ ],
+ "stretched_runs": 0,
+ "legacy_multi": 0,
+ "totals": {
+  "probes": 605,
+  "missed": 0,
+  "short": 0,
+  "exact": 605,
+  "long": 0,
+  "single": 605,
+  "double": 0
+ },
+ "verdict": "DELIVERY VERIFIED",
+ "issues": []
+}

@@ -1,0 +1,258 @@
+{
+ "plant": "plant_opfit12_d2.lti",
+ "ticks": 3000,
+ "runs": [
+  {
+   "tag": "rho0.1_it200_tol1e-07",
+   "rho": 0.1,
+   "qp_iters": 200,
+   "qp_tol": 1e-07,
+   "rc": 0,
+   "secs": 0.9,
+   "ticks": 3000,
+   "conv_pct": 95.46666666666667,
+   "iters_mean": 21.415,
+   "iters_p99": 200.0,
+   "compute_mean_ms": 0.011639966666666666,
+   "compute_p99_ms": 0.0923,
+   "compute_max_ms": 0.1065,
+   "r0": 0.670082721463719,
+   "charge": 7477.544609349,
+   "tail": [
+    "Command range        : in1(slot4):30.0000  in2(slot6):30.0000",
+    "Command varies: the controller is responding to its measurement."
+   ]
+  },
+  {
+   "tag": "rho0.1_it200_tol1e-06",
+   "rho": 0.1,
+   "qp_iters": 200,
+   "qp_tol": 1e-06,
+   "rc": 0,
+   "secs": 0.9,
+   "ticks": 3000,
+   "conv_pct": 96.13333333333334,
+   "iters_mean": 19.885,
+   "iters_p99": 200.0,
+   "compute_mean_ms": 0.010912499999999999,
+   "compute_p99_ms": 0.0922,
+   "compute_max_ms": 0.0971,
+   "r0": 0.6700827410114858,
+   "charge": 7477.544311692,
+   "tail": [
+    "Command range        : in1(slot4):30.0000  in2(slot6):30.0000",
+    "Command varies: the controller is responding to its measurement."
+   ]
+  },
+  {
+   "tag": "rho0.1_it1000_tol1e-07",
+   "rho": 0.1,
+   "qp_iters": 1000,
+   "qp_tol": 1e-07,
+   "rc": 0,
+   "secs": 0.9,
+   "ticks": 3000,
+   "conv_pct": 98.56666666666666,
+   "iters_mean": 34.681666666666665,
+   "iters_p99": 1000.0,
+   "compute_mean_ms": 0.01777386666666667,
+   "compute_p99_ms": 0.4529,
+   "compute_max_ms": 0.4887,
+   "r0": 0.6700856731096622,
+   "charge": 7470.532865399,
+   "tail": [
+    "Command range        : in1(slot4):30.0000  in2(slot6):30.0000",
+    "Command varies: the controller is responding to its measurement."
+   ]
+  },
+  {
+   "tag": "rho0.1_it1000_tol1e-06",
+   "rho": 0.1,
+   "qp_iters": 1000,
+   "qp_tol": 1e-06,
+   "rc": 0,
+   "secs": 0.9,
+   "ticks": 3000,
+   "conv_pct": 98.63333333333333,
+   "iters_mean": 32.52766666666667,
+   "iters_p99": 1000.0,
+   "compute_mean_ms": 0.016703433333333333,
+   "compute_p99_ms": 0.452401,
+   "compute_max_ms": 0.4589,
+   "r0": 0.6700856904071211,
+   "charge": 7470.532574062001,
+   "tail": [
+    "Command range        : in1(slot4):30.0000  in2(slot6):30.0000",
+    "Command varies: the controller is responding to its measurement."
+   ]
+  },
+  {
+   "tag": "rho0.1_it5000_tol1e-07",
+   "rho": 0.1,
+   "qp_iters": 5000,
+   "qp_tol": 1e-07,
+   "rc": 0,
+   "secs": 0.9,
+   "ticks": 3000,
+   "conv_pct": 99.1,
+   "iters_mean": 88.33466666666666,
+   "iters_p99": 4793.0,
+   "compute_mean_ms": 0.04196856666666667,
+   "compute_p99_ms": 2.158690999999998,
+   "compute_max_ms": 2.3006,
+   "r0": 0.6700858369505097,
+   "charge": 7469.961926878999,
+   "tail": [
+    "Command range        : in1(slot4):30.0000  in2(slot6):30.0000",
+    "Command varies: the controller is responding to its measurement."
+   ]
+  },
+  {
+   "tag": "rho0.1_it5000_tol1e-06",
+   "rho": 0.1,
+   "qp_iters": 5000,
+   "qp_tol": 1e-06,
+   "rc": 0,
+   "secs": 0.9,
+   "ticks": 3000,
+   "conv_pct": 99.86666666666667,
+   "iters_mean": 69.34066666666666,
+   "iters_p99": 2772.0,
+   "compute_mean_ms": 0.03353556666666667,
+   "compute_p99_ms": 1.257906,
+   "compute_max_ms": 2.2704,
+   "r0": 0.6700857694968552,
+   "charge": 7470.065746382001,
+   "tail": [
+    "Command range        : in1(slot4):30.0000  in2(slot6):30.0000",
+    "Command varies: the controller is responding to its measurement."
+   ]
+  },
+  {
+   "tag": "rho0.01_it200_tol1e-07",
+   "rho": 0.01,
+   "qp_iters": 200,
+   "qp_tol": 1e-07,
+   "rc": 0,
+   "secs": 0.8,
+   "ticks": 3000,
+   "conv_pct": 91.16666666666666,
+   "iters_mean": 21.648666666666667,
+   "iters_p99": 200.0,
+   "compute_mean_ms": 0.011860500000000001,
+   "compute_p99_ms": 0.0925,
+   "compute_max_ms": 0.1447,
+   "r0": 0.6684991045769473,
+   "charge": 7381.621755348099,
+   "tail": [
+    "Command range        : in1(slot4):30.0000  in2(slot6):30.0000",
+    "Command varies: the controller is responding to its measurement."
+   ]
+  },
+  {
+   "tag": "rho0.01_it200_tol1e-06",
+   "rho": 0.01,
+   "qp_iters": 200,
+   "qp_tol": 1e-06,
+   "rc": 0,
+   "secs": 0.8,
+   "ticks": 3000,
+   "conv_pct": 91.36666666666666,
+   "iters_mean": 21.109666666666666,
+   "iters_p99": 200.0,
+   "compute_mean_ms": 0.011553700000000002,
+   "compute_p99_ms": 0.0924,
+   "compute_max_ms": 0.1262,
+   "r0": 0.6684991004707882,
+   "charge": 7381.6216304749,
+   "tail": [
+    "Command range        : in1(slot4):30.0000  in2(slot6):30.0000",
+    "Command varies: the controller is responding to its measurement."
+   ]
+  },
+  {
+   "tag": "rho0.01_it1000_tol1e-07",
+   "rho": 0.01,
+   "qp_iters": 1000,
+   "qp_tol": 1e-07,
+   "rc": 0,
+   "secs": 0.9,
+   "ticks": 3000,
+   "conv_pct": 99.6,
+   "iters_mean": 42.42033333333333,
+   "iters_p99": 545.0,
+   "compute_mean_ms": 0.021218866666666666,
+   "compute_p99_ms": 0.24750299999999992,
+   "compute_max_ms": 0.4812,
+   "r0": 0.6684925487405553,
+   "charge": 7454.5798376801995,
+   "tail": [
+    "Command range        : in1(slot4):30.0000  in2(slot6):30.0000",
+    "Command varies: the controller is responding to its measurement."
+   ]
+  },
+  {
+   "tag": "rho0.01_it1000_tol1e-06",
+   "rho": 0.01,
+   "qp_iters": 1000,
+   "qp_tol": 1e-06,
+   "rc": 0,
+   "secs": 0.9,
+   "ticks": 3000,
+   "conv_pct": 99.66666666666667,
+   "iters_mean": 39.67133333333334,
+   "iters_p99": 503.0,
+   "compute_mean_ms": 0.01994373333333333,
+   "compute_p99_ms": 0.23060199999999995,
+   "compute_max_ms": 0.453,
+   "r0": 0.6684925269160822,
+   "charge": 7454.579846917501,
+   "tail": [
+    "Command range        : in1(slot4):30.0000  in2(slot6):30.0000",
+    "Command varies: the controller is responding to its measurement."
+   ]
+  },
+  {
+   "tag": "rho0.01_it5000_tol1e-07",
+   "rho": 0.01,
+   "qp_iters": 5000,
+   "qp_tol": 1e-07,
+   "rc": 0,
+   "secs": 0.9,
+   "ticks": 3000,
+   "conv_pct": 99.73333333333333,
+   "iters_mean": 56.773666666666664,
+   "iters_p99": 545.0,
+   "compute_mean_ms": 0.027651933333333333,
+   "compute_p99_ms": 0.24750599999999987,
+   "compute_max_ms": 2.2787,
+   "r0": 0.6684925487405553,
+   "charge": 7454.5798376801995,
+   "tail": [
+    "Command range        : in1(slot4):30.0000  in2(slot6):30.0000",
+    "Command varies: the controller is responding to its measurement."
+   ]
+  },
+  {
+   "tag": "rho0.01_it5000_tol1e-06",
+   "rho": 0.01,
+   "qp_iters": 5000,
+   "qp_tol": 1e-06,
+   "rc": 0,
+   "secs": 0.9,
+   "ticks": 3000,
+   "conv_pct": 100.0,
+   "iters_mean": 46.49666666666667,
+   "iters_p99": 503.0,
+   "compute_mean_ms": 0.02312263333333333,
+   "compute_p99_ms": 0.2285039999999999,
+   "compute_max_ms": 2.1904,
+   "r0": 0.6684925269160822,
+   "charge": 7454.579846917501,
+   "tail": [
+    "Command range        : in1(slot4):30.0000  in2(slot6):30.0000",
+    "Command varies: the controller is responding to its measurement."
+   ]
+  }
+ ]
+}

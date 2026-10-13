@@ -1,0 +1,91 @@
+{
+ "day": "rehearsal1013",
+ "started": "2026-10-13 00:46:32",
+ "scratch": "C:\\Users\\brets\\AppData\\Local\\Temp\\rehearsal_m8h5uux2",
+ "phases": [
+  {
+   "phase": "gate",
+   "model": "day_rehearsal1013\\plant_duty.lti",
+   "runs": [
+    {
+     "A": ".\\cpp_controller.exe --mode openloop --play design_rungate.csv --output-count 8 --capture capture_rig_rungate1.csv",
+     "B": ".\\rig\\2_loop.ps1 -Sim -InputChannels 64 -TimeoutMs 10 -TickFrames 6 -Run gate1 -Design design_rungate.csv -Capture capture_rig_rungate1.csv",
+     "run": "gate1",
+     "ok": false,
+     "secs": 262.7,
+     "loop_summary": [
+      "Exit reason: reached max control ticks (26277).",
+      "Summary: packets=26277 controlTicks=26277 droppedControlTicks=364 finalBuffered=65536/65536 nominalWindowSamples=6 minWindowSamples=5 undersampledWindows=1 channelMode=exact(in=64 card=64)",
+      "Localhost summary: submitted=19723 replies=13168 failures=0 timeouts=6554 staleDropped=0 skippedWhileBusy=6554 freshTicks=13178 heldTicks=15 zeroTicks=13084 freshReplyTransitions=13168 policyTransitions=5 inFlight=true lastReplySeq=19722",
+      "Exit reason: reached max control ticks (26277).",
+      "Summary: packets=26277 controlTicks=26277 droppedControlTicks=364 finalBuffered=65536/65536 nominalWindowSamples=6 ",
+      "Localhost summary: submitted=19723 replies=13168 failures=0 timeouts=6554 staleDropped=0 skippedWhileBusy=6554 "
+     ],
+     "controller": "controller exit rc=0",
+     "server_log": "C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\day_rehearsal1013\\server_gate1.log",
+     "fatal": [],
+     "liveness": [
+      "y-liveness: LIVE     capture_rig_rungate1.csv  rows 2675  dead ch 0/64  median|y| 696  banks ch1-32=7e+02 ch33-64=7e+02"
+     ],
+     "b_rc": 0
+    }
+   ],
+   "checks": [
+    {
+     "cmd": "& $py rig\\run_audit.py --run gate1 --loop-log loop_rungate1.log --capture capture_rig_rungate1.csv --design design_rungate.csv --sim",
+     "rc": 2,
+     "secs": 0.3,
+     "tail": [
+      "AUDIT gate1: FAIL | fresh@2 ticks=26277/26277 dropped=364 timeouts=6554 stale=0 zero=13084 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.00 u_std=1.11 qpConv=100%",
+      "  FAIL: droppedControlTicks=364",
+      "  WARN: undersampledWindows=1",
+      "  WARN: localhost timeouts=6554",
+      "  WARN: zeroTicks=13084 (> 25: controller output was zero beyond startup)",
+      "  info: activeFrac=0.0 backlog=5 u_active=['u1', 'u2', 'u3', 'u4', 'u5', 'u6', 'u7', 'u8']"
+     ],
+     "audit": "AUDIT gate1: FAIL | fresh@2 ticks=26277/26277 dropped=364 timeouts=6554 stale=0 zero=13084 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.00 u_std=1.11 qpConv=100%"
+    },
+    {
+     "cmd": "& $py rig\\placement_gate.py --mode thalamic --newest --min-amp 13",
+     "rc": 3,
+     "secs": 0.9,
+     "tail": [
+      "     4  8.0  NO DATA      0.0  ch-         +0     0.0        -    1",
+      "     6  8.0  NO DATA      0.0  ch-         +0     0.0        -    1",
+      "  responsive 0, weak 0, silent [4, 6], footprint eff rank 0 (sv )",
+      "  ADJUST: no pair evokes cortex at >= 13 uA -> stim array not coupled to the recorded S1 (check current flow via artifact; if present, reposition: AP/ML, not depth alone); 8 mm pairs [4, 6] silent",
+      "==============================================================================",
+      "  figure: C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\galleries\\BSCL20260909BU-260910-233015\\gate_thalamic.png"
+     ]
+    },
+    {
+     "cmd": "& $py rig\\check_dead_time.py --capture capture_rig_rungate1.csv --y-channel 34 --json day_rehearsal1013\\dead_time_gate1.json   # -> inputDelayTicks for the fit",
+     "rc": 1,
+     "secs": 0.2,
+     "tail": [
+      "    U_all, Y_all = load_capture(args.capture)",
+      "                   ^^^^^^^^^^^^^^^^^^^^^^^^^^",
+      "  File \"C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\rig\\fit_impulse_model.py\", line 43, in load_capture",
+      "    rows = np.array([[float(v) for v in row] for row in r])",
+      "           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+      "ValueError: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (10494,) + inhomogeneous part."
+     ]
+    },
+    {
+     "cmd": "& $py rig\\ingest_block.py --label \"gate depth 1 probe\" --day rehearsal1013",
+     "rc": 1,
+     "secs": 0.1,
+     "tail": [
+      "FAIL: no block directories under C:\\Users\\brets\\AppData\\Local\\Temp\\rehearsal_m8h5uux2"
+     ]
+    }
+   ],
+   "skipped": [
+    "& $py rig\\check_impulse_delivery.py --block <blk> --capture capture_rig_rungate1.csv --amps 13 18 25 --pairs \"16:12,15:11,14:10,13:9,4:8,3:7,2:6,1:5\" --design-meta design_rungate_meta.json   # wire gate re-bank   (placeholder)"
+   ],
+   "audit": "AUDIT gate1: FAIL | fresh@2 ticks=26277/26277 dropped=364 timeouts=6554 stale=0 zero=13084 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.00 u_std=1.11 qpConv=100%",
+   "secs": 264.3,
+   "ok": false
+  }
+ ]
+}
