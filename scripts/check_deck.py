@@ -1,17 +1,19 @@
 r"""check_deck.py -- programmatic proof that a generated deck obeys the rules.
 
-    python scripts\check_deck.py <deck.pptx> [--fig-dir DIR]
+    python scripts\check_deck.py <deck.pptx> [--fig-dir DIR] [--max-title 70]
 
 Checks (the first two kill the historical defects for good):
   1. NO-OVERFLOW: every picture lies fully inside the slide.
   2. ASPECT: every picture's placed aspect matches its source PNG's aspect
-     within 1% -- catches any regression to width-only add_picture. Source
-     PNGs are matched by pixel size against --fig-dir (searched recursively);
-     unmatched pictures get the internal-part image blob measured instead.
+     within 1% -- catches any regression to width-only add_picture.
   3. STYLE: every text run is Arial; title-band runs (top < 1.0") are bold,
-     >= 20 pt, and BLACK (never blue); body runs <= 12.5 pt outside bands.
-  4. FILL (warn): a picture occupying < 85% of the content box in BOTH
+     >= 20 pt, and BLACK (never blue); body runs outside the title band are
+     <= 12.5 pt unless bold (display numbers / section titles are bold).
+  4. TABLES: every table uses the plain grid style (no PowerPoint banding).
+  5. FILL (warn): a picture occupying < 85% of the content box in BOTH
      dimensions signals a wrong figsize preset (letterboxing), not an error.
+  6. TITLES (warn): a title-band run longer than --max-title characters.
+  7. DENSITY (info): slides with no picture and no table (text-only count).
 Exit 1 on any FAIL; warnings do not fail the build.
 """
 from __future__ import annotations
@@ -25,6 +27,8 @@ EMU_PER_IN = 914400
 TITLE_BAND_IN = 1.0
 CONTENT_W_IN = 12.4
 CONTENT_H_IN = 6.05  # max content box (no subtitle, no caption)
+BODY_MAX_PT = 12.5
+TABLE_STYLE_NONE = "{5940675A-B579-460E-94D1-54222C63F5DA}"
 
 
 def png_size_bytes(blob: bytes):
@@ -39,21 +43,32 @@ def main():
     ap.add_argument("deck")
     ap.add_argument("--fig-dir", default=None,
                     help="unused (aspect read from embedded image parts)")
+    ap.add_argument("--max-title", type=int, default=70)
     args = ap.parse_args()
 
     from pptx import Presentation
     from pptx.enum.shapes import MSO_SHAPE_TYPE
+    from pptx.oxml.ns import qn
 
     prs = Presentation(args.deck)
     sw, sh = prs.slide_width, prs.slide_height
     fails, warns = [], []
-    n_pics = n_runs = 0
+    n_pics = n_runs = n_tables = 0
+    text_only = []
 
     for i, slide in enumerate(prs.slides, start=1):
         pics_on_slide = sum(1 for s in slide.shapes
                             if s.shape_type == MSO_SHAPE_TYPE.PICTURE)
+        tables_on_slide = sum(1 for s in slide.shapes if s.has_table)
+        if pics_on_slide == 0 and tables_on_slide == 0:
+            text_only.append(i)
         # a two_fig slide's per-picture box is half the content width
         w_ref = CONTENT_W_IN / max(pics_on_slide, 1)
+        # title/section slides have no title band: display text there is free-form
+        has_band = any(s.has_text_frame and s.top is not None and s.top < TITLE_BAND_IN * EMU_PER_IN
+                       and any(r.font.size is not None and r.font.size.pt >= 20
+                               for p in s.text_frame.paragraphs for r in p.runs)
+                       for s in slide.shapes)
         for shp in slide.shapes:
             if shp.shape_type == MSO_SHAPE_TYPE.PICTURE:
                 n_pics += 1
@@ -77,7 +92,21 @@ def main():
                         f"slide {i}: picture fills only "
                         f"{w_in/w_ref:.0%} x {h_in/CONTENT_H_IN:.0%} "
                         f"of its box -- wrong figsize preset?")
+            if shp.has_table:
+                n_tables += 1
+                sid = shp.table._tbl.tblPr.find(qn("a:tableStyleId"))
+                if sid is None or (sid.text or "").upper() != TABLE_STYLE_NONE:
+                    fails.append(f"slide {i}: table uses style {sid.text if sid is not None else 'default'} "
+                                 f"(must be the plain grid {TABLE_STYLE_NONE})")
+                for row in shp.table.rows:
+                    for cell in row.cells:
+                        for para in cell.text_frame.paragraphs:
+                            for run in para.runs:
+                                n_runs += 1
+                                if run.font.name is not None and run.font.name != "Arial":
+                                    fails.append(f"slide {i}: non-Arial table run '{run.font.name}'")
             if shp.has_text_frame:
+                in_title_band = shp.top is not None and shp.top < TITLE_BAND_IN * EMU_PER_IN
                 for para in shp.text_frame.paragraphs:
                     for run in para.runs:
                         n_runs += 1
@@ -85,10 +114,7 @@ def main():
                         if f.name is not None and f.name != "Arial":
                             fails.append(f"slide {i}: non-Arial run '{f.name}' "
                                          f"({run.text[:30]!r})")
-                        in_title_band = shp.top is not None and \
-                            shp.top < TITLE_BAND_IN * EMU_PER_IN
-                        if in_title_band and f.size is not None and \
-                                f.size.pt >= 20:
+                        if in_title_band and f.size is not None and f.size.pt >= 20:
                             rgb = getattr(f.color, "rgb", None)
                             if f.bold is not True:
                                 fails.append(f"slide {i}: title run not bold "
@@ -97,9 +123,18 @@ def main():
                                     str(rgb) != "000000":
                                 fails.append(f"slide {i}: title color #{rgb} "
                                              f"is not black ({run.text[:30]!r})")
+                            if len(run.text) > args.max_title:
+                                warns.append(f"slide {i}: title is {len(run.text)} chars "
+                                             f"(> {args.max_title}): {run.text[:50]!r}...")
+                        elif has_band and not in_title_band and f.size is not None and \
+                                f.size.pt > BODY_MAX_PT and f.bold is not True:
+                            fails.append(f"slide {i}: body run {f.size.pt:.0f} pt > {BODY_MAX_PT} "
+                                         f"and not bold ({run.text[:30]!r})")
 
-    print(f"check_deck: {len(prs.slides.__iter__.__self__._sldIdLst)} slides, "
-          f"{n_pics} pictures, {n_runs} text runs")
+    n_slides = len(prs.slides._sldIdLst)
+    print(f"check_deck: {n_slides} slides, {n_pics} pictures, {n_tables} tables, {n_runs} text runs")
+    if text_only:
+        print(f"  info: {len(text_only)} text-only slide(s): {text_only}")
     for w in warns:
         print(f"  warn: {w}")
     for f_ in fails:
