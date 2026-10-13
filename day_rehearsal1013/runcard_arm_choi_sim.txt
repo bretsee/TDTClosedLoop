@@ -8,6 +8,6 @@
 # B:
 .\rig\2_loop.ps1 -Sim -InputChannels 64 -TimeoutMs 10 -TickFrames 6 -Run choi_mixr1 -Ticks 22200 -Capture day_rehearsal1013\capture_choi_mixr1.csv
 # after Summary:
-& $py rig\run_audit.py --run choi_mixr1 --loop-log loop_runchoi_mixr1.log --capture day_rehearsal1013\capture_choi_mixr1.csv --ref day_rehearsal1013\ref_mix_r1.csv --active-u u1,u3,u4,u6 --sim
-& $py rig\tracking_metrics.py --capture day_rehearsal1013\capture_choi_mixr1.csv --ref day_rehearsal1013\ref_mix_r1.csv --y-channels 34 40 --label choi_r1 --json day_rehearsal1013\tracking_choi_r1.json --png day_rehearsal1013\tracking_choi_r1.png
+& $py rig\run_audit.py --run choi_mixr1 --loop-log loop_runchoi_mixr1.log --capture day_rehearsal1013\capture_choi_mixr1.csv --ref day_rehearsal1013\ref_mix_r1.csv --active-u u4,u6 --sim
+& $py rig\tracking_metrics.py --capture day_rehearsal1013\capture_choi_mixr1.csv --ref day_rehearsal1013\ref_mix_r1.csv --y-channels 64 --label choi_r1 --json day_rehearsal1013\tracking_choi_r1.json --png day_rehearsal1013\tracking_choi_r1.png
 & $py rig\ingest_block.py --label "choi r1 arm" --mode arm --schedule day_rehearsal1013\schedule_mix_r1.json --day rehearsal1013
