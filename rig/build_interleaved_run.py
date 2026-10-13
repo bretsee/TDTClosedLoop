@@ -68,6 +68,9 @@ def main():
                     help="wire slot per model input (default: read m from the model, slots 1..m)")
     ap.add_argument("--seed", type=int, default=None, help="base seed (default from today)")
     ap.add_argument("--out-dir", required=True)
+    ap.add_argument("--run-offset", type=int, default=0,
+                    help="first run number minus one (e.g. 3 -> writes r4..); protects existing refs")
+    ap.add_argument("--force", action="store_true", help="overwrite existing ref_mix_r<N>.csv in --out-dir")
     args = ap.parse_args()
 
     out = Path(args.out_dir); out.mkdir(parents=True, exist_ok=True)
@@ -132,7 +135,16 @@ def main():
               % (site, per.max(), U.min(), U.max()))
 
     # ---- runs ---------------------------------------------------------------
-    for r in range(1, args.runs + 1):
+    # Never silently overwrite references an arm already ran against (the 6g
+    # early/late repeat needs the ORIGINAL r1): --run-offset writes r<K+1>..,
+    # --force is required to replace an existing ref_mix_r<N>.csv (2026-10-13).
+    clash = [r for r in range(args.run_offset + 1, args.run_offset + args.runs + 1)
+             if (out / ("ref_mix_r%d.csv" % r)).exists()]
+    if clash and not args.force:
+        sys.exit("FAIL: %s already has ref_mix_r%s.csv -- use --run-offset %d to write new run numbers, "
+                 "or --force to overwrite (the early/late repeat needs the original refs)"
+                 % (out, "/".join(str(c) for c in clash), max(clash)))
+    for r in range(args.run_offset + 1, args.run_offset + args.runs + 1):
         rng = np.random.default_rng(seed0 * 10 + r)
         deck = []
         while len(deck) < args.events:

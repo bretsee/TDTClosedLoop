@@ -119,8 +119,9 @@ the 30 min of settling (was 3.1-3.3). First arm 16:00 (was 20:45-21:55).
    an hour and found saturation; a single duty-PRBS (`design_burst_probe.py
    --kind duty-prbs`) fits all responsive pairs at once at a duty that
    avoids saturation.
-9. **Cut list for a late day**: decoupled run -> R sweep -> r3 -> LP site;
-   never cut the early/late repeat (cheapest drift number we have).
+9. **Cut list for a late day**: superseded 2026-10-13 by the tier table in
+   `RIG_DAY_2026-10-14.md` (Tier A = 6a + 6g never cut; Tier B = 6b decoupled,
+   6c burst-vs-tonic, 6d r2; Tier C = 6e R sweep, 6f r3; cut from the bottom).
 
 ## 5. Files
 * `rig/placement_gate.py` (new), `rig/check_y_liveness.py` (new),

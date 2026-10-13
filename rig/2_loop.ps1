@@ -37,6 +37,8 @@ param(
     [string] $Capture = '',
     # Quiet-capture MAV baseline (V) passed to the watch.
     [double] $Baseline = 0,
+    # Suppress the y-liveness watch window (rehearsal driver runs the check itself).
+    [switch] $NoWatch,
 
     # Recording channels fed to the controller (argv[3] / mpcInputCount).
     # MUST match what the PO8e actually streams -- the .exe prints
@@ -168,6 +170,19 @@ if ($Sim) {
         exit 1
     }
     $target = $RZ2
+    # Previous run's audit verdict (run_audit.py writes last_audit.txt next to
+    # its capture). A FAIL must be acknowledged before more stim is delivered.
+    $lastAudit = @('last_audit.txt')
+    if (-not [string]::IsNullOrWhiteSpace($Capture)) { $lastAudit += (Join-Path (Split-Path -Parent $Capture) 'last_audit.txt') }
+    foreach ($la in $lastAudit) {
+        if ((Test-Path $la) -and ((Get-Content $la -First 1) -match ': FAIL')) {
+            Write-Host "=== PREVIOUS RUN AUDITED FAIL ===" -ForegroundColor Red
+            Get-Content $la | ForEach-Object { Write-Host "    $_" -ForegroundColor Red }
+            $ack = Read-Host "    Type 'override' to run anyway (surgeon's call), anything else aborts"
+            if ($ack -ne 'override') { Write-Host "Aborted. Fix the FAIL (or re-run run_audit) first." -ForegroundColor Yellow; exit 1 }
+            break
+        }
+    }
     Write-Host "=== LIVE RUN: stim WILL be delivered to $RZ2 ===" -ForegroundColor Red
     Write-Host "    Confirm terminal 2 printed the excitation summary you intended," -ForegroundColor Yellow
     Write-Host "    and that the active channels and u range are correct." -ForegroundColor Yellow
@@ -198,11 +213,13 @@ if ($Exe -match 'jul23|aug1[458]|aug20|aug25-pre') {
 # y-liveness watch in its own window, started as the loop starts (not after
 # the run): the capture is streamed by cpp_controller, so a dead amplifier
 # shows as DEAD within the first minute instead of in the post-hoc scan.
-if (-not [string]::IsNullOrWhiteSpace($Capture)) {
+if ($NoWatch) {
+    Write-Host "-NoWatch: no y-liveness window (rehearsal driver checks the capture itself)." -ForegroundColor Gray
+} elseif (-not [string]::IsNullOrWhiteSpace($Capture)) {
     if (-not (Test-Path $py)) {
         Write-Host "WARN: venv python not found at $py -- no liveness watch window." -ForegroundColor Yellow
     } else {
-        $watchArgs = "& '$py' '$repo\rig\check_y_liveness.py' --capture '$Capture' --watch"
+        $watchArgs = "& '$py' '$repo\rig\check_y_liveness.py' --capture '$Capture' --watch --beep"
         if ($Baseline -gt 0) { $watchArgs += " --baseline $Baseline" }
         Start-Process powershell -ArgumentList '-NoExit', '-Command', $watchArgs
         Write-Host "y-liveness watch window started on $Capture (close it after 'Summary:')." -ForegroundColor Cyan

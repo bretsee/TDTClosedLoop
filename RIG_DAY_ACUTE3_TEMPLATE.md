@@ -79,7 +79,8 @@ yields the burst-vs-tonic comparison (Phase 6c).
 ## 15:30 Phase 5 — references + tapes + manifest (30 min)
 `build_interleaved_run.py --templates-dir ... --sites <6> --channels <c...> --baseline <V>
 --model plant_duty.lti --runs 3 --events 100 --umax 30 --pairs <resp> --out-dir day_<date>`.
-Choi tapes: `--lam` smoothness if they slam the cap (step-transient artifact, 08-31 finding).
+Choi tapes: a `--lam` smoothness penalty for the step-transient artifact (08-31 finding) is NOT
+implemented (only `--mu`); if tapes slam the cap, lower `--umax` for the Choi arm and label it.
 MPC weights: `--q-weight 1e12 --r-weight 100` per output; sim-verify u pushes
 (`closed_loop_sim.py --pairs ... --feature-map ...`) BEFORE the first arm.
 
@@ -101,4 +102,5 @@ Re-probe (duty-ID replay 2 min) → per-output |corr| drift ______; stim zero
 (`send_envelope.py --rz2 10.1.0.100 --shape const --umax 0 --secs 2 --count 8 --yes`);
 commit + push both repos; ledger rows auto-appended.
 
-**Cut order if late:** 6e NN → 6d R sweep → 6c → 6b → r2. Keep 6a + 6f.
+**Cut order if late:** superseded by the tier table in `RIG_DAY_2026-10-14.md` (Tier A = 6a + 6g
+never cut; Tier B = 6b, 6c, 6d; Tier C = 6e, 6f; cut from the bottom of the list).

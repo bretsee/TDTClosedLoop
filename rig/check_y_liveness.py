@@ -87,16 +87,35 @@ def main():
     ap.add_argument("--baseline", type=float, default=None, help="today's quiet-capture MAV baseline (V)")
     ap.add_argument("--watch", action="store_true", help="re-check every --every seconds until Ctrl+C")
     ap.add_argument("--every", type=float, default=5.0)
+    ap.add_argument("--beep", action="store_true",
+                    help="audible alarm on DEAD (3 long beeps) / SUSPECT (2 short), repeated each check")
     a = ap.parse_args()
+
+    def alarm(rc):
+        if not a.beep or rc not in (2, 3):
+            return
+        try:
+            import winsound
+            for _ in range(3 if rc == 3 else 2):
+                winsound.Beep(1000 if rc == 3 else 700, 500 if rc == 3 else 200)
+                time.sleep(0.12)
+        except Exception:  # noqa: BLE001
+            print("\a", end="", flush=True)
+
     if not a.watch:
-        return report(a.capture, a.baseline)
-    last = -1
+        rc = report(a.capture, a.baseline)
+        alarm(rc)
+        return rc
     try:
         while True:
             if os.path.isfile(a.capture):
                 rc = report(a.capture, a.baseline)
+                alarm(rc)
                 if rc == 3:
-                    return 3
+                    # keep alarming until someone acts (Ctrl+C closes the window)
+                    while True:
+                        time.sleep(a.every)
+                        alarm(3)
             time.sleep(a.every)
     except KeyboardInterrupt:
         return 0

@@ -57,6 +57,24 @@ if (-not (Test-Path $backup)) {
     Write-Host "  Backup already exists: $(Split-Path -Leaf $backup)" -ForegroundColor DarkGray
 }
 
+# --- Rig-day hygiene (08-31 rules restored 2026-10-13) -----------------------
+# Sleep/standby must be off for a 14-hour day; the data drive must have room.
+try {
+    $pc = (powercfg /query SCHEME_CURRENT SUB_SLEEP STANDBYIDLE 2>$null | Select-String 'Current AC Power Setting Index: 0x([0-9a-f]+)')
+    if ($pc) {
+        $idle = [Convert]::ToInt32($pc.Matches[0].Groups[1].Value, 16)
+        if ($idle -eq 0) { Write-Host "  Sleep on AC: never (good)" -ForegroundColor Green }
+        else { Write-Host "  WARN: PC sleeps after $idle s on AC. Fix: powercfg /change standby-timeout-ac 0" -ForegroundColor Yellow }
+    }
+} catch { Write-Host "  (could not read the sleep setting)" -ForegroundColor DarkGray }
+$dataRoot = 'C:\Users\brets\Desktop\Data'
+try {
+    $drv = New-Object System.IO.DriveInfo((Split-Path -Qualifier $dataRoot))
+    $freeGb = [math]::Round($drv.AvailableFreeSpace / 1GB, 1)
+    if ($freeGb -lt 50) { Write-Host "  WARN: only $freeGb GB free on $($drv.Name) -- a full acute day is ~5-10 GB of blocks + captures" -ForegroundColor Yellow }
+    else { Write-Host "  Free space on $($drv.Name): $freeGb GB" -ForegroundColor Green }
+} catch { Write-Host "  (could not read free space)" -ForegroundColor DarkGray }
+
 # --- Smoke test: does the loop still hold its budget? ------------------------
 Write-Host "  Running 300-tick smoke test (no hardware, ~5 s, $InputChannels ch, sim-fs $SimFs)..." -ForegroundColor Gray
 $out = & .\MpcPo8eUdpClosedLoop.exe 127.0.0.1 . $InputChannels --controller constant --constant-output 5 `

@@ -336,6 +336,14 @@ def main():
                   fmt("u_nz", "%.2f"), fmt("u_std", "%.3g"),
                   ("%.0f%%" % (100 * f["qpConv"])) if f.get("qpConv") is not None else "n/a"))
     print(summary)
+    # last_audit.txt next to the capture (or in cwd): 2_loop.ps1 refuses to start
+    # the next run after a FAIL unless the operator types 'override' (2026-10-13).
+    try:
+        d = os.path.dirname(args.capture) if args.capture else ""
+        with open(os.path.join(d, "last_audit.txt"), "w", encoding="utf-8") as fh:
+            fh.write(summary + "\n" + "\n".join("  FAIL: " + m for m in a.fails) + "\n")
+    except OSError:
+        pass
     for m in a.fails:
         print("  FAIL: " + m)
     for m in a.warns:
