@@ -76,6 +76,7 @@ struct Options {
 
     std::string model_path;             // .lti for mpc, .nnw for nn
     std::string capture_file;
+    int idle_stop = 30;             // bounded runs: consecutive idle seconds before stopping
     std::string log_file;
     std::string play_file;              // openloop: replay a designed u CSV verbatim
     std::string reference_file;         // mpc: per-tick target trajectory CSV (r1..rp)
@@ -94,6 +95,7 @@ struct Options {
     NnConfig  nn;
     ExcitationConfig exc;
     bool selftest = false;
+    bool check_model = false;   // build the controller, print the banner, exit 0 before "ready"
 };
 
 static void parse_double_list(const std::string& s, std::vector<double>& out) {
@@ -209,6 +211,12 @@ static void usage() {
         "                            weights are replaced (Hessian rebuilt, warm start kept).\n"
         "                            Tier-C interleaved R sweep within one run; rW0 in the\n"
         "                            latency log records the weight in force per tick.\n"
+        "  --idle-stop N (30)        bounded runs: stop after N consecutive seconds with no\n"
+        "                            request (was 3; a loop stall of a few s must not kill the run)\n"
+        "  --qp-iters N (200)        mpc: FISTA iteration cap per tick. qpIters/qpConv in the\n"
+        "  --qp-tol T (1e-7)         latency log show when the cap binds (badly conditioned H\n"
+        "                            at tiny effort weights / --effort-ratio <= 0.01); raise\n"
+        "                            the cap or loosen the step tolerance for such arms.\n"
         "  --target V|a,b,..    per-output targets   --no-observer  deliberate feedforward\n"
         "  --q-scale V (0.01)\n"
         "  --dist-observer           mpc: offset-free MPC -- estimate a constant output\n"
@@ -221,7 +229,9 @@ static void usage() {
         "  --exc-kind prbs|multilevel|steps|chirp   --exc-clock N (5)\n"
         "  --exc-hold N (50) --exc-levels N (4)     --exc-seed N\n"
         "  --exc-channels 3,7        1-based active stim channels (default all)\n"
-        "  --selftest                run offline checks and exit\n");
+        "  --selftest                run offline checks and exit\n"
+        "  --check-model             load the model, build the controller, print its banner and exit 0\n"
+        "                            (runcard model check; never waits for a request)\n");
 }
 
 static bool parse_args(int argc, char** argv, Options& o) {
@@ -260,6 +270,9 @@ static bool parse_args(int argc, char** argv, Options& o) {
         else if (a == "--dist-observer")   o.mpc.dist_observer = true;
         else if (a == "--dist-q")          o.mpc.dist_q = std::atof(next("--dist-q").c_str());
         else if (a == "--r-schedule")      o.r_schedule_file = next("--r-schedule");
+        else if (a == "--idle-stop")       o.idle_stop = std::max(1, std::atoi(next("--idle-stop").c_str()));
+        else if (a == "--qp-iters")        o.mpc.qp_iters = std::atoi(next("--qp-iters").c_str());
+        else if (a == "--qp-tol")          o.mpc.qp_tol = std::atof(next("--qp-tol").c_str());
         else if (a == "--q-scale")         o.mpc.qScale = std::atof(next("--q-scale").c_str());
         else if (a == "--umin")            { o.mpc.umin = o.nn.umin = o.exc.umin = std::atof(next("--umin").c_str()); }
         else if (a == "--umax")            { o.mpc.umax = o.nn.umax = o.exc.umax = std::atof(next("--umax").c_str()); }
@@ -271,6 +284,7 @@ static bool parse_args(int argc, char** argv, Options& o) {
         else if (a == "--exc-seed")        o.exc.seed = (unsigned)std::atoi(next("--exc-seed").c_str());
         else if (a == "--exc-channels")    parse_int_list(next("--exc-channels"), o.exc.active);
         else if (a == "--selftest")        o.selftest = true;
+        else if (a == "--check-model")     o.check_model = true;
         else if (a == "--help" || a == "-h") { usage(); return false; }
         else { std::printf("unknown argument: %s\n\n", a.c_str()); usage(); return false; }
     }
@@ -433,6 +447,36 @@ static int selftest() {
             check("set_r_weights rebuilds the Hessian mid-run",
                   m.telemetry().rW0 == 1.0 && y_before > 4.5 && x > 0.05 && x < 1.0,
                   "y " + std::to_string(y_before) + " -> " + std::to_string(x) + " after R 1e-4 -> 1");
+        }
+
+        // QP iteration cap (2026-10-13): with a tiny effort weight the Hessian is
+        // badly conditioned and FISTA hits the 200-iteration cap (seen in the
+        // 10-09 telemetry at effort ratio 0.01). The cap must be REPORTED
+        // (converged=false, iters==cap) and --qp-iters must lift it.
+        {
+            auto run_cap = [&](int cap) {
+                MpcConfig c = cfg;
+                c.r_weight = 1e-9;
+                c.qp_iters = cap;
+                MpcController m(M, c, 1);
+                m.set_target({5.0});
+                double x = 0.0;
+                int capped = 0, n = 0;
+                for (int k = 0; k < 300; ++k) {
+                    const double u = m.step({x})[0];
+                    x = M.A(0,0) * x + M.B(0,0) * u;
+                    const MpcController::Telemetry t = m.telemetry();
+                    if (!t.converged && t.iters == cap) ++capped;
+                    ++n;
+                }
+                return std::pair<int, int>(capped, n);
+            };
+            const std::pair<int, int> lo = run_cap(50);
+            const std::pair<int, int> hi = run_cap(20000);
+            check("qp cap reported and lifted by qp_iters",
+                  lo.first > 0 && hi.first == 0,
+                  "capped ticks " + std::to_string(lo.first) + "/" + std::to_string(lo.second) +
+                  " at cap 50 vs " + std::to_string(hi.first) + " at cap 20000");
         }
 
         // Offset-free MPC (2026-10-09): the TRUE plant has 1.5x the model's gain
@@ -778,6 +822,16 @@ int main(int argc, char** argv) {
         return 3;
     }
 
+    // --check-model: everything above (model load, observer, banner) ran; the
+    // runcard's fit-phase check used to be "--max-packets 1", which waits
+    // forever for a request that no loop will send (10-13 rehearsal: 1800 s
+    // timeout). Exit here, before any capture file is touched.
+    if (o.check_model) {
+        std::printf("CHECK OK: mode=%s model=%s built; exiting (--check-model).\n",
+                    o.mode.c_str(), o.model_path.c_str());
+        return 0;
+    }
+
     // ---- capture + latency log (opened BEFORE the socket) -----------------
     // The capture is STREAMED: one row per tick, flushed every 100 rows, so
     // rig/check_y_liveness.py --watch can read it during the first minute of a
@@ -834,7 +888,8 @@ int main(int argc, char** argv) {
                      << " effort_ratio=" << o.effort_ratio
                      << " r_schedule=" << (o.r_schedule_file.empty() ? "none" : o.r_schedule_file)
                      << " preview=" << o.preview_ticks
-                     << " dist_observer=" << (mpc_ptr->dist_observer_active() ? 1 : 0);
+                     << " dist_observer=" << (mpc_ptr->dist_observer_active() ? 1 : 0)
+                     << " qp_iters=" << c.qp_iters << " qp_tol=" << c.qp_tol;
             }
             logf << "\n";
             logf << "seq,gap_ms,computeMs,turnaroundMs,qpCost,qpIters,qpConv,activeFrac,innov0,rW0\n";
@@ -938,10 +993,30 @@ int main(int argc, char** argv) {
         if (n == SOCKET_ERROR) {
             // Stop only after 3 consecutive idle reads (parity with the MATLAB
             // server): a single 1 s sender stall must not end a bounded run.
-            if (o.max_packets > 0 && packets > 0 && ++idle_reads >= 3) {
-                std::printf("Idle 3x after %lld packets; stopping bounded run.\n", packets);
+            // Only a real receive TIMEOUT counts as idle. Windows also fails a
+            // UDP recvfrom with WSAECONNRESET (10054) when an earlier sendto hit
+            // a closed port (ICMP port unreachable); three of those arrive back
+            // to back and ended the 10-13 rehearsal runs at packet 2675 while
+            // the loop was still ticking. Ignore them (print once).
+            const int err = WSAGetLastError();
+            if (err != WSAETIMEDOUT) {
+                static int reported = 0;
+                if (reported++ < 3)
+                    std::printf("recvfrom error %d (not a timeout) after %lld packets; ignoring.\n", err, packets);
+                continue;
+            }
+            // 2026-10-13: the limit is --idle-stop (default 30 s). The sim
+            // rehearsal showed the loop can stall for ~3.6 s (Windows; the loop
+            // re-syncs afterwards), and a 3 s limit turned every such stall
+            // into a dead server + a loop running on with zero output.
+            if (o.max_packets > 0 && packets > 0 && ++idle_reads >= o.idle_stop) {
+                std::printf("Idle %dx (%d s without a request) after %lld packets; stopping bounded run.\n",
+                            o.idle_stop, o.idle_stop, packets);
                 break;
             }
+            if (idle_reads == 3)
+                std::printf("WARNING: no request for 3 s after %lld packets (loop stalled?); waiting up to %d s.\n",
+                            packets, o.idle_stop);
             continue;
         }
         idle_reads = 0;

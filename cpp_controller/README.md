@@ -6,7 +6,7 @@ runs against it **unchanged and unrebuilt** with `--controller localhost`.
 
 ```powershell
 build_cpp_controller.bat
-cpp_controller.exe --selftest          # 16 offline checks, no hardware
+cpp_controller.exe --selftest          # 17 offline checks, no hardware
 ```
 
 ## Why it exists
@@ -115,7 +115,7 @@ Dead time: models exported since 2026-10-09 carry delay states so that `x(k+1) =
 
 ## Self-test
 
-`--selftest` runs 16 offline checks covering the wire codec, the QP against
+`--selftest` runs 17 offline checks covering the wire codec, the QP against
 closed-form optima, the Cholesky solve, the observer (including that it *refuses*
 an unstable-unobservable model rather than silently returning zero gain), the
 closed-loop trade-off above, and the excitation channel mask. Run it after any
