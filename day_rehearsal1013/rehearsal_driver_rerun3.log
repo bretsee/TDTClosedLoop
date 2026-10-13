@@ -1,0 +1,55 @@
+﻿sim baseline <V> = 634.651 (mean y34 of the first 200 dutyid ticks)
+
+=== refs ===
+  $ & $py rig\build_interleaved_run.py --templates-dir C:\Users\brets\Documents\Repositories\NNController\outputs\BiomimeticInversion\touch\Acute_2026-09-10 --sites LP P1 MP P3 D1 SHAM --channels 64 --baseline 3.3e-05 --model plant_opfit12_d2.lti --runs 3 --events 100 --total-ticks 22200 --umax 30 --pairs 4 6 --out-dir day_rehearsal1013
+    rc=0 2 s  wrote 3 run(s) to day_rehearsal1013
+  $ & $py training\closed_loop_sim.py --plant plant_opfit12_d2.lti --ticks 2000 --pairs 4,6 --feature-map 64 --output-count 8 --launch --launch-args --pairs 4,6 --feature-map 64 --q-weight 1e12,1e12 --r-weight 100,100 --control-horizon 20 --umax 30 --reference day_rehearsal1013\ref_mix_r1.csv --capture day_rehearsal1013\capture_sim_refcheck.csv
+    rc=0 1 s  Command varies: the controller is responding to its measurement.
+
+=== arm:mpc ===
+  A: .\cpp_controller.exe --mode mpc --model plant_opfit12_d2.lti --output-count 8 --pairs 4,6 --feature-map 64 --q-weight 1e12,1e12 --r-weight 100,100 --control-horizon 20 --umin 0 --umax 30 --reference day_rehearsal1013\ref_mix_r1.csv --capture day_rehearsal1013\capture_mpc_mixr1.csv --max-packets 22200
+  B: .\rig\2_loop.ps1 -Sim -InputChannels 64 -TimeoutMs 10 -TickFrames 6 -Run mpc_mixr1 -Ticks 22200 -Capture day_rehearsal1013\capture_mpc_mixr1.csv
+  -> OK  219 s  Exit reason: reached max control ticks (22200).
+  $ & $py rig\run_audit.py --run mpc_mixr1 --loop-log loop_runmpc_mixr1.log --capture day_rehearsal1013\capture_mpc_mixr1.csv --ref day_rehearsal1013\ref_mix_r1.csv --active-u u4,u6 --sim
+    rc=1 1 s  AUDIT mpc_mixr1: WARN | fresh@2 ticks=22200/22200 dropped=0 timeouts=0 stale=0 zero=1 obs=ACTIVE(0.690) offsets=applied y=LIVE u_nz=0.00 u_std=0 qpCon
+  $ & $py rig\tracking_metrics.py --capture day_rehearsal1013\capture_mpc_mixr1.csv --ref day_rehearsal1013\ref_mix_r1.csv --y-channels 64 --label mpc_r1 --json day_rehearsal1013\tracking_mpc_r1.json --png day_rehearsal1013\tracking_mpc_r1.png
+    rc=0 1 s    ax[0, 1].legend(fontsize=8)
+  $ & $py rig\ingest_block.py --label "mpc r1 arm" --mode arm --schedule day_rehearsal1013\schedule_mix_r1.json --day rehearsal1013
+    rc=0 2 s  next: look at galleries\synthetic_block_burst1_clean\index.png, then replace the PENDING cell with key results
+
+=== arm:choi ===
+  A: .\cpp_controller.exe --mode openloop --play day_rehearsal1013\design_choi_mix_r1.csv --output-count 8 --capture day_rehearsal1013\capture_choi_mixr1.csv
+  B: .\rig\2_loop.ps1 -Sim -InputChannels 64 -TimeoutMs 10 -TickFrames 6 -Run choi_mixr1 -Ticks 22200 -Capture day_rehearsal1013\capture_choi_mixr1.csv
+  -> OK  219 s  Exit reason: reached max control ticks (22200).
+  $ & $py rig\run_audit.py --run choi_mixr1 --loop-log loop_runchoi_mixr1.log --capture day_rehearsal1013\capture_choi_mixr1.csv --ref day_rehearsal1013\ref_mix_r1.csv --active-u u4,u6 --sim
+    rc=0 1 s  AUDIT choi_mixr1: PASS | fresh@2 ticks=22200/22200 dropped=0 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.05 u_std=3.57 qpConv=100
+  $ & $py rig\tracking_metrics.py --capture day_rehearsal1013\capture_choi_mixr1.csv --ref day_rehearsal1013\ref_mix_r1.csv --y-channels 64 --label choi_r1 --json day_rehearsal1013\tracking_choi_r1.json --png day_rehearsal1013\tracking_choi_r1.png
+    rc=0 1 s  VERDICT: NOT TRACKING  (0 warning(s))
+  $ & $py rig\ingest_block.py --label "choi r1 arm" --mode arm --schedule day_rehearsal1013\schedule_mix_r1.json --day rehearsal1013
+    rc=0 2 s  next: look at galleries\synthetic_block_burst1_clean\index.png, then replace the PENDING cell with key results
+
+=== rsweep ===
+  $ & $py rig\build_r_schedule.py --schedule day_rehearsal1013\schedule_mix_r1.json --block-events 20 --r 100 30 10 --m 2 --out day_rehearsal1013\rsched_r1.csv
+    rc=0 0 s    block  5  R=30       events  81-100  ticks 17773-22172
+  A: .\cpp_controller.exe --mode mpc --model plant_opfit12_d2.lti --output-count 8 --pairs 4,6 --feature-map 64 --q-weight 1e12,1e12 --r-weight 100,100 --r-schedule day_rehearsal1013\rsched_r1.csv --control-horizon 20 --umin 0 --umax 30 --reference day_rehearsal1013\ref_mix_r1.csv --capture day_rehearsal1013\capture_mpc_rsweep_r1.csv --max-packets 22200
+  B: .\rig\2_loop.ps1 -Sim -InputChannels 64 -TimeoutMs 10 -TickFrames 6 -Run mpc_rsweep_r1 -Ticks 22200 -Capture day_rehearsal1013\capture_mpc_rsweep_r1.csv
+  -> BAD 219 s  Exit reason: reached max control ticks (22200).
+  $ & $py rig\run_audit.py --run mpc_rsweep_r1 --loop-log loop_runmpc_rsweep_r1.log --capture day_rehearsal1013\capture_mpc_rsweep_r1.csv --ref day_rehearsal1013\ref_mix_r1.csv --sim
+    rc=2 0 s  AUDIT mpc_rsweep_r1: FAIL | fresh@2 ticks=22200/22200 dropped=1 timeouts=0 stale=0 zero=1 obs=ACTIVE(0.690) offsets=applied y=LIVE u_nz=0.00 u_std=0 q
+  $ & $py rig\analyze_r_sweep.py --capture day_rehearsal1013\capture_mpc_rsweep_r1.csv --ref day_rehearsal1013\ref_mix_r1.csv --rsched day_rehearsal1013\rsched_r1.json --y-channels 64 --u-channels 4 6 --hold 0 --lat day_rehearsal1013\server_lat_capture_mpc_rsweep_r1.csv --json day_rehearsal1013\rsweep_r1.json --png day_rehearsal1013\rsweep_r1.png
+    rc=0 1 s  wrote day_rehearsal1013\rsweep_r1.png
+  $ & $py rig\ingest_block.py --label "mpc R-sweep r1 arm" --mode arm --schedule day_rehearsal1013\schedule_mix_r1.json --day rehearsal1013
+    rc=0 2 s  next: look at galleries\synthetic_block_burst1_clean\index.png, then replace the PENDING cell with key results
+
+=== REHEARSAL rehearsal1013 ===
+  refs       OK        2 s  runs 0  checks 2 (bad 0)  
+  arm:mpc    OK      222 s  runs 1  checks 3 (bad 1)  AUDIT mpc_mixr1: WARN | fresh@2 ticks=22200/22200 dropped=0 timeouts=0 stale=0 zero=1 obs=ACTIVE(0.690) offsets=applied y=LIVE u_nz=0.00 u_std=0 qpConv=100%
+      rc=1  & $py rig\run_audit.py --run mpc_mixr1 --loop-log loop_runmpc_mixr1.log --capture day_rehearsal1013\capture_mp
+           WARN: NO command channel moved -- the controller output was constant
+           info: dist=0 r_sched=none effort_ratio=-1 activeFrac=0.6501182432432432 backlog=5
+  arm:choi   OK      223 s  runs 1  checks 3 (bad 0)  AUDIT choi_mixr1: PASS | fresh@2 ticks=22200/22200 dropped=0 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.05 u_std=3.57 qpConv=100%
+  rsweep     FAIL    222 s  runs 1  checks 4 (bad 1)  AUDIT mpc_rsweep_r1: FAIL | fresh@2 ticks=22200/22200 dropped=1 timeouts=0 stale=0 zero=1 obs=ACTIVE(0.690) offsets=applied y=LIVE u_nz=0.00 u_std=0 qpConv=100%
+      rc=2  & $py rig\run_audit.py --run mpc_rsweep_r1 --loop-log loop_runmpc_rsweep_r1.log --capture day_rehearsal1013\ca
+           WARN: NO command channel moved -- the controller output was constant
+           info: dist=0 r_sched=day_rehearsal1013\rsched_r1.csv effort_ratio=-1 activeFrac=0.725552927927928 backlog=6
+json: day_rehearsal1013\rehearsal_rerun3.json

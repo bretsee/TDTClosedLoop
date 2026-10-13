@@ -1,0 +1,246 @@
+{
+ "runs": {
+  "mpc_r1": {
+   "arm": "mpc",
+   "feature_r0": 0.32964608579920956,
+   "feature_best": 0.32964608579920945,
+   "feature_best_lag": 0,
+   "shift_packets": 1,
+   "n_pulses": 22510,
+   "clean_r0": 0.20194856264012936,
+   "clean_best": 0.25450115561843767,
+   "clean_best_lag": 4,
+   "clean_event_r_mean": 0.3136797374961043,
+   "clean_n_events": 99,
+   "rawbp_r0": 0.20167286268521017,
+   "rawbp_best": 0.2546530848361873,
+   "rawbp_best_lag": 4,
+   "rawbp_event_r_mean": 0.3139425032950878,
+   "rawbp_n_events": 99
+  },
+  "mpc_r2": {
+   "arm": "mpc",
+   "feature_r0": 0.3782697599119146,
+   "feature_best": 0.3782697599119146,
+   "feature_best_lag": 0,
+   "shift_packets": 1,
+   "n_pulses": 22503,
+   "clean_r0": 0.2139478443923576,
+   "clean_best": 0.28820281553865895,
+   "clean_best_lag": 4,
+   "clean_event_r_mean": 0.35808082905221317,
+   "clean_n_events": 99,
+   "rawbp_r0": 0.21349688115366747,
+   "rawbp_best": 0.2881270483631981,
+   "rawbp_best_lag": 4,
+   "rawbp_event_r_mean": 0.3579962565260413,
+   "rawbp_n_events": 99
+  },
+  "mpc_r3": {
+   "arm": "mpc",
+   "feature_r0": 0.3811023170766385,
+   "feature_best": 0.3811023170766386,
+   "feature_best_lag": 0,
+   "shift_packets": 1,
+   "n_pulses": 22495,
+   "clean_r0": 0.20101487482906344,
+   "clean_best": 0.24642814647981742,
+   "clean_best_lag": 4,
+   "clean_event_r_mean": 0.3312410532689472,
+   "clean_n_events": 99,
+   "rawbp_r0": 0.2007023227242335,
+   "rawbp_best": 0.24666185489025996,
+   "rawbp_best_lag": 4,
+   "rawbp_event_r_mean": 0.3315297845248901,
+   "rawbp_n_events": 99
+  },
+  "mpc_r1_late": {
+   "arm": "mpc",
+   "feature_r0": 0.4022340926949135,
+   "feature_best": 0.4022340926949135,
+   "feature_best_lag": 0,
+   "shift_packets": 1,
+   "n_pulses": 22496,
+   "clean_r0": 0.21600666206341715,
+   "clean_best": 0.2850605209627645,
+   "clean_best_lag": 4,
+   "clean_event_r_mean": 0.35396754898311883,
+   "clean_n_events": 99,
+   "rawbp_r0": 0.21592163082483495,
+   "rawbp_best": 0.28485326943817085,
+   "rawbp_best_lag": 4,
+   "rawbp_event_r_mean": 0.35390575336608593,
+   "rawbp_n_events": 99
+  },
+  "mpc_r4b": {
+   "arm": "mpc",
+   "feature_r0": 0.31310276074752125,
+   "feature_best": 0.3131027607475212,
+   "feature_best_lag": 0,
+   "shift_packets": 1,
+   "n_pulses": 22581,
+   "clean_r0": 0.19247337014813962,
+   "clean_best": 0.19247337014813962,
+   "clean_best_lag": 0,
+   "clean_event_r_mean": 0.23168213637000265,
+   "clean_n_events": 99,
+   "rawbp_r0": 0.19279991089391346,
+   "rawbp_best": 0.19279991089391346,
+   "rawbp_best_lag": 0,
+   "rawbp_event_r_mean": 0.23186086514906662,
+   "rawbp_n_events": 99
+  },
+  "choi_r1": {
+   "arm": "choi",
+   "feature_r0": 0.3257010022738346,
+   "feature_best": 0.36949531993386664,
+   "feature_best_lag": -1,
+   "shift_packets": 1,
+   "n_pulses": 1461,
+   "clean_r0": 0.1556148656385546,
+   "clean_best": 0.15827723505939567,
+   "clean_best_lag": 1,
+   "clean_event_r_mean": 0.23051930160309833,
+   "clean_n_events": 99,
+   "rawbp_r0": 0.15563889746689374,
+   "rawbp_best": 0.15831167208819144,
+   "rawbp_best_lag": 1,
+   "rawbp_event_r_mean": 0.23048527157179985,
+   "rawbp_n_events": 99
+  },
+  "choi_r2": {
+   "arm": "choi",
+   "feature_r0": 0.2996425923990689,
+   "feature_best": 0.3440470376568508,
+   "feature_best_lag": -1,
+   "shift_packets": 1,
+   "n_pulses": 1463,
+   "clean_r0": 0.15914838414234206,
+   "clean_best": 0.2600557879040421,
+   "clean_best_lag": 4,
+   "clean_event_r_mean": 0.32428562870839434,
+   "clean_n_events": 99,
+   "rawbp_r0": 0.1591431786954886,
+   "rawbp_best": 0.26029781808642916,
+   "rawbp_best_lag": 4,
+   "rawbp_event_r_mean": 0.32449322334776315,
+   "rawbp_n_events": 99
+  },
+  "choi_r3": {
+   "arm": "choi",
+   "feature_r0": 0.39380818266705414,
+   "feature_best": 0.4693747443523721,
+   "feature_best_lag": -1,
+   "shift_packets": 1,
+   "n_pulses": 1469,
+   "clean_r0": 0.18932837996063806,
+   "clean_best": 0.24182054750457263,
+   "clean_best_lag": 3,
+   "clean_event_r_mean": 0.3186741950455893,
+   "clean_n_events": 99,
+   "rawbp_r0": 0.189186950678019,
+   "rawbp_best": 0.24185837294199325,
+   "rawbp_best_lag": 3,
+   "rawbp_event_r_mean": 0.31880304610581167,
+   "rawbp_n_events": 99
+  },
+  "choi_r1_late": {
+   "arm": "choi",
+   "feature_r0": 0.3387999887537217,
+   "feature_best": 0.37762617451610236,
+   "feature_best_lag": -1,
+   "shift_packets": 1,
+   "n_pulses": 1460,
+   "clean_r0": 0.1284264363542124,
+   "clean_best": 0.1284264363542124,
+   "clean_best_lag": 0,
+   "clean_event_r_mean": 0.20550698007510118,
+   "clean_n_events": 99,
+   "rawbp_r0": 0.1282556343580505,
+   "rawbp_best": 0.1282556343580505,
+   "rawbp_best_lag": 0,
+   "rawbp_event_r_mean": 0.2053906418793228,
+   "rawbp_n_events": 99
+  },
+  "nn_r1b": {
+   "arm": "nn",
+   "feature_r0": 0.019731654059887967,
+   "feature_best": 0.07010411293135746,
+   "feature_best_lag": 4,
+   "shift_packets": 1,
+   "n_pulses": 22582,
+   "clean_r0": 0.03733418867468675,
+   "clean_best": 0.0592761624724997,
+   "clean_best_lag": 3,
+   "clean_event_r_mean": 0.12657989893779545,
+   "clean_n_events": 99,
+   "rawbp_r0": 0.037452459825129444,
+   "rawbp_best": 0.05900016603428306,
+   "rawbp_best_lag": 3,
+   "rawbp_event_r_mean": 0.1261871616175363,
+   "rawbp_n_events": 99
+  }
+ },
+ "paired": {
+  "n": 317,
+  "clean": {
+   "mean_dr": 0.07370509543304074,
+   "ci": [
+    0.05516435217221892,
+    0.09197320874722682
+   ],
+   "p_perm": 0.0,
+   "winrate": 0.6593059936908517
+  },
+  "rawbp": {
+   "mean_dr": 0.07373675131047078,
+   "ci": [
+    0.055269251274916366,
+    0.0920743954757843
+   ]
+  },
+  "per_run": {
+   "r1": {
+    "n": 79,
+    "mean_dr": 0.09349979077782834,
+    "ci": [
+     0.06259321510123408,
+     0.12362649697466657
+    ],
+    "winrate": 0.7468354430379747
+   },
+   "r1_late": {
+    "n": 79,
+    "mean_dr": 0.1579217325606328,
+    "ci": [
+     0.12309294047246984,
+     0.19339012729763508
+    ],
+    "winrate": 0.8354430379746836
+   },
+   "r2": {
+    "n": 79,
+    "mean_dr": 0.03191151081180647,
+    "ci": [
+     -0.0034709040431525743,
+     0.06713616437962121
+    ],
+    "winrate": 0.5569620253164557
+   },
+   "r3": {
+    "n": 80,
+    "mean_dr": 0.012265069430034688,
+    "ci": [
+     -0.024691463344145976,
+     0.0498515757387564
+    ],
+    "winrate": 0.5
+   }
+  },
+  "verdict": "MPC ahead",
+  "mean_r": {
+   "mpc": 0.37795553579009783,
+   "choi": 0.30425044035705706
+  }
+ }
+}

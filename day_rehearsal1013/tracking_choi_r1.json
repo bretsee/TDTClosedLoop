@@ -6,52 +6,32 @@
  "n_ticks": 22150,
  "skip_ticks": 50,
  "y_channels": [
-  34,
-  40
+  64
  ],
  "u_channels": [
+  4,
   6
  ],
  "per_channel": [
   {
    "ref_col": 1,
-   "y_channel": 34,
-   "rmse": 286.0019230524813,
-   "nrmse_ptp": 910834.1498398654,
-   "nrmse_std": 10848300.837679077,
-   "pearson_lag0": 0.0022935110807114204,
-   "pearson_best": -0.00552984195464122,
-   "best_lag_ticks": 2,
-   "slope_y_on_r": 24879.91963729262,
+   "y_channel": 64,
+   "rmse": 697.7642343573291,
+   "nrmse_ptp": 3000150.777804573,
+   "nrmse_std": 42492636.19370699,
+   "pearson_lag0": 0.006808214702480195,
+   "pearson_best": 0.008053247313946067,
+   "best_lag_ticks": -5,
+   "slope_y_on_r": 118530.62346749169,
    "slope_u_on_r": {
-    "u6": 391.4197709089893
+    "u4": 60942.69252306433,
+    "u6": 5661.818959704401
    },
-   "tracking_index": 1.000231446230474,
+   "tracking_index": 0.9994346229274106,
    "eta": {
-    "n_transients": 83,
-    "peak_delay_ticks": 69,
-    "peak_ratio": -218945.2379211949
-   },
-   "verdict": "NOT TRACKING"
-  },
-  {
-   "ref_col": 2,
-   "y_channel": 40,
-   "rmse": 286.04736364446387,
-   "nrmse_ptp": 2364027.7980197314,
-   "nrmse_std": 35893383.918956675,
-   "pearson_lag0": -0.0012774321909553227,
-   "pearson_best": -0.005874040239547676,
-   "best_lag_ticks": 6,
-   "slope_y_on_r": -45849.93141696536,
-   "slope_u_on_r": {
-    "u6": 1199.0136527209315
-   },
-   "tracking_index": 0.9969683601477208,
-   "eta": {
-    "n_transients": 83,
-    "peak_delay_ticks": 5,
-    "peak_ratio": -702722.7848533301
+    "n_transients": 66,
+    "peak_delay_ticks": 59,
+    "peak_ratio": -274825.9422865625
    },
    "verdict": "NOT TRACKING"
   }

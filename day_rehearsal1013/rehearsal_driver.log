@@ -1,4 +1,5 @@
-﻿
+﻿sim baseline <V> = 634.319 (mean y34 of the first 200 dutyid ticks)
+
 === phase0 ===
   $ .\rig\0_preflight.ps1 -InputChannels 64
     rc=0 3 s  This shell is now configured. Next: .\rig\1_server.ps1 (in a SECOND terminal)
@@ -6,45 +7,45 @@
 === gate ===
   A: .\cpp_controller.exe --mode openloop --play design_rungate.csv --output-count 8 --capture capture_rig_rungate1.csv
   B: .\rig\2_loop.ps1 -Sim -InputChannels 64 -TimeoutMs 10 -TickFrames 6 -Run gate1 -Design design_rungate.csv -Capture capture_rig_rungate1.csv
-  -> BAD 263 s  Exit reason: reached max control ticks (26277).
+  -> OK  259 s  Exit reason: reached max control ticks (26277).
   $ & $py rig\run_audit.py --run gate1 --loop-log loop_rungate1.log --capture capture_rig_rungate1.csv --design design_rungate.csv --sim
-    rc=2 1 s  AUDIT gate1: FAIL | fresh@2 ticks=26277/26277 dropped=366 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.00 u_std=1.13 qpConv=100%
-  $ & $py rig\placement_gate.py --mode thalamic --block day_rehearsal1013\synthetic_block_burst1_clean.npz --min-amp 13
-    rc=3 1 s    figure: C:\Users\brets\Documents\Repositories\TDTClosedLoop\galleries\synthetic_block_burst1_clean\gate_thalamic.png
-  $ & $py rig\check_impulse_delivery.py --block day_rehearsal1013\synthetic_block_burst1_clean.npz --capture capture_rig_rungate1.csv --amps 13 18 25 --pairs "16:12,15:11,14:10,13:9,4:8,3:7,2:6,1:5" --design-meta design_rungate_meta.json
-    rc=1 2 s  VERDICT: DELIVERY BROKEN (9 hard failure(s), 2 warning(s))
+    rc=0 1 s  AUDIT gate1: PASS | fresh@2 ticks=26277/26277 dropped=0 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.00 u_std=1.13 qpConv=100%
+  $ & $py rig\placement_gate.py --mode thalamic --block day_rehearsal1013\synthetic_block_gate_clean.npz --min-amp 13
+    rc=0 2 s    figure: C:\Users\brets\Documents\Repositories\TDTClosedLoop\galleries\synthetic_block_gate_clean\gate_thalamic.png
+  $ & $py rig\check_impulse_delivery.py --block day_rehearsal1013\synthetic_block_gate_clean.npz --capture day_rehearsal1013\synthetic_block_gate_clean_capture.csv --amps 13 18 25 --pairs "16:12,15:11,14:10,13:9,4:8,3:7,2:6,1:5" --design-meta design_rungate_meta.json
+    rc=0 2 s  VERDICT: DELIVERY VERIFIED (0 hard failure(s), 0 warning(s))
   $ & $py rig\check_dead_time.py --capture capture_rig_rungate1.csv --y-channel 34 --json day_rehearsal1013\dead_time_gate1.json
     rc=0 1 s  wrote day_rehearsal1013\dead_time_gate1.json
   $ & $py rig\ingest_block.py --label "gate depth 1 probe" --day rehearsal1013
-    rc=1 0 s  FAIL: no block directories under C:\Users\brets\AppData\Local\Temp\rehearsal_0hj4rd3n
+    rc=0 6 s  next: look at galleries\synthetic_block_gate_clean\index.png, then replace the PENDING cell with key results
 
 === quiet ===
 
 === burst ===
   A: .\cpp_controller.exe --mode openloop --play design_runburst1.csv --output-count 8 --capture capture_rig_runburst1.csv
   B: .\rig\2_loop.ps1 -Sim -InputChannels 64 -TimeoutMs 10 -TickFrames 6 -Run burst1 -Design design_runburst1.csv -Capture capture_rig_runburst1.csv
-  -> BAD 944 s  Exit reason: reached max control ticks (95586).
+  -> OK  940 s  Exit reason: reached max control ticks (95586).
   $ & $py rig\run_audit.py --run burst1 --loop-log loop_runburst1.log --capture capture_rig_runburst1.csv --design design_runburst1.csv --sim
-    rc=2 2 s  AUDIT burst1: FAIL | fresh@2 ticks=95586/95586 dropped=365 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.01 u_std=1.89 qpConv=100%
-  $ & $py rig\check_impulse_delivery.py --block day_rehearsal1013\synthetic_block_burst1_clean.npz --capture capture_rig_runburst1.csv --amps 6 9 13 18 25 --pairs "16:12,15:11,14:10,13:9,4:8,3:7,2:6,1:5" --design-meta design_runburst1_meta.json
-    rc=1 3 s  VERDICT: DELIVERY BROKEN (1 hard failure(s), 0 warning(s))
+    rc=1 2 s  AUDIT burst1: WARN | fresh@2 ticks=95586/95586 dropped=0 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.01 u_std=1.89 qpConv=100%
+  $ & $py rig\check_impulse_delivery.py --block day_rehearsal1013\synthetic_block_burst1_clean.npz --capture day_rehearsal1013\synthetic_block_burst1_clean_capture.csv --amps 6 9 13 18 25 --pairs "16:12,15:11,14:10,13:9,4:8,3:7,2:6,1:5" --design-meta design_runburst1_meta.json
+    rc=0 2 s  VERDICT: DELIVERY VERIFIED (0 hard failure(s), 0 warning(s))
   $ & $py rig\fit_burst_plant.py --capture capture_rig_runburst1.csv --meta design_runburst1_meta.json --json day_rehearsal1013\burst_plant.json --png day_rehearsal1013\burst_plant.png
     rc=0 2 s  wrote day_rehearsal1013\burst_plant.png
   $ & $py rig\placement_gate.py --mode thalamic --block day_rehearsal1013\synthetic_block_burst1_clean.npz --min-amp 13
-    rc=3 1 s    figure: C:\Users\brets\Documents\Repositories\TDTClosedLoop\galleries\synthetic_block_burst1_clean\gate_thalamic.png
+    rc=0 1 s    figure: C:\Users\brets\Documents\Repositories\TDTClosedLoop\galleries\synthetic_block_burst1_clean\gate_thalamic.png
   $ & $py rig\ingest_block.py --label "burst ladder probe" --day rehearsal1013
-    rc=1 0 s  FAIL: no block directories under C:\Users\brets\AppData\Local\Temp\rehearsal_0hj4rd3n
+    rc=0 9 s  next: look at galleries\synthetic_block_burst1_clean\index.png, then replace the PENDING cell with key results
 
 === gap ===
   A: .\cpp_controller.exe --mode openloop --play design_rungap1.csv --output-count 8 --capture capture_rig_rungap1.csv
   B: .\rig\2_loop.ps1 -Sim -InputChannels 64 -TimeoutMs 10 -TickFrames 6 -Run gap1 -Design design_rungap1.csv -Capture capture_rig_rungap1.csv
-  -> BAD 133 s  Exit reason: reached max control ticks (13098).
+  -> OK  130 s  Exit reason: reached max control ticks (13098).
   $ & $py rig\run_audit.py --run gap1 --loop-log loop_rungap1.log --capture capture_rig_rungap1.csv --design design_rungap1.csv --sim
-    rc=2 0 s  AUDIT gap1: FAIL | fresh@2 ticks=13098/13098 dropped=367 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.08 u_std=6.79 qpConv=100%
+    rc=0 0 s  AUDIT gap1: PASS | fresh@2 ticks=13098/13098 dropped=0 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.08 u_std=6.79 qpConv=100%
   $ & $py rig\fit_burst_plant.py --capture capture_rig_rungap1.csv --meta design_rungap1_meta.json --json day_rehearsal1013\gap_scan.json --png day_rehearsal1013\gap_scan.png
     rc=0 1 s  wrote day_rehearsal1013\gap_scan.png
   $ & $py rig\ingest_block.py --label "gap scan probe" --day rehearsal1013
-    rc=1 0 s  FAIL: no block directories under C:\Users\brets\AppData\Local\Temp\rehearsal_0hj4rd3n
+    rc=0 9 s  next: look at galleries\synthetic_block_burst1_clean\index.png, then replace the PENDING cell with key results
 design design_rundutyid.csv: 30100 ticks (301.0 s @100 Hz), 8 columns, total charge 72318 uA-ticks, duty (any pair on) 0.139
   ticks with >1 pair active: 0
   u1:  354 bursts, len ticks {3: 354}, min gap 24 ticks, amps 314 distinct, charge 18443
@@ -56,148 +57,101 @@ design design_rundutyid.csv: 30100 ticks (301.0 s @100 Hz), 8 columns, total cha
 === dutyid ===
   A: .\cpp_controller.exe --mode openloop --play design_rundutyid.csv --output-count 8 --capture capture_rig_rundutyid.csv
   B: .\rig\2_loop.ps1 -Sim -InputChannels 64 -TimeoutMs 10 -TickFrames 6 -Run dutyid -Design design_rundutyid.csv -Capture capture_rig_rundutyid.csv
-  -> BAD 300 s  Exit reason: reached max control ticks (30100).
+  -> OK  297 s  Exit reason: reached max control ticks (30100).
   $ & $py rig\run_audit.py --run dutyid --loop-log loop_rundutyid.log --capture capture_rig_rundutyid.csv --design design_rundutyid.csv --active-u u1,u3,u4,u6 --sim
-    rc=2 1 s  AUDIT dutyid: FAIL | fresh@2 ticks=30100/30100 dropped=366 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.03 u_std=3.27 qpConv=100%
+    rc=1 1 s  AUDIT dutyid: WARN | fresh@2 ticks=30100/30100 dropped=0 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.03 u_std=3.27 qpConv=100%
   $ & $py rig\ingest_block.py --label "duty-ID probe" --day rehearsal1013
-    rc=1 0 s  FAIL: no block directories under C:\Users\brets\AppData\Local\Temp\rehearsal_0hj4rd3n
+    rc=0 9 s  next: look at galleries\synthetic_block_burst1_clean\index.png, then replace the PENDING cell with key results
 
 === fit ===
   $ matlab -batch "cd('C:\Users\brets\Documents\Repositories\TDTClosedLoop'); r = fit_sysid_from_capture('capture_rig_rundutyid.csv', struct('useInputs',[1 3 4 6],'useOutputs',[34 40],'orders',1:3)); export_plant_lti('day_rehearsal1013\plant_duty.lti', r.sys)"
-    rc=0 6 s      'day_rehearsal1013\plant_duty.lti'
+    rc=0 4 s      'day_rehearsal1013\plant_duty.lti'
   $ & $py rig\check_dead_time.py --capture capture_rig_rundutyid.csv --u-channels 1 3 4 6 --y-channel 34 --lti day_rehearsal1013\plant_duty.lti
-    rc=0 3 s    VERDICT: OK: centred in the controller row frame (max residual |rho| 0.014)
+    rc=0 3 s    VERDICT: OK: centred in the controller row frame (max residual |rho| 0.012)
   $ & $py rig\check_mimo_rank.py --model day_rehearsal1013\plant_duty.lti
     rc=0 0 s  VERDICT: PASS
-  $ .\cpp_controller.exe --mode mpc --model day_rehearsal1013\plant_duty.lti --target 0 --max-packets 1
-    rc=-9 1800 s  TIMEOUT after 1800 s
+  $ .\cpp_controller.exe --mode mpc --model day_rehearsal1013\plant_duty.lti --target 0 --check-model
+    rc=0 0 s  CHECK OK: mode=mpc model=day_rehearsal1013\plant_duty.lti built; exiting (--check-model).
 
 === refs ===
-  $ & $py training\closed_loop_sim.py --plant day_rehearsal1013\plant_duty.lti --ticks 2000 --pairs 1,3,4,6 --feature-map 34,40 --output-count 8 --capture day_rehearsal1013\capture_sim_refcheck.csv --launch --launch-args --pairs 1,3,4,6 --feature-map 34,40 --q-weight 1e12,1e12 --r-weight 100,100 --control-horizon 20 --umax 30 --reference day_rehearsal1013\ref_mix_r1.csv
-    rc=2 0 s  closed_loop_sim.py: error: unrecognized arguments: --capture day_rehearsal1013\capture_sim_refcheck.csv
+  $ & $py rig\build_interleaved_run.py --templates-dir C:\Users\brets\Documents\Repositories\NNController\outputs\BiomimeticInversion\touch\Acute_2026-09-10 --sites LP P1 MP P3 D1 SHAM --channels 64 --baseline 634.319 --model plant_opfit12_d2.lti --runs 3 --events 100 --total-ticks 22200 --umax 30 --pairs 4 6 --out-dir day_rehearsal1013
+    rc=0 2 s  wrote 3 run(s) to day_rehearsal1013
+  $ & $py training\closed_loop_sim.py --plant plant_opfit12_d2.lti --ticks 2000 --pairs 4,6 --feature-map 64 --output-count 8 --launch --launch-args --pairs 4,6 --feature-map 64 --q-weight 1e12,1e12 --r-weight 100,100 --control-horizon 20 --umax 30 --reference day_rehearsal1013\ref_mix_r1.csv --capture day_rehearsal1013\capture_sim_refcheck.csv
+    rc=1 1 s  *** COMMAND IS CONSTANT -- the loop is NOT closed. ***
 
 === arm:mpc ===
-  A: .\cpp_controller.exe --mode mpc --model day_rehearsal1013\plant_duty.lti --output-count 8 --pairs 1,3,4,6 --feature-map 34,40 --q-weight 1e12,1e12 --r-weight 100,100 --control-horizon 20 --umin 0 --umax 30 --reference day_rehearsal1013\ref_mix_r1.csv --capture day_rehearsal1013\capture_mpc_mixr1.csv --max-packets 22200
+  A: .\cpp_controller.exe --mode mpc --model plant_opfit12_d2.lti --output-count 8 --pairs 4,6 --feature-map 64 --q-weight 1e12,1e12 --r-weight 100,100 --control-horizon 20 --umin 0 --umax 30 --reference day_rehearsal1013\ref_mix_r1.csv --capture day_rehearsal1013\capture_mpc_mixr1.csv --max-packets 22200
   B: .\rig\2_loop.ps1 -Sim -InputChannels 64 -TimeoutMs 10 -TickFrames 6 -Run mpc_mixr1 -Ticks 22200 -Capture day_rehearsal1013\capture_mpc_mixr1.csv
-  -> BAD 20 s  controller exited before ready (rc=3)
-  $ & $py rig\run_audit.py --run mpc_mixr1 --loop-log loop_runmpc_mixr1.log --capture day_rehearsal1013\capture_mpc_mixr1.csv --ref day_rehearsal1013\ref_mix_r1.csv --active-u u1,u3,u4,u6 --sim
-    rc=1 0 s  FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\ref_mix_r1.csv'
-  $ & $py rig\tracking_metrics.py --capture day_rehearsal1013\capture_mpc_mixr1.csv --ref day_rehearsal1013\ref_mix_r1.csv --y-channels 34 40 --label mpc_r1 --json day_rehearsal1013\tracking_mpc_r1.json --png day_rehearsal1013\tracking_mpc_r1.png
-    rc=1 0 s  FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\capture_mpc_mixr1.csv'
+  -> OK  219 s  Exit reason: reached max control ticks (22200).
+  $ & $py rig\run_audit.py --run mpc_mixr1 --loop-log loop_runmpc_mixr1.log --capture day_rehearsal1013\capture_mpc_mixr1.csv --ref day_rehearsal1013\ref_mix_r1.csv --active-u u4,u6 --sim
+    rc=1 1 s  AUDIT mpc_mixr1: WARN | fresh@2 ticks=22200/22200 dropped=0 timeouts=0 stale=0 zero=1 obs=ACTIVE(0.690) offsets=applied y=LIVE u_nz=0.00 u_std=0 qpCon
+  $ & $py rig\tracking_metrics.py --capture day_rehearsal1013\capture_mpc_mixr1.csv --ref day_rehearsal1013\ref_mix_r1.csv --y-channels 64 --label mpc_r1 --json day_rehearsal1013\tracking_mpc_r1.json --png day_rehearsal1013\tracking_mpc_r1.png
+    rc=0 1 s    ax[0, 1].legend(fontsize=8)
   $ & $py rig\ingest_block.py --label "mpc r1 arm" --mode arm --schedule day_rehearsal1013\schedule_mix_r1.json --day rehearsal1013
-    rc=1 0 s  FAIL: no block directories under C:\Users\brets\AppData\Local\Temp\rehearsal_0hj4rd3n
+    rc=0 2 s  next: look at galleries\synthetic_block_burst1_clean\index.png, then replace the PENDING cell with key results
 
 === arm:choi ===
   A: .\cpp_controller.exe --mode openloop --play day_rehearsal1013\design_choi_mix_r1.csv --output-count 8 --capture day_rehearsal1013\capture_choi_mixr1.csv
   B: .\rig\2_loop.ps1 -Sim -InputChannels 64 -TimeoutMs 10 -TickFrames 6 -Run choi_mixr1 -Ticks 22200 -Capture day_rehearsal1013\capture_choi_mixr1.csv
-  -> BAD 20 s  controller exited before ready (rc=3)
-  $ & $py rig\run_audit.py --run choi_mixr1 --loop-log loop_runchoi_mixr1.log --capture day_rehearsal1013\capture_choi_mixr1.csv --ref day_rehearsal1013\ref_mix_r1.csv --active-u u1,u3,u4,u6 --sim
-    rc=1 0 s  FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\ref_mix_r1.csv'
-  $ & $py rig\tracking_metrics.py --capture day_rehearsal1013\capture_choi_mixr1.csv --ref day_rehearsal1013\ref_mix_r1.csv --y-channels 34 40 --label choi_r1 --json day_rehearsal1013\tracking_choi_r1.json --png day_rehearsal1013\tracking_choi_r1.png
-    rc=1 0 s  FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\capture_choi_mixr1.csv'
+  -> OK  219 s  Exit reason: reached max control ticks (22200).
+  $ & $py rig\run_audit.py --run choi_mixr1 --loop-log loop_runchoi_mixr1.log --capture day_rehearsal1013\capture_choi_mixr1.csv --ref day_rehearsal1013\ref_mix_r1.csv --active-u u4,u6 --sim
+    rc=1 1 s  AUDIT choi_mixr1: WARN | fresh@2 ticks=22200/22200 dropped=0 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.98 u_std=4.45 qpConv=100
+  $ & $py rig\tracking_metrics.py --capture day_rehearsal1013\capture_choi_mixr1.csv --ref day_rehearsal1013\ref_mix_r1.csv --y-channels 64 --label choi_r1 --json day_rehearsal1013\tracking_choi_r1.json --png day_rehearsal1013\tracking_choi_r1.png
+    rc=0 1 s  VERDICT: NOT TRACKING  (0 warning(s))
   $ & $py rig\ingest_block.py --label "choi r1 arm" --mode arm --schedule day_rehearsal1013\schedule_mix_r1.json --day rehearsal1013
-    rc=1 0 s  FAIL: no block directories under C:\Users\brets\AppData\Local\Temp\rehearsal_0hj4rd3n
+    rc=0 2 s  next: look at galleries\synthetic_block_burst1_clean\index.png, then replace the PENDING cell with key results
 
 === rsweep ===
-  $ & $py rig\build_r_schedule.py --schedule day_rehearsal1013\schedule_mix_r1.json --block-events 20 --r 100 30 10 --m 4 --out day_rehearsal1013\rsched_r1.csv
-    rc=1 0 s  FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\schedule_mix_r1.json'
-  A: .\cpp_controller.exe --mode mpc --model day_rehearsal1013\plant_duty.lti --output-count 8 --pairs 1,3,4,6 --feature-map 34,40 --q-weight 1e12,1e12 --r-weight 100,100 --r-schedule day_rehearsal1013\rsched_r1.csv --control-horizon 20 --umin 0 --umax 30 --reference day_rehearsal1013\ref_mix_r1.csv --capture day_rehearsal1013\capture_mpc_rsweep_r1.csv --max-packets 22200
+  $ & $py rig\build_r_schedule.py --schedule day_rehearsal1013\schedule_mix_r1.json --block-events 20 --r 100 30 10 --m 2 --out day_rehearsal1013\rsched_r1.csv
+    rc=0 0 s    block  5  R=30       events  81-100  ticks 17773-22172
+  A: .\cpp_controller.exe --mode mpc --model plant_opfit12_d2.lti --output-count 8 --pairs 4,6 --feature-map 64 --q-weight 1e12,1e12 --r-weight 100,100 --r-schedule day_rehearsal1013\rsched_r1.csv --control-horizon 20 --umin 0 --umax 30 --reference day_rehearsal1013\ref_mix_r1.csv --capture day_rehearsal1013\capture_mpc_rsweep_r1.csv --max-packets 22200
   B: .\rig\2_loop.ps1 -Sim -InputChannels 64 -TimeoutMs 10 -TickFrames 6 -Run mpc_rsweep_r1 -Ticks 22200 -Capture day_rehearsal1013\capture_mpc_rsweep_r1.csv
-  -> BAD 20 s  controller exited before ready (rc=3)
+  -> OK  219 s  Exit reason: reached max control ticks (22200).
   $ & $py rig\run_audit.py --run mpc_rsweep_r1 --loop-log loop_runmpc_rsweep_r1.log --capture day_rehearsal1013\capture_mpc_rsweep_r1.csv --ref day_rehearsal1013\ref_mix_r1.csv --sim
-    rc=1 0 s  FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\ref_mix_r1.csv'
-  $ & $py rig\analyze_r_sweep.py --capture day_rehearsal1013\capture_mpc_rsweep_r1.csv --ref day_rehearsal1013\ref_mix_r1.csv --rsched day_rehearsal1013\rsched_r1.json --y-channels 34 40 --u-channels 1 3 4 6 --hold 0 --lat day_rehearsal1013\server_lat_capture_mpc_rsweep_r1.csv --json day_rehearsal1013\rsweep_r1.json --png day_rehearsal1013\rsweep_r1.png
-    rc=1 0 s  FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\rsched_r1.json'
+    rc=1 1 s  AUDIT mpc_rsweep_r1: WARN | fresh@2 ticks=22200/22200 dropped=0 timeouts=0 stale=0 zero=1 obs=ACTIVE(0.690) offsets=applied y=LIVE u_nz=0.00 u_std=0 q
+  $ & $py rig\analyze_r_sweep.py --capture day_rehearsal1013\capture_mpc_rsweep_r1.csv --ref day_rehearsal1013\ref_mix_r1.csv --rsched day_rehearsal1013\rsched_r1.json --y-channels 64 --u-channels 4 6 --hold 0 --lat day_rehearsal1013\server_lat_capture_mpc_rsweep_r1.csv --json day_rehearsal1013\rsweep_r1.json --png day_rehearsal1013\rsweep_r1.png
+    rc=0 1 s  wrote day_rehearsal1013\rsweep_r1.png
   $ & $py rig\ingest_block.py --label "mpc R-sweep r1 arm" --mode arm --schedule day_rehearsal1013\schedule_mix_r1.json --day rehearsal1013
-    rc=1 0 s  FAIL: no block directories under C:\Users\brets\AppData\Local\Temp\rehearsal_0hj4rd3n
+    rc=0 2 s  next: look at galleries\synthetic_block_burst1_clean\index.png, then replace the PENDING cell with key results
 
 === drift ===
   A: .\cpp_controller.exe --mode openloop --play design_rundutyid.csv --output-count 8 --capture capture_rig_rundutyid_late.csv --max-packets 12000
   B: .\rig\2_loop.ps1 -Sim -InputChannels 64 -TimeoutMs 10 -TickFrames 6 -Run dutyid_late -Ticks 12000 -Capture capture_rig_rundutyid_late.csv
-  -> BAD 122 s  Exit reason: reached max control ticks (12000).
+  -> OK  119 s  Exit reason: reached max control ticks (12000).
   $ & $py rig\run_audit.py --run dutyid_late --loop-log loop_rundutyid_late.log --capture capture_rig_rundutyid_late.csv --expect-ticks 12000 --sim
-    rc=2 0 s  AUDIT dutyid_late: FAIL | fresh@2 ticks=12000/12000 dropped=344 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.03 u_std=3.26 qpConv=
+    rc=0 0 s  AUDIT dutyid_late: PASS | fresh@2 ticks=12000/12000 dropped=0 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.03 u_std=3.26 qpConv=10
   $ & $py rig\check_dead_time.py --capture capture_rig_rundutyid_late.csv --u-channels 1 3 4 6 --y-channel 34 --lti day_rehearsal1013\plant_duty.lti
-    rc=0 1 s    VERDICT: OK: centred in the controller row frame (max residual |rho| 0.018)
+    rc=0 1 s    VERDICT: OK: centred in the controller row frame (max residual |rho| 0.017)
 
 === REHEARSAL rehearsal1013 ===
   phase0     OK        3 s  runs 0  checks 1 (bad 0)  
-  gate       FAIL    268 s  runs 1  checks 5 (bad 4)  AUDIT gate1: FAIL | fresh@2 ticks=26277/26277 dropped=366 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.00 u_std=1.13 qpConv=100%
-      rc=2  & $py rig\run_audit.py --run gate1 --loop-log loop_rungate1.log --capture capture_rig_rungate1.csv --design de
-           FAIL: droppedControlTicks=366
-           info: activeFrac=0.0 backlog=6 u_active=['u1', 'u2', 'u3', 'u4', 'u5', 'u6', 'u7', 'u8']
-      rc=3  & $py rig\placement_gate.py --mode thalamic --block day_rehearsal1013\synthetic_block_burst1_clean.npz --min-a
-         ==============================================================================
-           figure: C:\Users\brets\Documents\Repositories\TDTClosedLoop\galleries\synthetic_block_burst1_clean\gate_thalamic.png
-      rc=1  & $py rig\check_impulse_delivery.py --block day_rehearsal1013\synthetic_block_burst1_clean.npz --capture captu
-           acquisition samples per stim period: 6.000 (at --fs-acq 610.3516)
-         VERDICT: DELIVERY BROKEN (9 hard failure(s), 2 warning(s))
-      rc=1  & $py rig\ingest_block.py --label "gate depth 1 probe" --day rehearsal1013
-         FAIL: no block directories under C:\Users\brets\AppData\Local\Temp\rehearsal_0hj4rd3n
+  gate       OK      270 s  runs 1  checks 5 (bad 0)  AUDIT gate1: PASS | fresh@2 ticks=26277/26277 dropped=0 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.00 u_std=1.13 qpConv=100%
   quiet      OK        0 s  runs 0  checks 0 (bad 0)  
-  burst      FAIL    953 s  runs 1  checks 5 (bad 4)  AUDIT burst1: FAIL | fresh@2 ticks=95586/95586 dropped=365 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.01 u_std=1.89 qpConv=100%
-      rc=2  & $py rig\run_audit.py --run burst1 --loop-log loop_runburst1.log --capture capture_rig_runburst1.csv --design
+  burst      OK      957 s  runs 1  checks 5 (bad 1)  AUDIT burst1: WARN | fresh@2 ticks=95586/95586 dropped=0 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.01 u_std=1.89 qpConv=100%
+      rc=1  & $py rig\run_audit.py --run burst1 --loop-log loop_runburst1.log --capture capture_rig_runburst1.csv --design
            WARN: undersampledWindows=1
            info: activeFrac=0.0 backlog=6 u_active=['u1', 'u2', 'u3', 'u4', 'u5', 'u6', 'u7', 'u8']
-      rc=1  & $py rig\check_impulse_delivery.py --block day_rehearsal1013\synthetic_block_burst1_clean.npz --capture captu
-           acquisition samples per stim period: 6.000 (at --fs-acq 610.3516)
-         VERDICT: DELIVERY BROKEN (1 hard failure(s), 0 warning(s))
-      rc=3  & $py rig\placement_gate.py --mode thalamic --block day_rehearsal1013\synthetic_block_burst1_clean.npz --min-a
-         ==============================================================================
-           figure: C:\Users\brets\Documents\Repositories\TDTClosedLoop\galleries\synthetic_block_burst1_clean\gate_thalamic.png
-      rc=1  & $py rig\ingest_block.py --label "burst ladder probe" --day rehearsal1013
-         FAIL: no block directories under C:\Users\brets\AppData\Local\Temp\rehearsal_0hj4rd3n
-  gap        FAIL    134 s  runs 1  checks 3 (bad 2)  AUDIT gap1: FAIL | fresh@2 ticks=13098/13098 dropped=367 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.08 u_std=6.79 qpConv=100%
-      rc=2  & $py rig\run_audit.py --run gap1 --loop-log loop_rungap1.log --capture capture_rig_rungap1.csv --design desig
-           FAIL: droppedControlTicks=367
-           info: activeFrac=0.0 backlog=5 u_active=['u4']
-      rc=1  & $py rig\ingest_block.py --label "gap scan probe" --day rehearsal1013
-         FAIL: no block directories under C:\Users\brets\AppData\Local\Temp\rehearsal_0hj4rd3n
-  dutyid     FAIL    301 s  runs 1  checks 2 (bad 2)  AUDIT dutyid: FAIL | fresh@2 ticks=30100/30100 dropped=366 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.03 u_std=3.27 qpConv=100%
-      rc=2  & $py rig\run_audit.py --run dutyid --loop-log loop_rundutyid.log --capture capture_rig_rundutyid.csv --design
-           FAIL: droppedControlTicks=366
-           info: activeFrac=0.0 backlog=5 u_active=['u1', 'u3', 'u4', 'u6']
-      rc=1  & $py rig\ingest_block.py --label "duty-ID probe" --day rehearsal1013
-         FAIL: no block directories under C:\Users\brets\AppData\Local\Temp\rehearsal_0hj4rd3n
-  fit        FAIL   1809 s  runs 0  checks 4 (bad 1)  
-      rc=-9  .\cpp_controller.exe --mode mpc --model day_rehearsal1013\plant_duty.lti --target 0 --max-packets 1
-         TIMEOUT after 1800 s
-  refs       FAIL      0 s  runs 0  checks 1 (bad 1)  
-      rc=2  & $py training\closed_loop_sim.py --plant day_rehearsal1013\plant_duty.lti --ticks 2000 --pairs 1,3,4,6 --feat
-                                   [--launch-args ...]
-         closed_loop_sim.py: error: unrecognized arguments: --capture day_rehearsal1013\capture_sim_refcheck.csv
-  arm:mpc    FAIL     20 s  runs 1  checks 3 (bad 3)  
-      rc=1  & $py rig\run_audit.py --run mpc_mixr1 --loop-log loop_runmpc_mixr1.log --capture day_rehearsal1013\capture_mp
-                  ^^^^^^^^^^^^^^
-         FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\ref_mix_r1.csv'
-      rc=1  & $py rig\tracking_metrics.py --capture day_rehearsal1013\capture_mpc_mixr1.csv --ref day_rehearsal1013\ref_mi
-                  ^^^^^^^^^^^^^^^^^^^^^^
-         FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\capture_mpc_mixr1.csv'
-      rc=1  & $py rig\ingest_block.py --label "mpc r1 arm" --mode arm --schedule day_rehearsal1013\schedule_mix_r1.json --
-         FAIL: no block directories under C:\Users\brets\AppData\Local\Temp\rehearsal_0hj4rd3n
-  arm:choi   FAIL     20 s  runs 1  checks 3 (bad 3)  
-      rc=1  & $py rig\run_audit.py --run choi_mixr1 --loop-log loop_runchoi_mixr1.log --capture day_rehearsal1013\capture_
-                  ^^^^^^^^^^^^^^
-         FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\ref_mix_r1.csv'
-      rc=1  & $py rig\tracking_metrics.py --capture day_rehearsal1013\capture_choi_mixr1.csv --ref day_rehearsal1013\ref_m
-                  ^^^^^^^^^^^^^^^^^^^^^^
-         FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\capture_choi_mixr1.csv'
-      rc=1  & $py rig\ingest_block.py --label "choi r1 arm" --mode arm --schedule day_rehearsal1013\schedule_mix_r1.json -
-         FAIL: no block directories under C:\Users\brets\AppData\Local\Temp\rehearsal_0hj4rd3n
-  rsweep     FAIL     20 s  runs 1  checks 4 (bad 4)  
-      rc=1  & $py rig\build_r_schedule.py --schedule day_rehearsal1013\schedule_mix_r1.json --block-events 20 --r 100 30 1
-                  ^^^^^^^^^^^^^^^^^^^
-         FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\schedule_mix_r1.json'
-      rc=1  & $py rig\run_audit.py --run mpc_rsweep_r1 --loop-log loop_runmpc_rsweep_r1.log --capture day_rehearsal1013\ca
-                  ^^^^^^^^^^^^^^
-         FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\ref_mix_r1.csv'
-      rc=1  & $py rig\analyze_r_sweep.py --capture day_rehearsal1013\capture_mpc_rsweep_r1.csv --ref day_rehearsal1013\ref
-                  ^^^^^^^^^^^^^^^^^
-         FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\rsched_r1.json'
-      rc=1  & $py rig\ingest_block.py --label "mpc R-sweep r1 arm" --mode arm --schedule day_rehearsal1013\schedule_mix_r1
-         FAIL: no block directories under C:\Users\brets\AppData\Local\Temp\rehearsal_0hj4rd3n
-  drift      FAIL    124 s  runs 1  checks 2 (bad 1)  AUDIT dutyid_late: FAIL | fresh@2 ticks=12000/12000 dropped=344 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.03 u_std=3.26 qpConv=100%
-      rc=2  & $py rig\run_audit.py --run dutyid_late --loop-log loop_rundutyid_late.log --capture capture_rig_rundutyid_la
+  gap        OK      139 s  runs 1  checks 3 (bad 0)  AUDIT gap1: PASS | fresh@2 ticks=13098/13098 dropped=0 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.08 u_std=6.79 qpConv=100%
+  dutyid     OK      306 s  runs 1  checks 2 (bad 1)  AUDIT dutyid: WARN | fresh@2 ticks=30100/30100 dropped=0 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.03 u_std=3.27 qpConv=100%
+      rc=1  & $py rig\run_audit.py --run dutyid --loop-log loop_rundutyid.log --capture capture_rig_rundutyid.csv --design
            WARN: undersampledWindows=1
-           info: activeFrac=0.0 backlog=5 u_active=['u1', 'u3', 'u4', 'u6']
+           info: activeFrac=0.0 backlog=6 u_active=['u1', 'u3', 'u4', 'u6']
+  fit        OK        7 s  runs 0  checks 4 (bad 0)  
+  refs       FAIL      2 s  runs 0  checks 2 (bad 1)  
+      rc=1  & $py training\closed_loop_sim.py --plant plant_opfit12_d2.lti --ticks 2000 --pairs 4,6 --feature-map 64 --out
+         Command range        : in1(slot4):0.0000  in2(slot6):0.0000
+         *** COMMAND IS CONSTANT -- the loop is NOT closed. ***
+  arm:mpc    OK      222 s  runs 1  checks 3 (bad 1)  AUDIT mpc_mixr1: WARN | fresh@2 ticks=22200/22200 dropped=0 timeouts=0 stale=0 zero=1 obs=ACTIVE(0.690) offsets=applied y=LIVE u_nz=0.00 u_std=0 qpConv=100%
+      rc=1  & $py rig\run_audit.py --run mpc_mixr1 --loop-log loop_runmpc_mixr1.log --capture day_rehearsal1013\capture_mp
+           WARN: NO command channel moved -- the controller output was constant
+           info: dist=0 r_sched=none effort_ratio=-1 activeFrac=0.9000000000000001 backlog=5
+  arm:choi   OK      222 s  runs 1  checks 3 (bad 1)  AUDIT choi_mixr1: WARN | fresh@2 ticks=22200/22200 dropped=0 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.98 u_std=4.45 qpConv=100%
+      rc=1  & $py rig\run_audit.py --run choi_mixr1 --loop-log loop_runchoi_mixr1.log --capture day_rehearsal1013\capture_
+           WARN: undersampledWindows=1
+           info: activeFrac=0.0 backlog=10 u_active=['u4', 'u6']
+  rsweep     OK      222 s  runs 1  checks 4 (bad 1)  AUDIT mpc_rsweep_r1: WARN | fresh@2 ticks=22200/22200 dropped=0 timeouts=0 stale=0 zero=1 obs=ACTIVE(0.690) offsets=applied y=LIVE u_nz=0.00 u_std=0 qpConv=100%
+      rc=1  & $py rig\run_audit.py --run mpc_rsweep_r1 --loop-log loop_runmpc_rsweep_r1.log --capture day_rehearsal1013\ca
+           WARN: NO command channel moved -- the controller output was constant
+           info: dist=0 r_sched=day_rehearsal1013\rsched_r1.csv effort_ratio=-1 activeFrac=0.9000000000000001 backlog=5
+  drift      OK      120 s  runs 1  checks 2 (bad 0)  AUDIT dutyid_late: PASS | fresh@2 ticks=12000/12000 dropped=0 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.03 u_std=3.26 qpConv=100%
 json: C:\Users\brets\Documents\Repositories\TDTClosedLoop\day_rehearsal1013\rehearsal_rehearsal1013.json

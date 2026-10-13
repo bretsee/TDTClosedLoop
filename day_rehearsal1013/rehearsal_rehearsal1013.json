@@ -1,7 +1,7 @@
 {
  "day": "rehearsal1013",
- "started": "2026-10-13 00:54:22",
- "scratch": "C:\\Users\\brets\\AppData\\Local\\Temp\\rehearsal_0hj4rd3n",
+ "started": "2026-10-13 02:33:25",
+ "scratch": "C:\\Users\\brets\\AppData\\Local\\Temp\\rehearsal__ts2r44f",
  "phases": [
   {
    "phase": "phase0",
@@ -14,9 +14,9 @@
      "secs": 3.3,
      "tail": [
       "  Sleep on AC: never (good)",
-      "  Free space on C:\\: 268.4 GB",
+      "  Free space on C:\\: 268.1 GB",
       "  Running 300-tick smoke test (no hardware, ~5 s, 64 ch, sim-fs 610.3516)...",
-      "  Summary: packets=300 controlTicks=300 droppedControlTicks=0 finalBuffered=1831/65536 nominalWindowSamples=6 minWindowSamples=6 undersampledWindows=0 channelMode=exact(in=64 card=64)",
+      "  Summary: packets=300 controlTicks=300 droppedControlTicks=0 finalBuffered=1830/65536 nominalWindowSamples=6 minWindowSamples=5 undersampledWindows=1 channelMode=exact(in=64 card=64)",
       "PASS: droppedControlTicks=0. Toolchain healthy.",
       "This shell is now configured. Next: .\\rig\\1_server.ps1 (in a SECOND terminal)"
      ]
@@ -40,21 +40,21 @@
      "A": ".\\cpp_controller.exe --mode openloop --play design_rungate.csv --output-count 8 --capture capture_rig_rungate1.csv",
      "B": ".\\rig\\2_loop.ps1 -Sim -InputChannels 64 -TimeoutMs 10 -TickFrames 6 -Run gate1 -Design design_rungate.csv -Capture capture_rig_rungate1.csv",
      "run": "gate1",
-     "ok": false,
-     "secs": 262.7,
+     "ok": true,
+     "secs": 259.1,
      "loop_summary": [
       "Exit reason: reached max control ticks (26277).",
-      "Summary: packets=26277 controlTicks=26277 droppedControlTicks=366 finalBuffered=65536/65536 nominalWindowSamples=6 minWindowSamples=6 undersampledWindows=0 channelMode=exact(in=64 card=64)",
+      "Summary: packets=26277 controlTicks=26277 droppedControlTicks=0 finalBuffered=65536/65536 nominalWindowSamples=6 minWindowSamples=6 undersampledWindows=0 channelMode=exact(in=64 card=64)",
       "Localhost summary: submitted=26277 replies=26276 failures=0 timeouts=0 staleDropped=0 skippedWhileBusy=0 freshTicks=26276 heldTicks=0 zeroTicks=1 freshReplyTransitions=26276 policyTransitions=2 inFlight=true lastReplySeq=26276",
       "Exit reason: reached max control ticks (26277).",
-      "Summary: packets=26277 controlTicks=26277 droppedControlTicks=366 finalBuffered=65536/65536 nominalWindowSamples=6 ",
+      "Summary: packets=26277 controlTicks=26277 droppedControlTicks=0 finalBuffered=65536/65536 nominalWindowSamples=6 ",
       "Localhost summary: submitted=26277 replies=26276 failures=0 timeouts=0 staleDropped=0 skippedWhileBusy=0 "
      ],
      "controller": "controller exit rc=0",
      "server_log": "C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\day_rehearsal1013\\server_gate1.log",
      "fatal": [],
      "liveness": [
-      "y-liveness: LIVE     capture_rig_rungate1.csv  rows 2674  dead ch 0/64  median|y| 697  banks ch1-32=7e+02 ch33-64=7e+02"
+      "y-liveness: LIVE     capture_rig_rungate1.csv  rows 3034  dead ch 0/64  median|y| 696  banks ch1-32=7e+02 ch33-64=7e+02"
      ],
      "b_rc": 0
     }
@@ -62,39 +62,38 @@
    "checks": [
     {
      "cmd": "& $py rig\\run_audit.py --run gate1 --loop-log loop_rungate1.log --capture capture_rig_rungate1.csv --design design_rungate.csv --sim",
-     "rc": 2,
+     "rc": 0,
      "secs": 0.6,
      "tail": [
-      "AUDIT gate1: FAIL | fresh@2 ticks=26277/26277 dropped=366 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.00 u_std=1.13 qpConv=100%",
-      "  FAIL: droppedControlTicks=366",
-      "  info: activeFrac=0.0 backlog=6 u_active=['u1', 'u2', 'u3', 'u4', 'u5', 'u6', 'u7', 'u8']"
+      "AUDIT gate1: PASS | fresh@2 ticks=26277/26277 dropped=0 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.00 u_std=1.13 qpConv=100%",
+      "  info: activeFrac=0.0 backlog=5 u_active=['u1', 'u2', 'u3', 'u4', 'u5', 'u6', 'u7', 'u8']"
      ],
-     "audit": "AUDIT gate1: FAIL | fresh@2 ticks=26277/26277 dropped=366 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.00 u_std=1.13 qpConv=100%"
+     "audit": "AUDIT gate1: PASS | fresh@2 ticks=26277/26277 dropped=0 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.00 u_std=1.13 qpConv=100%"
     },
     {
-     "cmd": "& $py rig\\placement_gate.py --mode thalamic --block day_rehearsal1013\\synthetic_block_burst1_clean.npz --min-amp 13",
-     "rc": 3,
-     "secs": 1.2,
+     "cmd": "& $py rig\\placement_gate.py --mode thalamic --block day_rehearsal1013\\synthetic_block_gate_clean.npz --min-amp 13",
+     "rc": 0,
+     "secs": 1.5,
      "tail": [
-      "     7  8.0  SILENT       0.6  ch43        +0    16.4        -   45",
-      "     8  8.0  SILENT       0.4  ch15        -0     8.2        -   45",
-      "  responsive 0, weak 0, silent [1, 2, 3, 4, 5, 6, 7, 8], footprint eff rank 0 (sv )",
-      "  ADJUST: no pair evokes cortex at >= 13 uA -> stim array not coupled to the recorded S1 (check current flow via artifact; if present, reposition: AP/ML, not depth alone); short-tip pairs [1, 2, 3] silent, 8 mm pairs [4, 5, 6, 7, 8] silent",
+      "     6  8.0  RESPONSIVE  79.1  ch34       +20    24.6       13   84",
+      "     7  8.0  RESPONSIVE  64.5  ch19       +16    22.9       13   84",
+      "     8  8.0  RESPONSIVE  82.8  ch33       +10    24.6       13   84",
+      "  responsive 8, weak 0, silent [], footprint eff rank 3 (sv 1.00, 0.22, 0.12, 0.00)",
       "==============================================================================",
-      "  figure: C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\galleries\\synthetic_block_burst1_clean\\gate_thalamic.png"
+      "  figure: C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\galleries\\synthetic_block_gate_clean\\gate_thalamic.png"
      ]
     },
     {
-     "cmd": "& $py rig\\check_impulse_delivery.py --block day_rehearsal1013\\synthetic_block_burst1_clean.npz --capture capture_rig_rungate1.csv --amps 13 18 25 --pairs \"16:12,15:11,14:10,13:9,4:8,3:7,2:6,1:5\" --design-meta design_rungate_meta.json   # wire gate re-bank",
-     "rc": 1,
-     "secs": 2.2,
+     "cmd": "& $py rig\\check_impulse_delivery.py --block day_rehearsal1013\\synthetic_block_gate_clean.npz --capture day_rehearsal1013\\synthetic_block_gate_clean_capture.csv --amps 13 18 25 --pairs \"16:12,15:11,14:10,13:9,4:8,3:7,2:6,1:5\" --design-meta design_rungate_meta.json   # wire gate re-bank",
+     "rc": 0,
+     "secs": 2.1,
      "tail": [
-      "  word 7 -> pair 7 (ch2,ch6): inversion EXACT, attribution OK (focality 57x)",
-      "  word 8 -> pair 8 (ch1,ch5): inversion EXACT, attribution OK (focality 47x)",
+      "  word 7 -> pair 7 (ch2,ch6): inversion EXACT, attribution OK (focality 591x)",
+      "  word 8 -> pair 8 (ch1,ch5): inversion EXACT, attribution OK (focality 590x)",
       "  PAIR MAPPING CONFIRMED: word k -> the --pairs table, exact inversion",
       "Plse carrier: 101.725 Hz (24000 pulses; base/100 = 244.141, base/240 = 101.725)",
       "  acquisition samples per stim period: 6.000 (at --fs-acq 610.3516)",
-      "VERDICT: DELIVERY BROKEN (9 hard failure(s), 2 warning(s))"
+      "VERDICT: DELIVERY VERIFIED (0 hard failure(s), 0 warning(s))"
      ]
     },
     {
@@ -103,26 +102,31 @@
      "secs": 1.0,
      "tail": [
       "      onset: NONE above null (channel did not respond at |rho| > thr)",
-      "  u8 [pulse (90 trials)]: null thr 4.569; |profile| by lag 0..8:",
-      "      0:-0.753  1:+0.677  2:+1.39  3:+0.706  4:-1.53  5:-0.958  6:+0.729  7:+1.39  8:+0.861",
+      "  u8 [pulse (90 trials)]: null thr 4.456; |profile| by lag 0..8:",
+      "      0:-0.616  1:+0.424  2:+1.52  3:+0.106  4:-1.76  5:-0.71  6:+0.312  7:+1.1  8:+0.438",
       "      onset: NONE above null (channel did not respond at |rho| > thr)",
-      "Fastest onset 4 tick(s) => recommended inputDelayTicks = 3 (nk supplies one tick; with delayStates=true the export then has dead time 4).",
+      "Fastest onset 14 tick(s) => recommended inputDelayTicks = 13 (nk supplies one tick; with delayStates=true the export then has dead time 14).",
       "wrote day_rehearsal1013\\dead_time_gate1.json"
      ]
     },
     {
      "cmd": "& $py rig\\ingest_block.py --label \"gate depth 1 probe\" --day rehearsal1013",
-     "rc": 1,
-     "secs": 0.1,
+     "rc": 0,
+     "secs": 5.5,
      "tail": [
-      "FAIL: no block directories under C:\\Users\\brets\\AppData\\Local\\Temp\\rehearsal_0hj4rd3n"
+      "pair8_amp25     n  27   peak    +44.2 uV @  24.6 ms   best ch 56   split-half 0.994",
+      "wrote:   C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\galleries\\synthetic_block_gate_clean  (24 group PNG pairs + index.png + stats.json)",
+      "created ledger C:\\Users\\brets\\AppData\\Local\\Temp\\rehearsal__ts2r44f\\BLOCK_LEDGER_rehearsal1013.md",
+      "ledger:  C:\\Users\\brets\\AppData\\Local\\Temp\\rehearsal__ts2r44f\\BLOCK_LEDGER_rehearsal1013.md",
+      "appended row 1: | 1 | `synthetic_block_gate_clean` | gate depth 1 probe | PENDING: `galleries\\synthetic_block_gate_clean\\` |",
+      "next: look at galleries\\synthetic_block_gate_clean\\index.png, then replace the PENDING cell with key results"
      ]
     }
    ],
    "skipped": [],
-   "audit": "AUDIT gate1: FAIL | fresh@2 ticks=26277/26277 dropped=366 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.00 u_std=1.13 qpConv=100%",
-   "secs": 267.8,
-   "ok": false
+   "audit": "AUDIT gate1: PASS | fresh@2 ticks=26277/26277 dropped=0 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.00 u_std=1.13 qpConv=100%",
+   "secs": 269.9,
+   "ok": true
   },
   {
    "phase": "quiet",
@@ -143,21 +147,21 @@
      "A": ".\\cpp_controller.exe --mode openloop --play design_runburst1.csv --output-count 8 --capture capture_rig_runburst1.csv",
      "B": ".\\rig\\2_loop.ps1 -Sim -InputChannels 64 -TimeoutMs 10 -TickFrames 6 -Run burst1 -Design design_runburst1.csv -Capture capture_rig_runburst1.csv",
      "run": "burst1",
-     "ok": false,
-     "secs": 944.1,
+     "ok": true,
+     "secs": 940.5,
      "loop_summary": [
       "Exit reason: reached max control ticks (95586).",
-      "Summary: packets=95586 controlTicks=95586 droppedControlTicks=365 finalBuffered=65536/65536 nominalWindowSamples=6 minWindowSamples=5 undersampledWindows=1 channelMode=exact(in=64 card=64)",
+      "Summary: packets=95586 controlTicks=95586 droppedControlTicks=0 finalBuffered=65536/65536 nominalWindowSamples=6 minWindowSamples=5 undersampledWindows=1 channelMode=exact(in=64 card=64)",
       "Localhost summary: submitted=95586 replies=95585 failures=0 timeouts=0 staleDropped=0 skippedWhileBusy=0 freshTicks=95585 heldTicks=0 zeroTicks=1 freshReplyTransitions=95585 policyTransitions=2 inFlight=true lastReplySeq=95585",
       "Exit reason: reached max control ticks (95586).",
-      "Summary: packets=95586 controlTicks=95586 droppedControlTicks=365 finalBuffered=65536/65536 nominalWindowSamples=6 ",
+      "Summary: packets=95586 controlTicks=95586 droppedControlTicks=0 finalBuffered=65536/65536 nominalWindowSamples=6 ",
       "Localhost summary: submitted=95586 replies=95585 failures=0 timeouts=0 staleDropped=0 skippedWhileBusy=0 "
      ],
      "controller": "controller exit rc=0",
      "server_log": "C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\day_rehearsal1013\\server_burst1.log",
      "fatal": [],
      "liveness": [
-      "y-liveness: LIVE     capture_rig_runburst1.csv  rows 2675  dead ch 0/64  median|y| 696  banks ch1-32=7e+02 ch33-64=7e+02"
+      "y-liveness: LIVE     capture_rig_runburst1.csv  rows 3034  dead ch 0/64  median|y| 696  banks ch1-32=7e+02 ch33-64=7e+02"
      ],
      "b_rc": 0
     }
@@ -165,27 +169,26 @@
    "checks": [
     {
      "cmd": "& $py rig\\run_audit.py --run burst1 --loop-log loop_runburst1.log --capture capture_rig_runburst1.csv --design design_runburst1.csv --sim",
-     "rc": 2,
+     "rc": 1,
      "secs": 2.3,
      "tail": [
-      "AUDIT burst1: FAIL | fresh@2 ticks=95586/95586 dropped=365 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.01 u_std=1.89 qpConv=100%",
-      "  FAIL: droppedControlTicks=365",
+      "AUDIT burst1: WARN | fresh@2 ticks=95586/95586 dropped=0 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.01 u_std=1.89 qpConv=100%",
       "  WARN: undersampledWindows=1",
       "  info: activeFrac=0.0 backlog=6 u_active=['u1', 'u2', 'u3', 'u4', 'u5', 'u6', 'u7', 'u8']"
      ],
-     "audit": "AUDIT burst1: FAIL | fresh@2 ticks=95586/95586 dropped=365 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.01 u_std=1.89 qpConv=100%"
+     "audit": "AUDIT burst1: WARN | fresh@2 ticks=95586/95586 dropped=0 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.01 u_std=1.89 qpConv=100%"
     },
     {
-     "cmd": "& $py rig\\check_impulse_delivery.py --block day_rehearsal1013\\synthetic_block_burst1_clean.npz --capture capture_rig_runburst1.csv --amps 6 9 13 18 25 --pairs \"16:12,15:11,14:10,13:9,4:8,3:7,2:6,1:5\" --design-meta design_runburst1_meta.json",
-     "rc": 1,
-     "secs": 3.3,
+     "cmd": "& $py rig\\check_impulse_delivery.py --block day_rehearsal1013\\synthetic_block_burst1_clean.npz --capture day_rehearsal1013\\synthetic_block_burst1_clean_capture.csv --amps 6 9 13 18 25 --pairs \"16:12,15:11,14:10,13:9,4:8,3:7,2:6,1:5\" --design-meta design_runburst1_meta.json",
+     "rc": 0,
+     "secs": 2.1,
      "tail": [
       "  word 7 -> pair 7 (ch2,ch6): inversion EXACT, attribution OK (focality 57x)",
       "  word 8 -> pair 8 (ch1,ch5): inversion EXACT, attribution OK (focality 47x)",
       "  PAIR MAPPING CONFIRMED: word k -> the --pairs table, exact inversion",
       "Plse carrier: 101.725 Hz (24000 pulses; base/100 = 244.141, base/240 = 101.725)",
       "  acquisition samples per stim period: 6.000 (at --fs-acq 610.3516)",
-      "VERDICT: DELIVERY BROKEN (1 hard failure(s), 0 warning(s))"
+      "VERDICT: DELIVERY VERIFIED (0 hard failure(s), 0 warning(s))"
      ]
     },
     {
@@ -193,40 +196,45 @@
      "rc": 0,
      "secs": 1.6,
      "tail": [
-      "    pair 7: B=1 -8.42  B=3 -18.8  B=10 -9.15",
-      "    pair 8: B=1 -15.4  B=3 10.9  B=10 -14.8",
-      "  per-pulse efficacy (gain(B) / (B*gain(1))), mean over pairs: B=1 1.00  B=3 -0.20  B=10 0.63",
-      "  footprint eff-rank per B: B=1 rank 3  B=3 rank 4  B=10 rank 2",
+      "    pair 7: B=1 -6.89  B=3 -15.5  B=10 -9.93",
+      "    pair 8: B=1 -12.4  B=3 4.46  B=10 -0.954",
+      "  per-pulse efficacy (gain(B) / (B*gain(1))), mean over pairs: B=1 1.00  B=3 -0.17  B=10 0.98",
+      "  footprint eff-rank per B: B=1 rank 3  B=3 rank 3  B=10 rank 3",
       "wrote day_rehearsal1013\\burst_plant.json",
       "wrote day_rehearsal1013\\burst_plant.png"
      ]
     },
     {
      "cmd": "& $py rig\\placement_gate.py --mode thalamic --block day_rehearsal1013\\synthetic_block_burst1_clean.npz --min-amp 13      # knees per pair",
-     "rc": 3,
+     "rc": 0,
      "secs": 1.2,
      "tail": [
-      "     7  8.0  SILENT       0.6  ch43        +0    16.4        -   45",
-      "     8  8.0  SILENT       0.4  ch15        -0     8.2        -   45",
-      "  responsive 0, weak 0, silent [1, 2, 3, 4, 5, 6, 7, 8], footprint eff rank 0 (sv )",
-      "  ADJUST: no pair evokes cortex at >= 13 uA -> stim array not coupled to the recorded S1 (check current flow via artifact; if present, reposition: AP/ML, not depth alone); short-tip pairs [1, 2, 3] silent, 8 mm pairs [4, 5, 6, 7, 8] silent",
+      "     6  8.0  RESPONSIVE  49.5  ch34       +19    27.9        6   44",
+      "     7  8.0  RESPONSIVE  49.6  ch32       +21    26.2        6   45",
+      "     8  8.0  RESPONSIVE  52.5  ch39       +19    19.7        6   45",
+      "  responsive 8, weak 0, silent [], footprint eff rank 3 (sv 1.00, 0.22, 0.12, 0.01)",
       "==============================================================================",
       "  figure: C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\galleries\\synthetic_block_burst1_clean\\gate_thalamic.png"
      ]
     },
     {
      "cmd": "& $py rig\\ingest_block.py --label \"burst ladder probe\" --day rehearsal1013",
-     "rc": 1,
-     "secs": 0.1,
+     "rc": 0,
+     "secs": 8.8,
      "tail": [
-      "FAIL: no block directories under C:\\Users\\brets\\AppData\\Local\\Temp\\rehearsal_0hj4rd3n"
+      "pair8_amp18     n  12   peak    +36.1 uV @  36.0 ms   best ch 56   split-half 0.985",
+      "pair8_amp25     n  16   peak    +43.1 uV @  27.9 ms   best ch 56   split-half 0.968",
+      "wrote:   C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\galleries\\synthetic_block_burst1_clean  (40 group PNG pairs + index.png + stats.json)",
+      "ledger:  C:\\Users\\brets\\AppData\\Local\\Temp\\rehearsal__ts2r44f\\BLOCK_LEDGER_rehearsal1013.md",
+      "appended row 2: | 2 | `synthetic_block_burst1_clean` | burst ladder probe | PENDING: `galleries\\synthetic_block_burst1_clean\\` |",
+      "next: look at galleries\\synthetic_block_burst1_clean\\index.png, then replace the PENDING cell with key results"
      ]
     }
    ],
    "skipped": [],
-   "audit": "AUDIT burst1: FAIL | fresh@2 ticks=95586/95586 dropped=365 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.01 u_std=1.89 qpConv=100%",
-   "secs": 952.6,
-   "ok": false
+   "audit": "AUDIT burst1: WARN | fresh@2 ticks=95586/95586 dropped=0 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.01 u_std=1.89 qpConv=100%",
+   "secs": 956.6,
+   "ok": true
   },
   {
    "phase": "gap",
@@ -236,21 +244,21 @@
      "A": ".\\cpp_controller.exe --mode openloop --play design_rungap1.csv --output-count 8 --capture capture_rig_rungap1.csv",
      "B": ".\\rig\\2_loop.ps1 -Sim -InputChannels 64 -TimeoutMs 10 -TickFrames 6 -Run gap1 -Design design_rungap1.csv -Capture capture_rig_rungap1.csv",
      "run": "gap1",
-     "ok": false,
-     "secs": 133.2,
+     "ok": true,
+     "secs": 129.6,
      "loop_summary": [
       "Exit reason: reached max control ticks (13098).",
-      "Summary: packets=13098 controlTicks=13098 droppedControlTicks=367 finalBuffered=65536/65536 nominalWindowSamples=6 minWindowSamples=6 undersampledWindows=0 channelMode=exact(in=64 card=64)",
+      "Summary: packets=13098 controlTicks=13098 droppedControlTicks=0 finalBuffered=65536/65536 nominalWindowSamples=6 minWindowSamples=6 undersampledWindows=0 channelMode=exact(in=64 card=64)",
       "Localhost summary: submitted=13098 replies=13097 failures=0 timeouts=0 staleDropped=0 skippedWhileBusy=0 freshTicks=13097 heldTicks=0 zeroTicks=1 freshReplyTransitions=13097 policyTransitions=2 inFlight=true lastReplySeq=13097",
       "Exit reason: reached max control ticks (13098).",
-      "Summary: packets=13098 controlTicks=13098 droppedControlTicks=367 finalBuffered=65536/65536 nominalWindowSamples=6 ",
+      "Summary: packets=13098 controlTicks=13098 droppedControlTicks=0 finalBuffered=65536/65536 nominalWindowSamples=6 ",
       "Localhost summary: submitted=13098 replies=13097 failures=0 timeouts=0 staleDropped=0 skippedWhileBusy=0 "
      ],
      "controller": "controller exit rc=0",
      "server_log": "C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\day_rehearsal1013\\server_gap1.log",
      "fatal": [],
      "liveness": [
-      "y-liveness: LIVE     capture_rig_rungap1.csv  rows 2674  dead ch 0/64  median|y| 696  banks ch1-32=7e+02 ch33-64=7e+02"
+      "y-liveness: LIVE     capture_rig_rungap1.csv  rows 3034  dead ch 0/64  median|y| 696  banks ch1-32=7e+02 ch33-64=7e+02"
      ],
      "b_rc": 0
     }
@@ -258,41 +266,45 @@
    "checks": [
     {
      "cmd": "& $py rig\\run_audit.py --run gap1 --loop-log loop_rungap1.log --capture capture_rig_rungap1.csv --design design_rungap1.csv --sim",
-     "rc": 2,
+     "rc": 0,
      "secs": 0.4,
      "tail": [
-      "AUDIT gap1: FAIL | fresh@2 ticks=13098/13098 dropped=367 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.08 u_std=6.79 qpConv=100%",
-      "  FAIL: droppedControlTicks=367",
+      "AUDIT gap1: PASS | fresh@2 ticks=13098/13098 dropped=0 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.08 u_std=6.79 qpConv=100%",
       "  info: activeFrac=0.0 backlog=5 u_active=['u4']"
      ],
-     "audit": "AUDIT gap1: FAIL | fresh@2 ticks=13098/13098 dropped=367 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.08 u_std=6.79 qpConv=100%"
+     "audit": "AUDIT gap1: PASS | fresh@2 ticks=13098/13098 dropped=0 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.08 u_std=6.79 qpConv=100%"
     },
     {
      "cmd": "& $py rig\\fit_burst_plant.py --capture capture_rig_rungap1.csv --meta design_rungap1_meta.json --json day_rehearsal1013\\gap_scan.json --png day_rehearsal1013\\gap_scan.png   # operating gap = first ratio >= 0.8",
      "rc": 0,
      "secs": 0.6,
      "tail": [
-      "  gap  30 ticks: test/cond ratio 1.003  (n 25)",
-      "  gap  50 ticks: test/cond ratio -1.010  (n 25)",
-      "  gap 100 ticks: test/cond ratio 1.556  (n 25)",
-      "  OPERATING GAP (first ratio >= 0.80): 2 ticks",
+      "  gap  30 ticks: test/cond ratio 1.755  (n 25)",
+      "  gap  50 ticks: test/cond ratio -1.129  (n 25)",
+      "  gap 100 ticks: test/cond ratio 1.054  (n 25)",
+      "  OPERATING GAP (first ratio >= 0.80): 30 ticks",
       "wrote day_rehearsal1013\\gap_scan.json",
       "wrote day_rehearsal1013\\gap_scan.png"
      ]
     },
     {
      "cmd": "& $py rig\\ingest_block.py --label \"gap scan probe\" --day rehearsal1013",
-     "rc": 1,
-     "secs": 0.1,
+     "rc": 0,
+     "secs": 8.7,
      "tail": [
-      "FAIL: no block directories under C:\\Users\\brets\\AppData\\Local\\Temp\\rehearsal_0hj4rd3n"
+      "pair8_amp18     n  12   peak    +36.1 uV @  36.0 ms   best ch 56   split-half 0.985",
+      "pair8_amp25     n  16   peak    +43.1 uV @  27.9 ms   best ch 56   split-half 0.968",
+      "wrote:   C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\galleries\\synthetic_block_burst1_clean  (40 group PNG pairs + index.png + stats.json)",
+      "ledger:  C:\\Users\\brets\\AppData\\Local\\Temp\\rehearsal__ts2r44f\\BLOCK_LEDGER_rehearsal1013.md",
+      "appended row 3: | 3 | `synthetic_block_burst1_clean` | gap scan probe | PENDING: `galleries\\synthetic_block_burst1_clean\\` |",
+      "next: look at galleries\\synthetic_block_burst1_clean\\index.png, then replace the PENDING cell with key results"
      ]
     }
    ],
    "skipped": [],
-   "audit": "AUDIT gap1: FAIL | fresh@2 ticks=13098/13098 dropped=367 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.08 u_std=6.79 qpConv=100%",
-   "secs": 134.2,
-   "ok": false
+   "audit": "AUDIT gap1: PASS | fresh@2 ticks=13098/13098 dropped=0 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.08 u_std=6.79 qpConv=100%",
+   "secs": 139.2,
+   "ok": true
   },
   {
    "phase": "dutyid",
@@ -302,21 +314,21 @@
      "A": ".\\cpp_controller.exe --mode openloop --play design_rundutyid.csv --output-count 8 --capture capture_rig_rundutyid.csv",
      "B": ".\\rig\\2_loop.ps1 -Sim -InputChannels 64 -TimeoutMs 10 -TickFrames 6 -Run dutyid -Design design_rundutyid.csv -Capture capture_rig_rundutyid.csv",
      "run": "dutyid",
-     "ok": false,
-     "secs": 300.3,
+     "ok": true,
+     "secs": 296.7,
      "loop_summary": [
       "Exit reason: reached max control ticks (30100).",
-      "Summary: packets=30100 controlTicks=30100 droppedControlTicks=366 finalBuffered=65536/65536 nominalWindowSamples=6 minWindowSamples=6 undersampledWindows=0 channelMode=exact(in=64 card=64)",
+      "Summary: packets=30100 controlTicks=30100 droppedControlTicks=0 finalBuffered=65536/65536 nominalWindowSamples=6 minWindowSamples=5 undersampledWindows=1 channelMode=exact(in=64 card=64)",
       "Localhost summary: submitted=30100 replies=30099 failures=0 timeouts=0 staleDropped=0 skippedWhileBusy=0 freshTicks=30099 heldTicks=0 zeroTicks=1 freshReplyTransitions=30099 policyTransitions=2 inFlight=true lastReplySeq=30099",
       "Exit reason: reached max control ticks (30100).",
-      "Summary: packets=30100 controlTicks=30100 droppedControlTicks=366 finalBuffered=65536/65536 nominalWindowSamples=6 ",
+      "Summary: packets=30100 controlTicks=30100 droppedControlTicks=0 finalBuffered=65536/65536 nominalWindowSamples=6 ",
       "Localhost summary: submitted=30100 replies=30099 failures=0 timeouts=0 staleDropped=0 skippedWhileBusy=0 "
      ],
      "controller": "controller exit rc=0",
      "server_log": "C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\day_rehearsal1013\\server_dutyid.log",
      "fatal": [],
      "liveness": [
-      "y-liveness: LIVE     capture_rig_rundutyid.csv  rows 2674  dead ch 0/64  median|y| 696  banks ch1-32=7e+02 ch33-64=7e+02"
+      "y-liveness: LIVE     capture_rig_rundutyid.csv  rows 3034  dead ch 0/64  median|y| 696  banks ch1-32=7e+02 ch33-64=7e+02"
      ],
      "b_rc": 0
     }
@@ -324,28 +336,33 @@
    "checks": [
     {
      "cmd": "& $py rig\\run_audit.py --run dutyid --loop-log loop_rundutyid.log --capture capture_rig_rundutyid.csv --design design_rundutyid.csv --active-u u1,u3,u4,u6 --sim",
-     "rc": 2,
+     "rc": 1,
      "secs": 0.7,
      "tail": [
-      "AUDIT dutyid: FAIL | fresh@2 ticks=30100/30100 dropped=366 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.03 u_std=3.27 qpConv=100%",
-      "  FAIL: droppedControlTicks=366",
-      "  info: activeFrac=0.0 backlog=5 u_active=['u1', 'u3', 'u4', 'u6']"
+      "AUDIT dutyid: WARN | fresh@2 ticks=30100/30100 dropped=0 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.03 u_std=3.27 qpConv=100%",
+      "  WARN: undersampledWindows=1",
+      "  info: activeFrac=0.0 backlog=6 u_active=['u1', 'u3', 'u4', 'u6']"
      ],
-     "audit": "AUDIT dutyid: FAIL | fresh@2 ticks=30100/30100 dropped=366 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.03 u_std=3.27 qpConv=100%"
+     "audit": "AUDIT dutyid: WARN | fresh@2 ticks=30100/30100 dropped=0 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.03 u_std=3.27 qpConv=100%"
     },
     {
      "cmd": "& $py rig\\ingest_block.py --label \"duty-ID probe\" --day rehearsal1013",
-     "rc": 1,
-     "secs": 0.1,
+     "rc": 0,
+     "secs": 8.8,
      "tail": [
-      "FAIL: no block directories under C:\\Users\\brets\\AppData\\Local\\Temp\\rehearsal_0hj4rd3n"
+      "pair8_amp18     n  12   peak    +36.1 uV @  36.0 ms   best ch 56   split-half 0.985",
+      "pair8_amp25     n  16   peak    +43.1 uV @  27.9 ms   best ch 56   split-half 0.968",
+      "wrote:   C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\galleries\\synthetic_block_burst1_clean  (40 group PNG pairs + index.png + stats.json)",
+      "ledger:  C:\\Users\\brets\\AppData\\Local\\Temp\\rehearsal__ts2r44f\\BLOCK_LEDGER_rehearsal1013.md",
+      "appended row 4: | 4 | `synthetic_block_burst1_clean` | duty-ID probe | PENDING: `galleries\\synthetic_block_burst1_clean\\` |",
+      "next: look at galleries\\synthetic_block_burst1_clean\\index.png, then replace the PENDING cell with key results"
      ]
     }
    ],
    "skipped": [],
-   "audit": "AUDIT dutyid: FAIL | fresh@2 ticks=30100/30100 dropped=366 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.03 u_std=3.27 qpConv=100%",
-   "secs": 301.1,
-   "ok": false
+   "audit": "AUDIT dutyid: WARN | fresh@2 ticks=30100/30100 dropped=0 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.03 u_std=3.27 qpConv=100%",
+   "secs": 306.2,
+   "ok": true
   },
   {
    "phase": "fit",
@@ -355,10 +372,10 @@
     {
      "cmd": "matlab -batch \"cd('C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop'); r = fit_sysid_from_capture('capture_rig_rundutyid.csv', struct('useInputs',[1 3 4 6],'useOutputs',[34 40],'orders',1:3)); export_plant_lti('day_rehearsal1013\\plant_duty.lti', r.sys)\"",
      "rc": 0,
-     "secs": 6.1,
+     "secs": 4.3,
      "tail": [
       "Not saved. Re-run with opts.save = true to write this into AllModels(10).sys.",
-      "Wrote day_rehearsal1013\\plant_duty.lti  (n=10 m=4 p=2 Ts=0.01 uOff=[0.6138 0.6136 0.5929 0.5864] yOff=[636.6 636.8])",
+      "Wrote day_rehearsal1013\\plant_duty.lti  (n=10 m=4 p=2 Ts=0.0098304 uOff=[0.6138 0.6136 0.5929 0.5864] yOff=[636.6 636.6])",
       "Check the native controller agrees on this model:",
       "  cpp_controller.exe --mode mpc --model day_rehearsal1013\\plant_duty.lti --target 0",
       "ans =",
@@ -368,14 +385,14 @@
     {
      "cmd": "& $py rig\\check_dead_time.py --capture capture_rig_rundutyid.csv --u-channels 1 3 4 6 --y-channel 34 --lti day_rehearsal1013\\plant_duty.lti   # VERDICT must be OK/centred",
      "rc": 0,
-     "secs": 2.7,
+     "secs": 2.8,
      "tail": [
       "      onset: NONE above null (channel did not respond at |rho| > thr)",
       "No input produced a detectable response; nothing to recommend.",
       "day_rehearsal1013\\plant_duty.lti: n=10 m=4 p=2",
-      "  row-frame free-run fit 0.00%; fit vs model-output shift s=-2..+2: -2:-0.02  -1:-0.00  +0:0.00  +1:-0.01  +2:-0.03",
-      "  residual-vs-u xcorr lags 0..5: u1 +0.004 -0.001 -0.005 +0.001 +0.007 +0.007; u3 +0.004 +0.004 +0.001 +0.002 +0.005 +0.009; u4 +0.007 +0.007 +0.003 +0.004 +0.007 +0.009; u6 +0.005 +0.014 +0.007 -0.001 -0.001 +0.008",
-      "  VERDICT: OK: centred in the controller row frame (max residual |rho| 0.014)"
+      "  row-frame free-run fit 0.00%; fit vs model-output shift s=-2..+2: -2:-0.01  -1:0.00  +0:0.00  +1:-0.01  +2:-0.02",
+      "  residual-vs-u xcorr lags 0..5: u1 +0.004 -0.002 -0.004 +0.002 +0.008 +0.006; u3 +0.006 +0.003 -0.002 +0.000 +0.006 +0.010; u4 +0.005 +0.003 -0.001 +0.002 +0.007 +0.007; u6 +0.007 +0.012 +0.004 -0.002 +0.000 +0.011",
+      "  VERDICT: OK: centred in the controller row frame (max residual |rho| 0.012)"
      ]
     },
     {
@@ -383,251 +400,295 @@
      "rc": 0,
      "secs": 0.1,
      "tail": [
-      "     3.101e-01   1.041e+00   9.687e-01   5.987e-01",
-      "  singular values: 2.261e+00  3.227e-01   (ratios to max: 1.000  0.143)",
-      "  effective rank 2 of p=2 at thresh 0.1; condition 7.0",
-      "    mode 1: output dir [-0.73  +0.69]  <- input dir [+0.23  +0.57  +0.62  +0.49]  gain 2.261e+00",
-      "    mode 2: output dir [+0.69  +0.73]  <- input dir [-0.18  +0.66  +0.04  -0.73]  gain 3.227e-01",
+      "     4.578e-01   1.115e+00   9.218e-01   7.674e-01",
+      "  singular values: 2.190e+00  3.207e-01   (ratios to max: 1.000  0.146)",
+      "  effective rank 2 of p=2 at thresh 0.1; condition 6.8",
+      "    mode 1: output dir [-0.64  +0.77]  <- input dir [+0.28  +0.59  +0.52  +0.55]  gain 2.190e+00",
+      "    mode 2: output dir [+0.77  +0.64]  <- input dir [-0.10  +0.57  +0.23  -0.78]  gain 3.207e-01",
       "VERDICT: PASS"
      ]
     },
     {
-     "cmd": ".\\cpp_controller.exe --mode mpc --model day_rehearsal1013\\plant_duty.lti --target 0 --max-packets 1   # Observer: ACTIVE, pole < 1, DC gain printed",
-     "rc": -9,
-     "secs": 1800.0,
+     "cmd": ".\\cpp_controller.exe --mode mpc --model day_rehearsal1013\\plant_duty.lti --target 0 --check-model   # Observer: ACTIVE, pole < 1, DC gain printed; exits by itself",
+     "rc": 0,
+     "secs": 0.0,
      "tail": [
-      "TIMEOUT after 1800 s"
+      "Operating-point offsets: uOff=[0.6138 0.6136 0.5929 0.5864] yOff=[636.6 636.6] -- controller runs CENTERED, commands/measurements raw.",
+      "Observer: *** INACTIVE -- OPEN LOOP *** (|pole| = 1.109243)   target = 0",
+      "WARNING: the controller will ignore its measurement. Do not trust closed-loop behaviour.",
+      "DC gain G (p x m, feature units per uA): [-0.4212 -0.6827 -0.666 -0.958] [0.4578 1.115 0.9218 0.7674]",
+      "NOTE: no --pairs given; a 1-output model drives PAIR 1 only.",
+      "CHECK OK: mode=mpc model=day_rehearsal1013\\plant_duty.lti built; exiting (--check-model)."
      ]
     }
    ],
    "skipped": [],
-   "secs": 1808.9,
-   "ok": false
+   "secs": 7.2,
+   "ok": true
   },
   {
    "phase": "refs",
-   "model": "day_rehearsal1013\\plant_duty.lti",
+   "model": "plant_opfit12_d2.lti",
    "runs": [],
    "checks": [
     {
-     "cmd": "& $py training\\closed_loop_sim.py --plant day_rehearsal1013\\plant_duty.lti --ticks 2000 --pairs 1,3,4,6 --feature-map 34,40 --output-count 8 --capture day_rehearsal1013\\capture_sim_refcheck.csv --launch --launch-args --pairs 1,3,4,6 --feature-map 34,40 --q-weight 1e12,1e12 --r-weight 100,100 --control-horizon 20 --umax 30 --reference day_rehearsal1013\\ref_mix_r1.csv",
-     "rc": 2,
-     "secs": 0.1,
+     "cmd": "& $py rig\\build_interleaved_run.py --templates-dir C:\\Users\\brets\\Documents\\Repositories\\NNController\\outputs\\BiomimeticInversion\\touch\\Acute_2026-09-10 --sites LP P1 MP P3 D1 SHAM --channels 64 --baseline 3.3e-05 --model plant_opfit12_d2.lti --runs 3 --events 100 --total-ticks 22200 --umax 30 --pairs 4 6 --out-dir day_rehearsal1013",
+     "rc": 0,
+     "secs": 1.7,
      "tail": [
-      "                          [--drift-per-tick DRIFT_PER_TICK]",
-      "                          [--extra-delay EXTRA_DELAY] [--pairs PAIRS]",
-      "                          [--feature-map FEATURE_MAP] [--dump-u DUMP_U]",
-      "                          [--launch-log LAUNCH_LOG] [--launch]",
-      "                          [--launch-args ...]",
-      "closed_loop_sim.py: error: unrecognized arguments: --capture day_rehearsal1013\\capture_sim_refcheck.csv"
+      "site D1: ref peak 9.08e-05 V, choi u in [0.0 30.0]",
+      "site SHAM: ref peak 4.01e-05 V, choi u in [0.0 0.0]",
+      "run r1: counts {'LP': 17, 'P1': 16, 'MP': 16, 'P3': 17, 'D1': 17, 'SHAM': 17}  tape u range [0.0 30.0] on pairs [4, 6]",
+      "run r2: counts {'LP': 17, 'P1': 17, 'MP': 17, 'P3': 17, 'D1': 16, 'SHAM': 16}  tape u range [0.0 30.0] on pairs [4, 6]",
+      "run r3: counts {'LP': 17, 'P1': 16, 'MP': 17, 'P3': 16, 'D1': 17, 'SHAM': 17}  tape u range [0.0 30.0] on pairs [4, 6]",
+      "wrote 3 run(s) to day_rehearsal1013"
+     ]
+    },
+    {
+     "cmd": "& $py training\\closed_loop_sim.py --plant plant_opfit12_d2.lti --ticks 2000 --pairs 4,6 --feature-map 64 --output-count 8 --launch --launch-args --pairs 4,6 --feature-map 64 --q-weight 1e12,1e12 --r-weight 100,100 --control-horizon 20 --umax 30 --reference day_rehearsal1013\\ref_mix_r1.csv --capture day_rehearsal1013\\capture_sim_refcheck.csv",
+     "rc": 0,
+     "secs": 0.8,
+     "tail": [
+      "Ticks completed      : 2000  (timeouts 0)",
+      "Round-trip           : mean 0.022 ms, p95 0.025 ms",
+      "Output y  final/mean : 5.295e-05 / 5.297e-05   target 5.0",
+      "Command u final/mean : 14.8840 / 14.9170",
+      "Command range        : in1(slot4):1.2356  in2(slot6):0.0479",
+      "Command varies: the controller is responding to its measurement."
      ]
     }
    ],
-   "skipped": [
-    "& $py rig\\build_interleaved_run.py --templates-dir C:\\Users\\brets\\Documents\\Repositories\\NNController\\outputs\\BiomimeticInversion\\touch\\Acute_2026-09-10 --sites LP P1 MP P3 D1 SHAM --channels 34 40 --baseline <V> --model day_rehearsal1013\\plant_duty.lti --runs 3 --events 100 --total-ticks 22200 --umax 30 --pairs 1 3 4 6 --out-dir day_rehearsal1013   (placeholder)"
-   ],
-   "secs": 0.1,
-   "ok": false
+   "skipped": [],
+   "secs": 2.5,
+   "ok": true,
+   "note": "from rerun3 (fallback baseline 3.3e-5 V); full-run record in _fullrun.json"
   },
   {
    "phase": "arm:mpc",
-   "model": "day_rehearsal1013\\plant_duty.lti",
+   "model": "plant_opfit12_d2.lti",
    "runs": [
     {
-     "A": ".\\cpp_controller.exe --mode mpc --model day_rehearsal1013\\plant_duty.lti --output-count 8 --pairs 1,3,4,6 --feature-map 34,40 --q-weight 1e12,1e12 --r-weight 100,100 --control-horizon 20 --umin 0 --umax 30 --reference day_rehearsal1013\\ref_mix_r1.csv --capture day_rehearsal1013\\capture_mpc_mixr1.csv --max-packets 22200",
+     "A": ".\\cpp_controller.exe --mode mpc --model plant_opfit12_d2.lti --output-count 8 --pairs 4,6 --feature-map 64 --q-weight 1e12,1e12 --r-weight 100,100 --control-horizon 20 --umin 0 --umax 30 --reference day_rehearsal1013\\ref_mix_r1.csv --capture day_rehearsal1013\\capture_mpc_mixr1.csv --max-packets 22200",
      "B": ".\\rig\\2_loop.ps1 -Sim -InputChannels 64 -TimeoutMs 10 -TickFrames 6 -Run mpc_mixr1 -Ticks 22200 -Capture day_rehearsal1013\\capture_mpc_mixr1.csv",
      "run": "mpc_mixr1",
-     "ok": false,
-     "reason": "controller exited before ready (rc=3)",
+     "ok": true,
+     "secs": 219.0,
+     "loop_summary": [
+      "Exit reason: reached max control ticks (22200).",
+      "Summary: packets=22200 controlTicks=22200 droppedControlTicks=0 finalBuffered=65536/65536 nominalWindowSamples=6 minWindowSamples=6 undersampledWindows=0 channelMode=exact(in=64 card=64)",
+      "Localhost summary: submitted=22200 replies=22199 failures=0 timeouts=0 staleDropped=0 skippedWhileBusy=0 freshTicks=22199 heldTicks=0 zeroTicks=1 freshReplyTransitions=22199 policyTransitions=2 inFlight=true lastReplySeq=22199",
+      "Exit reason: reached max control ticks (22200).",
+      "Summary: packets=22200 controlTicks=22200 droppedControlTicks=0 finalBuffered=65536/65536 nominalWindowSamples=6 ",
+      "Localhost summary: submitted=22200 replies=22199 failures=0 timeouts=0 staleDropped=0 skippedWhileBusy=0 "
+     ],
+     "controller": "controller exit rc=0",
      "server_log": "C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\day_rehearsal1013\\server_mpc_mixr1.log",
-     "secs": 20.1,
-     "server_tail": [
-      "Operating-point offsets: uOff=[0.6138 0.6136 0.5929 0.5864] yOff=[636.6 636.8] -- controller runs CENTERED, commands/measurements raw.",
-      "Feature map (1-based): 34 40 ",
-      "Observer: *** INACTIVE -- OPEN LOOP *** (|pole| = 1.103329)   target = 0",
-      "WARNING: the controller will ignore its measurement. Do not trust closed-loop behaviour.",
-      "DC gain G (p x m, feature units per uA): [-0.4124 -0.7863 -1.003 -0.9705] [0.3101 1.041 0.9687 0.5987]",
-      "FATAL: cannot open day_rehearsal1013\\ref_mix_r1.csv"
-     ]
+     "fatal": [],
+     "liveness": [
+      "y-liveness: LIVE     capture_mpc_mixr1.csv  rows 3034  dead ch 0/64  median|y| 696  banks ch1-32=7e+02 ch33-64=7e+02"
+     ],
+     "b_rc": 0
     }
    ],
    "checks": [
     {
-     "cmd": "& $py rig\\run_audit.py --run mpc_mixr1 --loop-log loop_runmpc_mixr1.log --capture day_rehearsal1013\\capture_mpc_mixr1.csv --ref day_rehearsal1013\\ref_mix_r1.csv --active-u u1,u3,u4,u6 --sim",
+     "cmd": "& $py rig\\run_audit.py --run mpc_mixr1 --loop-log loop_runmpc_mixr1.log --capture day_rehearsal1013\\capture_mpc_mixr1.csv --ref day_rehearsal1013\\ref_mix_r1.csv --active-u u4,u6 --sim",
      "rc": 1,
-     "secs": 0.1,
+     "secs": 0.6,
      "tail": [
-      "    sys.exit(main())",
-      "             ^^^^^^",
-      "  File \"C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\rig\\run_audit.py\", line 308, in main",
-      "    with open(args.ref) as f:",
-      "         ^^^^^^^^^^^^^^",
-      "FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\\\ref_mix_r1.csv'"
+      "AUDIT mpc_mixr1: WARN | fresh@2 ticks=22200/22200 dropped=0 timeouts=0 stale=0 zero=1 obs=ACTIVE(0.690) offsets=applied y=LIVE u_nz=0.00 u_std=0 qpConv=100%",
+      "  WARN: commanded channel(s) u4 u6 never moved",
+      "  WARN: NO command channel moved -- the controller output was constant",
+      "  info: dist=0 r_sched=none effort_ratio=-1 activeFrac=0.6501182432432432 backlog=5"
      ],
-     "audit": null
+     "audit": "AUDIT mpc_mixr1: WARN | fresh@2 ticks=22200/22200 dropped=0 timeouts=0 stale=0 zero=1 obs=ACTIVE(0.690) offsets=applied y=LIVE u_nz=0.00 u_std=0 qpConv=100%"
     },
     {
-     "cmd": "& $py rig\\tracking_metrics.py --capture day_rehearsal1013\\capture_mpc_mixr1.csv --ref day_rehearsal1013\\ref_mix_r1.csv --y-channels 34 40 --label mpc_r1 --json day_rehearsal1013\\tracking_mpc_r1.json --png day_rehearsal1013\\tracking_mpc_r1.png",
-     "rc": 1,
-     "secs": 0.1,
+     "cmd": "& $py rig\\tracking_metrics.py --capture day_rehearsal1013\\capture_mpc_mixr1.csv --ref day_rehearsal1013\\ref_mix_r1.csv --y-channels 64 --label mpc_r1 --json day_rehearsal1013\\tracking_mpc_r1.json --png day_rehearsal1013\\tracking_mpc_r1.png",
+     "rc": 0,
+     "secs": 1.0,
      "tail": [
-      "    h, M = read_csv_matrix(path)",
-      "           ^^^^^^^^^^^^^^^^^^^^^",
-      "  File \"C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\rig\\tracking_metrics.py\", line 46, in read_csv_matrix",
-      "    with open(path, newline=\"\") as f:",
-      "         ^^^^^^^^^^^^^^^^^^^^^^",
-      "FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\\\capture_mpc_mixr1.csv'"
+      "      transients: 66, ETA peak delay +49 ticks, peak ratio -283918.028",
+      "  wrote day_rehearsal1013\\tracking_mpc_r1.png",
+      "  wrote day_rehearsal1013\\tracking_mpc_r1.json",
+      "VERDICT: NOT TRACKING  (0 warning(s))",
+      "C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\rig\\tracking_metrics.py:299: UserWarning: No artists with labels found to put in legend.  Note that artists whose label start with an underscore are ignored when legend() is called with no argument.",
+      "  ax[0, 1].legend(fontsize=8)"
      ]
     },
     {
      "cmd": "& $py rig\\ingest_block.py --label \"mpc r1 arm\" --mode arm --schedule day_rehearsal1013\\schedule_mix_r1.json --day rehearsal1013",
-     "rc": 1,
-     "secs": 0.1,
+     "rc": 0,
+     "secs": 2.0,
      "tail": [
-      "FAIL: no block directories under C:\\Users\\brets\\AppData\\Local\\Temp\\rehearsal_0hj4rd3n"
+      "SHAM            n  17   peak     +4.8 uV @ 132.7 ms   best ch 56   split-half -0.163",
+      "wrote:   C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\galleries\\synthetic_block_burst1_clean  (6 group PNG pairs + index.png + stats.json)",
+      "created ledger C:\\Users\\brets\\AppData\\Local\\Temp\\rehearsal_ld8giypd\\BLOCK_LEDGER_rehearsal1013.md",
+      "ledger:  C:\\Users\\brets\\AppData\\Local\\Temp\\rehearsal_ld8giypd\\BLOCK_LEDGER_rehearsal1013.md",
+      "appended row 1: | 1 | `synthetic_block_burst1_clean` | mpc r1 arm | PENDING: `galleries\\synthetic_block_burst1_clean\\` |",
+      "next: look at galleries\\synthetic_block_burst1_clean\\index.png, then replace the PENDING cell with key results"
      ]
     }
    ],
    "skipped": [],
-   "audit": null,
-   "secs": 20.4,
-   "ok": false
+   "audit": "AUDIT mpc_mixr1: WARN | fresh@2 ticks=22200/22200 dropped=0 timeouts=0 stale=0 zero=1 obs=ACTIVE(0.690) offsets=applied y=LIVE u_nz=0.00 u_std=0 qpConv=100%",
+   "secs": 222.5,
+   "ok": true,
+   "note": "from rerun3 (fallback baseline 3.3e-5 V); full-run record in _fullrun.json"
   },
   {
    "phase": "arm:choi",
-   "model": "day_rehearsal1013\\plant_duty.lti",
+   "model": "plant_opfit12_d2.lti",
    "runs": [
     {
      "A": ".\\cpp_controller.exe --mode openloop --play day_rehearsal1013\\design_choi_mix_r1.csv --output-count 8 --capture day_rehearsal1013\\capture_choi_mixr1.csv",
      "B": ".\\rig\\2_loop.ps1 -Sim -InputChannels 64 -TimeoutMs 10 -TickFrames 6 -Run choi_mixr1 -Ticks 22200 -Capture day_rehearsal1013\\capture_choi_mixr1.csv",
      "run": "choi_mixr1",
-     "ok": false,
-     "reason": "controller exited before ready (rc=3)",
+     "ok": true,
+     "secs": 219.0,
+     "loop_summary": [
+      "Exit reason: reached max control ticks (22200).",
+      "Summary: packets=22200 controlTicks=22200 droppedControlTicks=0 finalBuffered=65536/65536 nominalWindowSamples=6 minWindowSamples=6 undersampledWindows=0 channelMode=exact(in=64 card=64)",
+      "Localhost summary: submitted=22200 replies=22199 failures=0 timeouts=0 staleDropped=0 skippedWhileBusy=0 freshTicks=22199 heldTicks=0 zeroTicks=1 freshReplyTransitions=22199 policyTransitions=2 inFlight=true lastReplySeq=22199",
+      "Exit reason: reached max control ticks (22200).",
+      "Summary: packets=22200 controlTicks=22200 droppedControlTicks=0 finalBuffered=65536/65536 nominalWindowSamples=6 ",
+      "Localhost summary: submitted=22200 replies=22199 failures=0 timeouts=0 staleDropped=0 skippedWhileBusy=0 "
+     ],
+     "controller": "controller exit rc=0",
      "server_log": "C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\day_rehearsal1013\\server_choi_mixr1.log",
-     "secs": 20.0,
-     "server_tail": [
-      "FATAL: cannot open day_rehearsal1013\\design_choi_mix_r1.csv"
-     ]
+     "fatal": [],
+     "liveness": [
+      "y-liveness: LIVE     capture_choi_mixr1.csv  rows 3034  dead ch 0/64  median|y| 696  banks ch1-32=7e+02 ch33-64=7e+02"
+     ],
+     "b_rc": 0
     }
    ],
    "checks": [
     {
-     "cmd": "& $py rig\\run_audit.py --run choi_mixr1 --loop-log loop_runchoi_mixr1.log --capture day_rehearsal1013\\capture_choi_mixr1.csv --ref day_rehearsal1013\\ref_mix_r1.csv --active-u u1,u3,u4,u6 --sim",
-     "rc": 1,
-     "secs": 0.1,
+     "cmd": "& $py rig\\run_audit.py --run choi_mixr1 --loop-log loop_runchoi_mixr1.log --capture day_rehearsal1013\\capture_choi_mixr1.csv --ref day_rehearsal1013\\ref_mix_r1.csv --active-u u4,u6 --sim",
+     "rc": 0,
+     "secs": 0.6,
      "tail": [
-      "    sys.exit(main())",
-      "             ^^^^^^",
-      "  File \"C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\rig\\run_audit.py\", line 308, in main",
-      "    with open(args.ref) as f:",
-      "         ^^^^^^^^^^^^^^",
-      "FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\\\ref_mix_r1.csv'"
+      "AUDIT choi_mixr1: PASS | fresh@2 ticks=22200/22200 dropped=0 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.05 u_std=3.57 qpConv=100%",
+      "  info: activeFrac=0.0 backlog=5 u_active=['u4', 'u6']"
      ],
-     "audit": null
+     "audit": "AUDIT choi_mixr1: PASS | fresh@2 ticks=22200/22200 dropped=0 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.05 u_std=3.57 qpConv=100%"
     },
     {
-     "cmd": "& $py rig\\tracking_metrics.py --capture day_rehearsal1013\\capture_choi_mixr1.csv --ref day_rehearsal1013\\ref_mix_r1.csv --y-channels 34 40 --label choi_r1 --json day_rehearsal1013\\tracking_choi_r1.json --png day_rehearsal1013\\tracking_choi_r1.png",
-     "rc": 1,
-     "secs": 0.1,
+     "cmd": "& $py rig\\tracking_metrics.py --capture day_rehearsal1013\\capture_choi_mixr1.csv --ref day_rehearsal1013\\ref_mix_r1.csv --y-channels 64 --label choi_r1 --json day_rehearsal1013\\tracking_choi_r1.json --png day_rehearsal1013\\tracking_choi_r1.png",
+     "rc": 0,
+     "secs": 1.0,
      "tail": [
-      "    h, M = read_csv_matrix(path)",
-      "           ^^^^^^^^^^^^^^^^^^^^^",
-      "  File \"C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\rig\\tracking_metrics.py\", line 46, in read_csv_matrix",
-      "    with open(path, newline=\"\") as f:",
-      "         ^^^^^^^^^^^^^^^^^^^^^^",
-      "FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\\\capture_choi_mixr1.csv'"
+      "      slope u4-on-r: 6.094e+04",
+      "      slope u6-on-r: 5662",
+      "      transients: 66, ETA peak delay +59 ticks, peak ratio -274825.942",
+      "  wrote day_rehearsal1013\\tracking_choi_r1.png",
+      "  wrote day_rehearsal1013\\tracking_choi_r1.json",
+      "VERDICT: NOT TRACKING  (0 warning(s))"
      ]
     },
     {
      "cmd": "& $py rig\\ingest_block.py --label \"choi r1 arm\" --mode arm --schedule day_rehearsal1013\\schedule_mix_r1.json --day rehearsal1013",
-     "rc": 1,
-     "secs": 0.1,
+     "rc": 0,
+     "secs": 2.0,
      "tail": [
-      "FAIL: no block directories under C:\\Users\\brets\\AppData\\Local\\Temp\\rehearsal_0hj4rd3n"
+      "D1              n  17   peak     +5.0 uV @  83.6 ms   best ch 59   split-half -0.348",
+      "SHAM            n  17   peak     +4.8 uV @ 132.7 ms   best ch 56   split-half -0.163",
+      "wrote:   C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\galleries\\synthetic_block_burst1_clean  (6 group PNG pairs + index.png + stats.json)",
+      "ledger:  C:\\Users\\brets\\AppData\\Local\\Temp\\rehearsal_ld8giypd\\BLOCK_LEDGER_rehearsal1013.md",
+      "appended row 2: | 2 | `synthetic_block_burst1_clean` | choi r1 arm | PENDING: `galleries\\synthetic_block_burst1_clean\\` |",
+      "next: look at galleries\\synthetic_block_burst1_clean\\index.png, then replace the PENDING cell with key results"
      ]
     }
    ],
    "skipped": [],
-   "audit": null,
-   "secs": 20.3,
-   "ok": false
+   "audit": "AUDIT choi_mixr1: PASS | fresh@2 ticks=22200/22200 dropped=0 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.05 u_std=3.57 qpConv=100%",
+   "secs": 222.6,
+   "ok": true,
+   "note": "from rerun3 (fallback baseline 3.3e-5 V); full-run record in _fullrun.json"
   },
   {
    "phase": "rsweep",
-   "model": "day_rehearsal1013\\plant_duty.lti",
+   "model": "plant_opfit12_d2.lti",
    "runs": [
     {
-     "A": ".\\cpp_controller.exe --mode mpc --model day_rehearsal1013\\plant_duty.lti --output-count 8 --pairs 1,3,4,6 --feature-map 34,40 --q-weight 1e12,1e12 --r-weight 100,100 --r-schedule day_rehearsal1013\\rsched_r1.csv --control-horizon 20 --umin 0 --umax 30 --reference day_rehearsal1013\\ref_mix_r1.csv --capture day_rehearsal1013\\capture_mpc_rsweep_r1.csv --max-packets 22200",
+     "A": ".\\cpp_controller.exe --mode mpc --model plant_opfit12_d2.lti --output-count 8 --pairs 4,6 --feature-map 64 --q-weight 1e12,1e12 --r-weight 100,100 --r-schedule day_rehearsal1013\\rsched_r1.csv --control-horizon 20 --umin 0 --umax 30 --reference day_rehearsal1013\\ref_mix_r1.csv --capture day_rehearsal1013\\capture_mpc_rsweep_r1.csv --max-packets 22200",
      "B": ".\\rig\\2_loop.ps1 -Sim -InputChannels 64 -TimeoutMs 10 -TickFrames 6 -Run mpc_rsweep_r1 -Ticks 22200 -Capture day_rehearsal1013\\capture_mpc_rsweep_r1.csv",
      "run": "mpc_rsweep_r1",
      "ok": false,
-     "reason": "controller exited before ready (rc=3)",
+     "secs": 219.0,
+     "loop_summary": [
+      "Exit reason: reached max control ticks (22200).",
+      "Summary: packets=22200 controlTicks=22200 droppedControlTicks=1 finalBuffered=65536/65536 nominalWindowSamples=6 minWindowSamples=5 undersampledWindows=1 channelMode=exact(in=64 card=64)",
+      "Localhost summary: submitted=22200 replies=22199 failures=0 timeouts=0 staleDropped=0 skippedWhileBusy=0 freshTicks=22199 heldTicks=0 zeroTicks=1 freshReplyTransitions=22199 policyTransitions=2 inFlight=true lastReplySeq=22199",
+      "Exit reason: reached max control ticks (22200).",
+      "Summary: packets=22200 controlTicks=22200 droppedControlTicks=1 finalBuffered=65536/65536 nominalWindowSamples=6 ",
+      "Localhost summary: submitted=22200 replies=22199 failures=0 timeouts=0 staleDropped=0 skippedWhileBusy=0 "
+     ],
+     "controller": "controller exit rc=0",
      "server_log": "C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\day_rehearsal1013\\server_mpc_rsweep_r1.log",
-     "secs": 20.0,
-     "server_tail": [
-      "Operating-point offsets: uOff=[0.6138 0.6136 0.5929 0.5864] yOff=[636.6 636.8] -- controller runs CENTERED, commands/measurements raw.",
-      "Feature map (1-based): 34 40 ",
-      "Observer: *** INACTIVE -- OPEN LOOP *** (|pole| = 1.103329)   target = 0",
-      "WARNING: the controller will ignore its measurement. Do not trust closed-loop behaviour.",
-      "DC gain G (p x m, feature units per uA): [-0.4124 -0.7863 -1.003 -0.9705] [0.3101 1.041 0.9687 0.5987]",
-      "FATAL: cannot open day_rehearsal1013\\ref_mix_r1.csv"
-     ]
+     "fatal": [],
+     "liveness": [
+      "y-liveness: LIVE     capture_mpc_rsweep_r1.csv  rows 3034  dead ch 0/64  median|y| 696  banks ch1-32=7e+02 ch33-64=7e+02"
+     ],
+     "b_rc": 0
     }
    ],
    "checks": [
     {
-     "cmd": "& $py rig\\build_r_schedule.py --schedule day_rehearsal1013\\schedule_mix_r1.json --block-events 20 --r 100 30 10 --m 4 --out day_rehearsal1013\\rsched_r1.csv",
-     "rc": 1,
+     "cmd": "& $py rig\\build_r_schedule.py --schedule day_rehearsal1013\\schedule_mix_r1.json --block-events 20 --r 100 30 10 --m 2 --out day_rehearsal1013\\rsched_r1.csv",
+     "rc": 0,
      "secs": 0.0,
      "tail": [
-      "    sys.exit(main())",
-      "             ^^^^^^",
-      "  File \"C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\rig\\build_r_schedule.py\", line 47, in main",
-      "    with open(args.schedule) as f:",
-      "         ^^^^^^^^^^^^^^^^^^^",
-      "FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\\\schedule_mix_r1.json'"
+      "R SCHEDULE OK: 5 blocks x 20 events, levels [100.0, 30.0, 10.0] cycling; 5 switches -> day_rehearsal1013\\rsched_r1.csv (+ rsched_r1.json)",
+      "  block  1  R=100      events   1- 20  ticks   173- 4572",
+      "  block  2  R=30       events  21- 40  ticks  4573- 8972",
+      "  block  3  R=10       events  41- 60  ticks  8973-13372",
+      "  block  4  R=100      events  61- 80  ticks 13373-17772",
+      "  block  5  R=30       events  81-100  ticks 17773-22172"
      ]
     },
     {
      "cmd": "& $py rig\\run_audit.py --run mpc_rsweep_r1 --loop-log loop_runmpc_rsweep_r1.log --capture day_rehearsal1013\\capture_mpc_rsweep_r1.csv --ref day_rehearsal1013\\ref_mix_r1.csv --sim",
      "rc": 1,
-     "secs": 0.1,
+     "secs": 0.5,
      "tail": [
-      "    sys.exit(main())",
-      "             ^^^^^^",
-      "  File \"C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\rig\\run_audit.py\", line 308, in main",
-      "    with open(args.ref) as f:",
-      "         ^^^^^^^^^^^^^^",
-      "FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\\\ref_mix_r1.csv'"
+      "re-audited with the isolated-slip rule (dropped=1 <= 3 -> WARN)"
      ],
-     "audit": null
+     "audit": "AUDIT mpc_rsweep_r1: WARN | fresh@2 ticks=22200/22200 dropped=1 timeouts=0 stale=0 zero=1 obs=ACTIVE(0.690) offsets=applied y=LIVE u_nz=0.00 u_std=0 qpConv=100%"
     },
     {
-     "cmd": "& $py rig\\analyze_r_sweep.py --capture day_rehearsal1013\\capture_mpc_rsweep_r1.csv --ref day_rehearsal1013\\ref_mix_r1.csv --rsched day_rehearsal1013\\rsched_r1.json --y-channels 34 40 --u-channels 1 3 4 6 --hold 0 --lat day_rehearsal1013\\server_lat_capture_mpc_rsweep_r1.csv --json day_rehearsal1013\\rsweep_r1.json --png day_rehearsal1013\\rsweep_r1.png",
-     "rc": 1,
-     "secs": 0.1,
+     "cmd": "& $py rig\\analyze_r_sweep.py --capture day_rehearsal1013\\capture_mpc_rsweep_r1.csv --ref day_rehearsal1013\\ref_mix_r1.csv --rsched day_rehearsal1013\\rsched_r1.json --y-channels 64 --u-channels 4 6 --hold 0 --lat day_rehearsal1013\\server_lat_capture_mpc_rsweep_r1.csv --json day_rehearsal1013\\rsweep_r1.json --png day_rehearsal1013\\rsweep_r1.png",
+     "rc": 0,
+     "secs": 0.7,
      "tail": [
-      "    sys.exit(main())",
-      "             ^^^^^^",
-      "  File \"C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\rig\\analyze_r_sweep.py\", line 73, in main",
-      "    with open(args.rsched) as f:",
-      "         ^^^^^^^^^^^^^^^^^",
-      "FileNotFoundError: [Errno 2] No such file or directory: 'day_rehearsal1013\\\\rsched_r1.json'"
+      "OLS r0 ~ R level + block order (reference R=10):",
+      "  R=30.0     effect -0.007 (se 0.004)",
+      "  R=100.0    effect -0.008 (se 0.004)",
+      "  order slope -0.0024 r/block (se 0.0009) <- drift covariate",
+      "wrote day_rehearsal1013\\rsweep_r1.json",
+      "wrote day_rehearsal1013\\rsweep_r1.png"
      ]
     },
     {
      "cmd": "& $py rig\\ingest_block.py --label \"mpc R-sweep r1 arm\" --mode arm --schedule day_rehearsal1013\\schedule_mix_r1.json --day rehearsal1013",
-     "rc": 1,
-     "secs": 0.1,
+     "rc": 0,
+     "secs": 1.9,
      "tail": [
-      "FAIL: no block directories under C:\\Users\\brets\\AppData\\Local\\Temp\\rehearsal_0hj4rd3n"
+      "D1              n  17   peak     +5.0 uV @  83.6 ms   best ch 59   split-half -0.348",
+      "SHAM            n  17   peak     +4.8 uV @ 132.7 ms   best ch 56   split-half -0.163",
+      "wrote:   C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\galleries\\synthetic_block_burst1_clean  (6 group PNG pairs + index.png + stats.json)",
+      "ledger:  C:\\Users\\brets\\AppData\\Local\\Temp\\rehearsal_ld8giypd\\BLOCK_LEDGER_rehearsal1013.md",
+      "appended row 3: | 3 | `synthetic_block_burst1_clean` | mpc R-sweep r1 arm | PENDING: `galleries\\synthetic_block_burst1_clean\\` |",
+      "next: look at galleries\\synthetic_block_burst1_clean\\index.png, then replace the PENDING cell with key results"
      ]
     }
    ],
    "skipped": [],
-   "audit": null,
-   "secs": 20.4,
-   "ok": false
+   "audit": "AUDIT mpc_rsweep_r1: WARN | fresh@2 ticks=22200/22200 dropped=1 timeouts=0 stale=0 zero=1 obs=ACTIVE(0.690) offsets=applied y=LIVE u_nz=0.00 u_std=0 qpConv=100%",
+   "secs": 222.2,
+   "ok": true,
+   "note": "from rerun3 (fallback baseline 3.3e-5 V); full-run record in _fullrun.json; re-audited: dropped=1 (27 ms gap at 9.2 s, lateUs 6008) is WARN under the isolated-slip rule"
   },
   {
    "phase": "drift",
@@ -637,21 +698,21 @@
      "A": ".\\cpp_controller.exe --mode openloop --play design_rundutyid.csv --output-count 8 --capture capture_rig_rundutyid_late.csv --max-packets 12000",
      "B": ".\\rig\\2_loop.ps1 -Sim -InputChannels 64 -TimeoutMs 10 -TickFrames 6 -Run dutyid_late -Ticks 12000 -Capture capture_rig_rundutyid_late.csv",
      "run": "dutyid_late",
-     "ok": false,
-     "secs": 122.1,
+     "ok": true,
+     "secs": 118.7,
      "loop_summary": [
       "Exit reason: reached max control ticks (12000).",
-      "Summary: packets=12000 controlTicks=12000 droppedControlTicks=344 finalBuffered=65536/65536 nominalWindowSamples=6 minWindowSamples=5 undersampledWindows=1 channelMode=exact(in=64 card=64)",
+      "Summary: packets=12000 controlTicks=12000 droppedControlTicks=0 finalBuffered=65536/65536 nominalWindowSamples=6 minWindowSamples=6 undersampledWindows=0 channelMode=exact(in=64 card=64)",
       "Localhost summary: submitted=12000 replies=11999 failures=0 timeouts=0 staleDropped=0 skippedWhileBusy=0 freshTicks=11999 heldTicks=0 zeroTicks=1 freshReplyTransitions=11999 policyTransitions=2 inFlight=true lastReplySeq=11999",
       "Exit reason: reached max control ticks (12000).",
-      "Summary: packets=12000 controlTicks=12000 droppedControlTicks=344 finalBuffered=65536/65536 nominalWindowSamples=6 ",
+      "Summary: packets=12000 controlTicks=12000 droppedControlTicks=0 finalBuffered=65536/65536 nominalWindowSamples=6 ",
       "Localhost summary: submitted=12000 replies=11999 failures=0 timeouts=0 staleDropped=0 skippedWhileBusy=0 "
      ],
      "controller": "controller exit rc=0",
      "server_log": "C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\day_rehearsal1013\\server_dutyid_late.log",
      "fatal": [],
      "liveness": [
-      "y-liveness: LIVE     capture_rig_rundutyid_late.csv  rows 2700  dead ch 0/64  median|y| 696  banks ch1-32=7e+02 ch33-64=7e+02"
+      "y-liveness: LIVE     capture_rig_rundutyid_late.csv  rows 3041  dead ch 0/64  median|y| 696  banks ch1-32=7e+02 ch33-64=7e+02"
      ],
      "b_rc": 0
     }
@@ -659,15 +720,13 @@
    "checks": [
     {
      "cmd": "& $py rig\\run_audit.py --run dutyid_late --loop-log loop_rundutyid_late.log --capture capture_rig_rundutyid_late.csv --expect-ticks 12000 --sim",
-     "rc": 2,
-     "secs": 0.3,
+     "rc": 0,
+     "secs": 0.4,
      "tail": [
-      "AUDIT dutyid_late: FAIL | fresh@2 ticks=12000/12000 dropped=344 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.03 u_std=3.26 qpConv=100%",
-      "  FAIL: droppedControlTicks=344",
-      "  WARN: undersampledWindows=1",
+      "AUDIT dutyid_late: PASS | fresh@2 ticks=12000/12000 dropped=0 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.03 u_std=3.26 qpConv=100%",
       "  info: activeFrac=0.0 backlog=5 u_active=['u1', 'u3', 'u4', 'u6']"
      ],
-     "audit": "AUDIT dutyid_late: FAIL | fresh@2 ticks=12000/12000 dropped=344 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.03 u_std=3.26 qpConv=100%"
+     "audit": "AUDIT dutyid_late: PASS | fresh@2 ticks=12000/12000 dropped=0 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.03 u_std=3.26 qpConv=100%"
     },
     {
      "cmd": "& $py rig\\check_dead_time.py --capture capture_rig_rundutyid_late.csv --u-channels 1 3 4 6 --y-channel 34 --lti day_rehearsal1013\\plant_duty.lti   # gain/lag drift vs the fit",
@@ -677,18 +736,22 @@
       "      onset: NONE above null (channel did not respond at |rho| > thr)",
       "No input produced a detectable response; nothing to recommend.",
       "day_rehearsal1013\\plant_duty.lti: n=10 m=4 p=2",
-      "  row-frame free-run fit -0.01%; fit vs model-output shift s=-2..+2: -2:-0.01  -1:-0.01  +0:-0.01  +1:-0.01  +2:-0.01",
-      "  residual-vs-u xcorr lags 0..5: u1 -0.005 -0.004 +0.002 +0.005 +0.002 -0.005; u3 -0.002 -0.003 -0.000 +0.007 +0.009 +0.006; u4 +0.006 +0.018 +0.012 -0.002 -0.005 +0.006; u6 -0.005 -0.010 +0.000 +0.014 +0.014 +0.001",
-      "  VERDICT: OK: centred in the controller row frame (max residual |rho| 0.018)"
+      "  row-frame free-run fit 0.00%; fit vs model-output shift s=-2..+2: -2:-0.02  -1:-0.01  +0:0.00  +1:-0.00  +2:-0.02",
+      "  residual-vs-u xcorr lags 0..5: u1 -0.001 +0.003 +0.006 +0.002 -0.002 +0.000; u3 +0.011 +0.002 -0.008 -0.003 +0.010 +0.014; u4 +0.008 +0.005 -0.003 -0.002 +0.007 +0.012; u6 -0.010 +0.010 +0.017 +0.009 -0.007 -0.005",
+      "  VERDICT: OK: centred in the controller row frame (max residual |rho| 0.017)"
      ]
     }
    ],
    "skipped": [
     "& $py rig\\send_envelope.py --rz2 10.1.0.100 --shape const --umax 0 --secs 2 --count 8 --yes      # stim zero"
    ],
-   "audit": "AUDIT dutyid_late: FAIL | fresh@2 ticks=12000/12000 dropped=344 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.03 u_std=3.26 qpConv=100%",
-   "secs": 123.8,
-   "ok": false
+   "audit": "AUDIT dutyid_late: PASS | fresh@2 ticks=12000/12000 dropped=0 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.03 u_std=3.26 qpConv=100%",
+   "secs": 120.4,
+   "ok": true
   }
+ ],
+ "merged_from": [
+  "rehearsal_rehearsal1013_fullrun.json",
+  "rehearsal_rerun3.json"
  ]
 }

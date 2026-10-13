@@ -160,6 +160,9 @@ def main():
                     help="used for refs/arm/rsweep if the fit phase did not produce --model")
     ap.add_argument("--fallback-resp", default="4,6")
     ap.add_argument("--fallback-ctrl", default="64")
+    ap.add_argument("--fallback-baseline", type=float, default=3.3e-5,
+                    help="<V> for phases run on the fallback model (volt-scale, 09-10 quiet baseline 3.3e-5 V); "
+                         "the sim-derived baseline is int16-scale and makes the volt-scale model saturate")
     ap.add_argument("--templates-day", default="2026-09-10")
     ap.add_argument("--block", default=None, help="synthetic .npz block for the block-dependent checks")
     ap.add_argument("--baseline", type=float, default=None,
@@ -205,6 +208,7 @@ def main():
         if phase in ("refs", "arm", "rsweep") and (
                 not args.use_fit_model or not os.path.isfile(os.path.join(REPO, model))):
             use_model, p_resp, p_ctrl = args.fallback_model, args.fallback_resp, args.fallback_ctrl
+        p_baseline = args.fallback_baseline if use_model == args.fallback_model else baseline
         argv = ["--phase", phase, "--day", day, "--sim", "--resp", p_resp, "--ctrl", p_ctrl,
                 "--model", use_model, "--templates-day", args.templates_day, "--depth", str(args.depth)]
         if arm:
@@ -256,8 +260,8 @@ def main():
                 side = blk[:-4] + "_capture.csv"
                 if os.path.isfile(os.path.join(REPO, side)):
                     line = re.sub(r"--capture \S+", "--capture " + side.replace("\\", "\\\\"), line)
-            if "<V>" in line and baseline is not None:
-                line = line.replace("<V>", "%.6g" % baseline)
+            if "<V>" in line and p_baseline is not None:
+                line = line.replace("<V>", "%.6g" % p_baseline)
             if "<blk>" in line or "<best ch>" in line or "<V>" in line:
                 rec["skipped"].append(line.strip() + "   (placeholder)")
                 continue

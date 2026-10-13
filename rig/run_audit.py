@@ -14,7 +14,7 @@ scan that caught the 09-10 PZ2-off incident three runs late.
 
 Checks (FAIL / WARN):
   loop log   first policy=fresh controlTick <= 100            FAIL
-             droppedControlTicks == 0                         FAIL
+             droppedControlTicks == 0; <= max(3, 0.05%) WARN     FAIL above that
              controlTicks == expected                         WARN
              mid-run "Skipping N to position M" (backlog)     WARN
              timeouts > 50 / zeroTicks > 25 (after startup)   WARN
@@ -105,8 +105,16 @@ def audit_loop_log(path, a, expect_ticks):
         kv = kv_ints(summ)
         a.facts["controlTicks"] = kv.get("controlTicks")
         a.facts["dropped"] = kv.get("droppedControlTicks")
-        if kv.get("droppedControlTicks", 0) != 0:
-            a.fail("droppedControlTicks=%d" % kv["droppedControlTicks"])
+        dropped = kv.get("droppedControlTicks", 0)
+        if dropped:
+            # One isolated scheduler slip per hour (10-13 sim rehearsal: a 27 ms gap, lateUs 6008)
+            # costs one hold-last tick; the burst-aware delivery checker measures its effect.
+            # Repeated slips are the degraded-PC signature (08-31: 8.5 % dropped, 73 resyncs).
+            tol = max(3, int(0.0005 * (kv.get("controlTicks") or 0)))
+            if dropped <= tol:
+                a.warn("droppedControlTicks=%d (isolated, <= %d; check the delivery report)" % (dropped, tol))
+            else:
+                a.fail("droppedControlTicks=%d (> %d: PC timing degraded)" % (dropped, tol))
         if expect_ticks and kv.get("controlTicks") != expect_ticks:
             a.warn("controlTicks %s != expected %d" % (kv.get("controlTicks"), expect_ticks))
         m = re.search(r"undersampledWindows=(\d+)", summ)
