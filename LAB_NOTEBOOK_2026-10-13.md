@@ -158,8 +158,11 @@ warnings; the results section is a placeholder until the acute-3 blocks are anal
 
 ## Open items
 
-- **Block transfer over the school network is not viable; manual via the lab NAS on 10-14 (Synapse
-  PC → NAS → rig PC, the 09-10 route).** Prep-day test
+- **Block transfer over the school network is not viable; USB flash drive by hand on 10-14, 2-3 min
+  per block.** The user's usual route (Synapse PC → lab NAS → rig PC) is also out: the Synapse PC's
+  Ethernet died in the same event as this PC's onboard port and it now sits on Wi-Fi, too slow for the
+  NAS hop. The 10-13 test block (`BSCL20260909BU-261013-195629`, 77 s, 570 MB, all stores) came over
+  on the drive and was found by `placement_gate --newest` and `ingest_block`. Prep-day share test
   (evening): `Test-NetConnection DESKTOP-G2170R2 -Port 445` succeeded, `\\DESKTOP-G2170R2\SynapseTanks`
   listed (read-only share to the TDT account, credential stored with `cmdkey`), `pull_blocks -Check`
   PASS; a timed robocopy of one 437 MB block then moved 0.6 MB in 10 min and failed, and port 445 was
@@ -169,7 +172,9 @@ warnings; the results section is a placeholder until the acute-3 blocks are anal
   switch on the RZ2's private subnet, or a USB-C/Thunderbolt cable) before the share is used on a
   surgery day. `pull_blocks.ps1` gained `-Tank <prefix>` (share root + newest tank by prefix,
   waits before the first Record), UNC-safe free space, and a sort that does not touch the share twice;
-  it works unchanged against the NAS folder (`-Source <NAS tank folder> -Once`), which is the 10-14 path.
+  it works unchanged against the flash drive (`-Source <drive>:\<tank> -Once`). **Hardware for the
+  lab:** two dead Ethernet ports in one event → check the lab switch/port for a fault before plugging
+  anything else in; a USB-3 SSD (~30 s per block) and, properly, a direct link between the two PCs.
 - Push: done 10-13 evening (a5dda73 → 465c384, 10 commits); the 10-13 evening edits are a new commit.
 - Defender exclusion for the repo is optional hygiene (not implicated in the stall).
 - `run_audit`: an isolated dropped tick (≤ max(3, 0.05 %) per run) is now WARN, not FAIL — the

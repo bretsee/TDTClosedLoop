@@ -312,7 +312,7 @@ def main():
     d.fig_slide("The day as planned: tiers, decision points, hard stop", png("plan14"),
                 takeaway="Tier A plus the early/late repeat is the minimum publishable day; everything else is cut from the bottom of one list.")
     d.table_slide("New safety and data-path tools for the day", ["tool", "what it does", "when"],
-                  [["pull_blocks.ps1 -Once (NAS)", "mirrors new TDT blocks from the lab NAS drop (Synapse PC -> NAS -> rig PC); gates read the newest real block (direct SMB over school Wi-Fi dropped in the 10-13 test)", "after every recording"],
+                  [["pull_blocks.ps1 -Once (USB drive)", "mirrors new TDT blocks from the hand-carried drive, 2-3 min per block; gates read the newest real block (SMB over school Wi-Fi dropped in the 10-13 test; both PCs' Ethernet ports died in one event)", "after every recording"],
                    ["physio_timer.ps1", "beeps on the protocol interval and logs the reading", "from induction"],
                    ["check_y_liveness --beep", "audible alarm when features go dead (PZ2-off incident)", "every run"],
                    ["run_audit -> 2_loop gate", "a FAIL must be acknowledged before the next stim run", "every run"],
@@ -334,7 +334,7 @@ def main():
 
     d.bullets_slide("Next", [(0, "Thursday: ingest the acute-3 blocks, artifact-aware tracking on the new arms, results deck"),
                              (0, "Closed: the 3.6 s loop stall was the rehearsal driver's pipe; zero dropped ticks in every rerun"),
-                             (0, "Open item: block transfer needs a direct link between the Synapse and rig PCs (SMB over the school Wi-Fi dropped after 20 min on 10-13; via the lab NAS by hand on 10-14)")])
+                             (0, "Open item: block transfer needs a direct link between the Synapse and rig PCs (SMB over the school Wi-Fi dropped after 20 min on 10-13; USB drive by hand on 10-14; both PCs lost their Ethernet ports in one event, check the lab switch)")])
     out = d.save(OUT)
     print(f"deck: {out}")
     return 0
