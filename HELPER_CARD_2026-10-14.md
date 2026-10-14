@@ -25,7 +25,7 @@ prints terminal-A / terminal-B / check lines with every blank filled in (and wri
 
 | # | When the surgeon says | Run | PASS line to look for |
 |---|---|---|---|
-| 0 | "set up" (before induction) | one window: `.\rig\physio_timer.ps1 -Day 2026-10-14 -EveryMin <N>`; the Phase-0 lines of `rig_runcard --phase phase0`; flash drive empty and at the Synapse PC (runbook 0c) | `net_diag` PASS; `find_rz2` one device; selftest `8/8`; preflight PASS |
+| 0 | "set up" (before induction) | one window: `.\rig\physio_timer.ps1 -Day 2026-10-14 -EveryMin 15` (every beep: read heart rate + body temperature off the PhysioSuite, type e.g. `HR 310 T 37.2`); the Phase-0 lines of `rig_runcard --phase phase0`; flash drive empty and at the Synapse PC (runbook 0c) | `net_diag` PASS; `find_rz2` one device; selftest `8/8`; preflight PASS |
 | 1 | "cortical gate" (after 40 thwacks, recording stopped) | `& $py rig\placement_gate.py --mode cortical --newest` | `CORTICAL GATE: GO` (else read the `ADJUST:` line aloud) |
 | 2 | "thalamic gate" | `rig_runcard --phase gate --depth <d>` → A, B (`-Run gate<d> -Design design_rungate.csv -Capture capture_rig_rungate<d>.csv`) → after Summary: `run_audit`, `placement_gate --mode thalamic --newest --min-amp 13`, `check_impulse_delivery … --design-meta design_rungate_meta.json`, `check_dead_time … --y-channel <best ch>` | `AUDIT gate<d>: PASS`; `THALAMIC GATE: GO` + the per-pair table (read "responsive N, eff rank R, best pair P, best ch C"); `DELIVERY VERIFIED`; dead-time `recommended inputDelayTicks = N` |
 | 3 | "quiet" (60 s recording done) | `& $py rig\ingest_block.py --label quiet --day 2026-10-14` | blacklist list + baseline volts — write both on the whiteboard |
@@ -49,4 +49,5 @@ Red flags — say them immediately:
   the copy has not landed (recording still open? copied too early?); say so, it graded a STALE block.
 - Any `FAIL` from `check_impulse_delivery` → read the `missed` count and time window aloud (a late
   stim-enable looks like missed probes at the start; that is operator timing, not a fault).
-- The physio timer beeped → the surgeon answers it; type the reading (or `-`) so the log keeps time.
+- The physio timer beeped (every 15 min) → read heart rate + body temperature off the PhysioSuite to the
+  surgeon, type them (e.g. `HR 310 T 37.2`, or `-`) so the log keeps time.
