@@ -14,7 +14,9 @@ and turn the Synapse stim-enable ON right away. When B prints `Summary:` the run
 Synapse recording, do the flash-drive round-trip (copy the new block folder from the Synapse tank onto
 the drive, carry it over, copy it into `C:\Users\brets\Desktop\Data\Acute_101426\`; 2-3 min), then run
 the check lines; they find the newest block by themselves and print its name on the first line — check
-it is the recording you just stopped.
+it is the recording you just stopped. **The surgeon is mostly solo: only the gate blocks (rows 1-2) and
+the quiet block (row 3) are carried over right away; every other block is batched to the WRAP, and
+the lines marked `batched` in the runbook run then.**
 **Nothing else runs on this PC while a run is going** (no analysis, no browser).
 
 **Every row's exact lines come from the runcard:**
@@ -40,6 +42,7 @@ prints terminal-A / terminal-B / check lines with every blank filled in (and wri
 | 12 | "archive" | `.\rig\archive_day.ps1 -Day 2026-10-14` | `DONE: …zip (N MB)` — then copy zip + blocks to the external drive |
 
 Red flags — say them immediately:
+
 - the liveness window BEEPS or says `DEAD` (or `run_audit` says `y=DEAD`) → amplifier/PZ2 is off. Stop the run.
 - `AUDIT …: FAIL` → read every `FAIL:` line aloud; B will refuse the next run until someone types `override`.
 - any crash/abort of a stim run → `.\rig\stim_zero.ps1` BEFORE anything else.
