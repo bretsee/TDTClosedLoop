@@ -18,7 +18,7 @@
 param(
     [string] $Source = '',
     [string] $Tank   = '',
-    [string] $Dest   = 'C:\Users\brets\Desktop\Data\Acute3',
+    [string] $Dest   = 'C:\Users\brets\Desktop\Data\Acute_101426',
     [switch] $Check,
     [switch] $Watch,
     [switch] $Once,

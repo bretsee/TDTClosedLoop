@@ -11,9 +11,9 @@ $py = "C:\Users\brets\Documents\Repositories\PythonIntanAnalysis\.venv\Scripts\p
 Two terminals are used for every stim run: **A** = controller server, **B** = loop. Order is always:
 start A, start B and wait for the `go` prompt, **then** start the Synapse recording, **then** type `go`
 and turn the Synapse stim-enable ON right away. When B prints `Summary:` the run is over: stop the
-Synapse recording, do the NAS round-trip (the `robocopy` line on the Synapse PC uploads the block to the
-lab NAS → `.\rig\pull_blocks.ps1 -Source <NAS tank folder> -Once` here → it prints `NEW BLOCK:`), then
-run the check lines.
+Synapse recording, do the NAS round-trip (upload the new block folder from the Synapse PC to the lab
+NAS, download it here into `C:\Users\brets\Desktop\Data\Acute_101426\`), then run the check lines; they
+find the newest block by themselves and print its name on the first line — check it is TODAY's time.
 **Nothing else runs on this PC while a run is going** (no analysis, no browser).
 
 **Every row's exact lines come from the runcard:**
@@ -24,7 +24,7 @@ prints terminal-A / terminal-B / check lines with every blank filled in (and wri
 
 | # | When the surgeon says | Run | PASS line to look for |
 |---|---|---|---|
-| 0 | "set up" (before induction) | one window: `.\rig\physio_timer.ps1 -Day 2026-10-14 -EveryMin <N>`; the Phase-0 lines of `rig_runcard --phase phase0`; one NAS round-trip of a test recording (runbook 0c) | `net_diag` PASS; `find_rz2` one device; selftest `8/8`; preflight PASS; `pull_blocks -Once` prints `NEW BLOCK:` |
+| 0 | "set up" (before induction) | one window: `.\rig\physio_timer.ps1 -Day 2026-10-14 -EveryMin <N>`; the Phase-0 lines of `rig_runcard --phase phase0`; NAS reachable from both PCs (runbook 0c) | `net_diag` PASS; `find_rz2` one device; selftest `8/8`; preflight PASS |
 | 1 | "cortical gate" (after 40 thwacks, recording stopped) | `& $py rig\placement_gate.py --mode cortical --newest` | `CORTICAL GATE: GO` (else read the `ADJUST:` line aloud) |
 | 2 | "thalamic gate" | `rig_runcard --phase gate --depth <d>` → A, B (`-Run gate<d> -Design design_rungate.csv -Capture capture_rig_rungate<d>.csv`) → after Summary: `run_audit`, `placement_gate --mode thalamic --newest --min-amp 13`, `check_impulse_delivery … --design-meta design_rungate_meta.json`, `check_dead_time … --y-channel <best ch>` | `AUDIT gate<d>: PASS`; `THALAMIC GATE: GO` + the per-pair table (read "responsive N, eff rank R, best pair P, best ch C"); `DELIVERY VERIFIED`; dead-time `recommended inputDelayTicks = N` |
 | 3 | "quiet" (60 s recording done) | `& $py rig\ingest_block.py --label quiet --day 2026-10-14` | blacklist list + baseline volts — write both on the whiteboard |
@@ -44,8 +44,8 @@ Red flags — say them immediately:
 - any crash/abort of a stim run → `.\rig\stim_zero.ps1` BEFORE anything else.
 - B never prints `policy=fresh` by tick ~100 → Ctrl+C in B, restart B, `go` again.
 - `Skipping ... to position` in B → Synapse recording was started too early; stop, restart B, start recording LAST.
-- `pull_blocks -Once` printed no `NEW BLOCK:` after a round-trip → the block is not on the NAS yet
-  (recording still open? upload not finished?); say so BEFORE running a gate, or it grades a stale block.
+- A gate/ingest line prints `newest block:` with a time that is NOT the recording you just stopped →
+  the download has not landed (upload unfinished? recording still open?); say so, it graded a STALE block.
 - Any `FAIL` from `check_impulse_delivery` → read the `missed` count and time window aloud (a late
   stim-enable looks like missed probes at the start; that is operator timing, not a fault).
 - The physio timer beeped → the surgeon answers it; type the reading (or `-`) so the log keeps time.
