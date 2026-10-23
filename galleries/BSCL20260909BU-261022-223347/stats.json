@@ -1,0 +1,178 @@
+{
+  "block": "BSCL20260909BU-261022-223347",
+  "block_path": "C:/Users/brets/Desktop/Data/Acute_102226/BSCL20260909BU-261022-223347",
+  "mode": "probe",
+  "fs": 610.3516,
+  "n_channels": 64,
+  "n_trials_total": 240,
+  "groups": {
+    "pair1_amp18": {
+      "n_trials": 10,
+      "peak_uv": -453.3,
+      "latency_ms": 101.6,
+      "best_channel_1based": 61,
+      "split_half_corr": 0.289
+    },
+    "pair1_amp25": {
+      "n_trials": 10,
+      "peak_uv": 326.8,
+      "latency_ms": 88.5,
+      "best_channel_1based": 12,
+      "split_half_corr": -0.118
+    },
+    "pair1_amp30": {
+      "n_trials": 10,
+      "peak_uv": -413.5,
+      "latency_ms": 183.5,
+      "best_channel_1based": 12,
+      "split_half_corr": -0.121
+    },
+    "pair2_amp18": {
+      "n_trials": 10,
+      "peak_uv": 299.6,
+      "latency_ms": 75.4,
+      "best_channel_1based": 12,
+      "split_half_corr": -0.043
+    },
+    "pair2_amp25": {
+      "n_trials": 10,
+      "peak_uv": -628.5,
+      "latency_ms": 144.2,
+      "best_channel_1based": 38,
+      "split_half_corr": 0.35
+    },
+    "pair2_amp30": {
+      "n_trials": 10,
+      "peak_uv": -219.6,
+      "latency_ms": 118.0,
+      "best_channel_1based": 61,
+      "split_half_corr": 0.183
+    },
+    "pair3_amp18": {
+      "n_trials": 10,
+      "peak_uv": -225.7,
+      "latency_ms": 119.6,
+      "best_channel_1based": 61,
+      "split_half_corr": -0.132
+    },
+    "pair3_amp25": {
+      "n_trials": 10,
+      "peak_uv": -493.0,
+      "latency_ms": 34.4,
+      "best_channel_1based": 12,
+      "split_half_corr": 0.015
+    },
+    "pair3_amp30": {
+      "n_trials": 10,
+      "peak_uv": -388.0,
+      "latency_ms": 55.7,
+      "best_channel_1based": 61,
+      "split_half_corr": -0.237
+    },
+    "pair4_amp18": {
+      "n_trials": 10,
+      "peak_uv": -474.0,
+      "latency_ms": 27.9,
+      "best_channel_1based": 12,
+      "split_half_corr": 0.276
+    },
+    "pair4_amp25": {
+      "n_trials": 10,
+      "peak_uv": 444.1,
+      "latency_ms": 99.9,
+      "best_channel_1based": 24,
+      "split_half_corr": 0.301
+    },
+    "pair4_amp30": {
+      "n_trials": 10,
+      "peak_uv": -289.8,
+      "latency_ms": 172.0,
+      "best_channel_1based": 2,
+      "split_half_corr": 0.013
+    },
+    "pair5_amp18": {
+      "n_trials": 10,
+      "peak_uv": -484.0,
+      "latency_ms": 137.6,
+      "best_channel_1based": 61,
+      "split_half_corr": -0.125
+    },
+    "pair5_amp25": {
+      "n_trials": 10,
+      "peak_uv": -312.4,
+      "latency_ms": 140.9,
+      "best_channel_1based": 35,
+      "split_half_corr": 0.019
+    },
+    "pair5_amp30": {
+      "n_trials": 10,
+      "peak_uv": -487.0,
+      "latency_ms": 132.7,
+      "best_channel_1based": 1,
+      "split_half_corr": -0.01
+    },
+    "pair6_amp18": {
+      "n_trials": 10,
+      "peak_uv": -486.8,
+      "latency_ms": 172.0,
+      "best_channel_1based": 12,
+      "split_half_corr": -0.194
+    },
+    "pair6_amp25": {
+      "n_trials": 10,
+      "peak_uv": -726.6,
+      "latency_ms": 42.6,
+      "best_channel_1based": 7,
+      "split_half_corr": 0.799
+    },
+    "pair6_amp30": {
+      "n_trials": 10,
+      "peak_uv": -380.8,
+      "latency_ms": 185.1,
+      "best_channel_1based": 2,
+      "split_half_corr": -0.066
+    },
+    "pair7_amp18": {
+      "n_trials": 10,
+      "peak_uv": 286.3,
+      "latency_ms": 155.6,
+      "best_channel_1based": 12,
+      "split_half_corr": 0.114
+    },
+    "pair7_amp25": {
+      "n_trials": 10,
+      "peak_uv": -446.5,
+      "latency_ms": 32.8,
+      "best_channel_1based": 61,
+      "split_half_corr": -0.039
+    },
+    "pair7_amp30": {
+      "n_trials": 10,
+      "peak_uv": -385.6,
+      "latency_ms": 54.1,
+      "best_channel_1based": 12,
+      "split_half_corr": 0.007
+    },
+    "pair8_amp18": {
+      "n_trials": 10,
+      "peak_uv": -380.4,
+      "latency_ms": 121.2,
+      "best_channel_1based": 2,
+      "split_half_corr": 0.081
+    },
+    "pair8_amp25": {
+      "n_trials": 10,
+      "peak_uv": -405.1,
+      "latency_ms": 116.3,
+      "best_channel_1based": 2,
+      "split_half_corr": -0.172
+    },
+    "pair8_amp30": {
+      "n_trials": 10,
+      "peak_uv": 246.2,
+      "latency_ms": 72.1,
+      "best_channel_1based": 1,
+      "split_half_corr": -0.04
+    }
+  }
+}

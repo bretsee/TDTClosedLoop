@@ -46,3 +46,8 @@ __pycache__/
 __pycache__/
 
 day_2026-08-31/analysis/cache/
+
+# MATLAB model backups written by 0_preflight (one per rig day; AllModels.mat itself is the record)
+AllModels_backup_*.mat
+# terminal-B copies of the loop log written by rig/drive_live_run.py (same content as loop_run*.log)
+day_*/loopB_*.log

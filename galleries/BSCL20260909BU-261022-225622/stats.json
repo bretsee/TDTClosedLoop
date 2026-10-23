@@ -1,0 +1,66 @@
+{
+  "block": "BSCL20260909BU-261022-225622",
+  "block_path": "C:/Users/brets/Desktop/Data/Acute_102226/BSCL20260909BU-261022-225622",
+  "mode": "probe",
+  "fs": 610.3516,
+  "n_channels": 64,
+  "n_trials_total": 720,
+  "groups": {
+    "pair1_amp30": {
+      "n_trials": 90,
+      "peak_uv": -156.5,
+      "latency_ms": 27.9,
+      "best_channel_1based": 61,
+      "split_half_corr": 0.563
+    },
+    "pair2_amp30": {
+      "n_trials": 90,
+      "peak_uv": -113.9,
+      "latency_ms": 134.3,
+      "best_channel_1based": 57,
+      "split_half_corr": 0.222
+    },
+    "pair3_amp30": {
+      "n_trials": 90,
+      "peak_uv": -117.5,
+      "latency_ms": 121.2,
+      "best_channel_1based": 61,
+      "split_half_corr": 0.066
+    },
+    "pair4_amp30": {
+      "n_trials": 90,
+      "peak_uv": -135.7,
+      "latency_ms": 176.9,
+      "best_channel_1based": 57,
+      "split_half_corr": 0.365
+    },
+    "pair5_amp30": {
+      "n_trials": 90,
+      "peak_uv": -67.3,
+      "latency_ms": 109.8,
+      "best_channel_1based": 61,
+      "split_half_corr": -0.245
+    },
+    "pair6_amp30": {
+      "n_trials": 90,
+      "peak_uv": -94.1,
+      "latency_ms": 75.4,
+      "best_channel_1based": 44,
+      "split_half_corr": 0.047
+    },
+    "pair7_amp30": {
+      "n_trials": 90,
+      "peak_uv": -131.2,
+      "latency_ms": 163.8,
+      "best_channel_1based": 12,
+      "split_half_corr": 0.189
+    },
+    "pair8_amp30": {
+      "n_trials": 90,
+      "peak_uv": -154.5,
+      "latency_ms": 67.2,
+      "best_channel_1based": 57,
+      "split_half_corr": 0.217
+    }
+  }
+}

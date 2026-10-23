@@ -1,0 +1,7 @@
+MpcPo8eUdpClosedLoop build: Aug 29 2026 18:25:56
+Constant-output mode enabled: skipping MATLAB, value=0
+Found 1 card(s) in the system.
+Connecting to card 0...
+Connected: 00000118D0923E80
+Source is collecting (PO8e).
+Waiting for stream...

@@ -46,7 +46,7 @@ PAIR_TABLE = "16:12,15:11,14:10,13:9,4:8,3:7,2:6,1:5"
 NNC_TEMPLATES = r"C:\Users\brets\Documents\Repositories\NNController\outputs\BiomimeticInversion\touch\Acute_%s"
 LOOP_LIVE = r".\rig\2_loop.ps1 -RZ2 %s -InputChannels %d -TimeoutMs 10 -TickFrames 6"
 LOOP_SIM = r".\rig\2_loop.ps1 -Sim -InputChannels %d -TimeoutMs 10 -TickFrames 6"
-PHASES = ["phase0", "gate", "quiet", "thwack", "burst", "gap", "dutyid", "fit", "refs",
+PHASES = ["phase0", "cgate", "gate", "quiet", "thwack", "burst", "gap", "dutyid", "fit", "refs",
           "arm", "rsweep", "drift"]
 
 
@@ -72,6 +72,9 @@ def add_args(ap):
     ap.add_argument("--sim", action="store_true", help="rehearsal card: -Sim loop, --sim audits, hardware lines skipped")
     ap.add_argument("--input-channels", type=int, default=64)
     ap.add_argument("--depth", type=int, default=1, help="gate: depth index for the run label")
+    ap.add_argument("--short", action="store_true",
+                    help="gate: play design_rungate_short.csv (18/25/30 uA, 10/cond, 1.6 min) for the depth ladder "
+                         "instead of the 4.4-min design_rungate.csv (use the full design once at the chosen depth)")
     ap.add_argument("--site", default="<SITE>", help="thwack: site label")
     ap.add_argument("--resp", default=None, help="responsive pairs, e.g. 1,3,4,6")
     ap.add_argument("--ctrl", default=None, help="control channels, e.g. 34,40")
@@ -164,19 +167,35 @@ def build_card(args):
             HW(".\\MpcPo8eUdpClosedLoop.exe %s . %d --controller constant --constant-output 0 --skip-udp-send --max-control-ticks 300"
                % (args.rz2, args.input_channels))
             P("# PASS = Streaming. numChannels=%d, 300/300, window 6" % args.input_channels)
+            P("# ARRAY VERIFICATION (new 10-22, after the 10-14 broken-array day): both arrays in SALINE, ref + gnd wires")
+            P("# submerged, no bubbles on the contacts; Synapse impedance at 100 Hz AND 1 kHz -> 'Save Impedance to CSV';")
+            P("# then record a 60 s block in saline, carry it over, and:")
+            HW("& $py rig\\array_health.py --newest --context saline --n-channels %d --label \"cortical saline bench\"   # ARRAY HEALTH: OK  (BROKEN = reseat / swap the array BEFORE induction)" % args.input_channels)
+
+        elif phase == "cgate":
+            blkflag = ("--block %s" % blk) if args.block else "--newest"
+            P(ph("PHASE G -- cortical placement gate (40 thwacks on D1, recording stopped, block carried over)"))
+            P("& $py rig\\array_health.py %s --context tissue --n-channels %d --label \"cortical in tissue\"   # ARRAY HEALTH: OK first" % (blkflag, args.input_channels), "check")
+            P("& $py rig\\placement_gate.py --mode cortical %s%s   # CORTICAL GATE: GO; also read the 'array', 'common-mode' and 're-referenced' lines" % (blkflag, bl_flag), "check")
+            P("& $py rig\\ingest_block.py --label \"D1 gate thwack\" --mode thwack --day %s" % day, "check")
+            P("# GO = z >= 8, split-half >= 0.80, latency 8-45 ms, AND array OK, footprint <= 32 ch, common-mode touch wave <= 20 uV")
+            P("# BROKEN array -> NO-GO (reseat connector / swap array). Common-mode > 20 uV -> move the REFERENCE (skull screw), re-thwack.")
 
         elif phase == "gate":
             d = args.depth
             cap = "capture_rig_rungate%d.csv" % d
-            P(ph("PHASE G' -- thalamic placement gate, depth %d (%d ticks = %.1f min)" % (d, design_ticks("design_rungate.csv"), design_ticks("design_rungate.csv") / 6000.0)))
+            des = "design_rungate_short.csv" if args.short else "design_rungate.csv"
+            des_meta = des[:-4] + "_meta.json"
+            amps = "18 25 30" if args.short else "13 18 25"
+            P(ph("PHASE G' -- thalamic placement gate, depth %d (%s: %d ticks = %.1f min)" % (d, des, design_ticks(des), design_ticks(des) / 6000.0)))
             P("# A:")
-            P(".\\cpp_controller.exe --mode openloop --play design_rungate.csv --output-count 8 --capture %s" % cap, "A")
+            P(".\\cpp_controller.exe --mode openloop --play %s --output-count 8 --capture %s" % (des, cap), "A")
             P("# B:")
-            P("%s -Run gate%d -Design design_rungate.csv -Capture %s%s" % (loop, d, cap, base_flag), "B")
+            P("%s -Run gate%d -Design %s -Capture %s%s" % (loop, d, des, cap, base_flag), "B")
             P("# after Summary: (recording stopped)")
-            P("& $py rig\\run_audit.py --run gate%d --loop-log loop_rungate%d.log --capture %s --design design_rungate.csv%s" % (d, d, cap, audit_sim), "check")
+            P("& $py rig\\run_audit.py --run gate%d --loop-log loop_rungate%d.log --capture %s --design %s%s" % (d, d, cap, des, audit_sim), "check")
             P("& $py rig\\placement_gate.py --mode thalamic %s --min-amp 13%s" % (("--block %s" % blk) if args.block else "--newest", bl_flag), "check")
-            P("& $py rig\\check_impulse_delivery.py --block %s --capture %s --amps 13 18 25 --pairs \"%s\" --design-meta design_rungate_meta.json   # wire gate re-bank" % (blk, cap, PAIR_TABLE), "check")
+            P("& $py rig\\check_impulse_delivery.py --block %s --capture %s --amps %s --pairs \"%s\" --design-meta %s   # wire gate re-bank" % (blk, cap, amps, PAIR_TABLE, des_meta), "check")
             P("& $py rig\\check_dead_time.py --capture %s --y-channel %s --json %s\\dead_time_gate%d.json   # -> inputDelayTicks for the fit" % (cap, best_ch, D, d), "check")
             P("& $py rig\\ingest_block.py --label \"gate depth %d probe\" --day %s" % (d, day), "check")
             P("# GO = >= 2 RESPONSIVE pairs AND eff rank >= 2")

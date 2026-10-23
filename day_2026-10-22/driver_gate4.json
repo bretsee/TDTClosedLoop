@@ -1,0 +1,23 @@
+{
+ "run": "gate4",
+ "a_cmd": ".\\cpp_controller.exe --mode openloop --play design_rungate_short.csv --output-count 8 --capture capture_rig_rungate4.csv",
+ "b_cmd": ".\\rig\\2_loop.ps1 -RZ2 10.1.0.100 -InputChannels 64 -TimeoutMs 10 -TickFrames 6 -Run gate4 -Design design_rungate_short.csv -Capture capture_rig_rungate4.csv",
+ "t_start": "22:33:51",
+ "t_go": "22:34:27",
+ "secs": 125.1,
+ "b_rc": 0,
+ "controller": "controller exit rc=0",
+ "loop_summary": [
+  "Exit reason: reached max control ticks (9101).",
+  "Summary: packets=9101 controlTicks=9101 droppedControlTicks=0 finalBuffered=63259/65536 nominalWindowSamples=6 minWindowSamples=6 undersampledWindows=0 channelMode=exact(in=64 card=64)",
+  "Localhost summary: submitted=9101 replies=9100 failures=0 timeouts=0 staleDropped=0 skippedWhileBusy=0 freshTicks=9100 heldTicks=0 zeroTicks=1 freshReplyTransitions=9100 policyTransitions=2 inFlight=true lastReplySeq=9100",
+  "Exit reason: reached max control ticks (9101).",
+  "Summary: packets=9101 controlTicks=9101 droppedControlTicks=0 finalBuffered=63259/65536 nominalWindowSamples=6",
+  "Localhost summary: submitted=9101 replies=9100 failures=0 timeouts=0 staleDropped=0 skippedWhileBusy=0 freshTicks=9100"
+ ],
+ "fatal": [],
+ "liveness": [
+  "y-liveness: LIVE     capture_rig_rungate4.csv  rows 3038  dead ch 0/64  median|y| 4.77e-05  banks ch1-32=4.7e-05 ch33-64=4.8e-05"
+ ],
+ "t_end": "22:35:56"
+}

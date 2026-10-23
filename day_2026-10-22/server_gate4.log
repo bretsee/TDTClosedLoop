@@ -1,0 +1,107 @@
+openloop: replaying design_rungate_short.csv verbatim -- 9101 ticks (91.0 s), 8 u columns, u in [0 30], zeros after the last row
+openloop: design meta design_rungate_short_meta.json: kind=burst-ladder nTicks=9101
+Latency log defaulted to server_lat_capture_rig_rungate4.csv
+
+Native controller server ready. mode=openloop requestPort=31000 replyPort=31001 outputCount=8
+Will stop automatically after 9101 serviced packets.
+Press Ctrl+C to stop.
+Reply #1 seq=1 feature0=0.000909 out0=0.000000 compute=0.002ms turnaround=0.035ms replay
+Reply #2 seq=2 feature0=0.000055 out0=0.000000 compute=0.000ms turnaround=0.017ms replay
+Reply #3 seq=3 feature0=0.000896 out0=0.000000 compute=0.000ms turnaround=0.017ms replay
+Reply #4 seq=4 feature0=0.000016 out0=0.000000 compute=0.000ms turnaround=0.016ms replay
+Reply #5 seq=5 feature0=0.000074 out0=0.000000 compute=0.000ms turnaround=0.038ms replay
+Reply #100 seq=100 feature0=0.000054 out0=0.000000 compute=0.000ms turnaround=0.009ms replay
+Reply #200 seq=200 feature0=0.000077 out0=0.000000 compute=0.000ms turnaround=0.016ms replay
+Reply #300 seq=300 feature0=0.000110 out0=0.000000 compute=0.000ms turnaround=0.023ms replay
+Reply #400 seq=400 feature0=0.000011 out0=0.000000 compute=0.000ms turnaround=0.016ms replay
+Reply #500 seq=500 feature0=0.000013 out0=0.000000 compute=0.001ms turnaround=0.022ms replay
+Reply #600 seq=600 feature0=0.000049 out0=0.000000 compute=0.000ms turnaround=0.009ms replay
+Reply #700 seq=700 feature0=0.000086 out0=0.000000 compute=0.001ms turnaround=0.023ms replay
+Reply #800 seq=800 feature0=0.000259 out0=0.000000 compute=0.000ms turnaround=0.022ms replay
+Reply #900 seq=900 feature0=0.000662 out0=0.000000 compute=0.000ms turnaround=0.017ms replay
+Reply #1000 seq=1000 feature0=0.000047 out0=0.000000 compute=0.001ms turnaround=0.022ms replay
+Reply #1100 seq=1100 feature0=0.000088 out0=0.000000 compute=0.001ms turnaround=0.022ms replay
+Reply #1200 seq=1200 feature0=0.002141 out0=0.000000 compute=0.000ms turnaround=0.022ms replay
+Reply #1300 seq=1300 feature0=0.000020 out0=0.000000 compute=0.001ms turnaround=0.022ms replay
+Reply #1400 seq=1400 feature0=0.000041 out0=0.000000 compute=0.001ms turnaround=0.023ms replay
+Reply #1500 seq=1500 feature0=0.000645 out0=0.000000 compute=0.000ms turnaround=0.023ms replay
+Reply #1600 seq=1600 feature0=0.000018 out0=0.000000 compute=0.000ms turnaround=0.023ms replay
+Reply #1700 seq=1700 feature0=0.000015 out0=0.000000 compute=0.000ms turnaround=0.017ms replay
+Reply #1800 seq=1800 feature0=0.000022 out0=0.000000 compute=0.001ms turnaround=0.022ms replay
+Reply #1900 seq=1900 feature0=0.000180 out0=0.000000 compute=0.001ms turnaround=0.016ms replay
+Reply #2000 seq=2000 feature0=0.000241 out0=0.000000 compute=0.001ms turnaround=0.022ms replay
+Reply #2100 seq=2100 feature0=0.000015 out0=0.000000 compute=0.001ms turnaround=0.022ms replay
+Reply #2200 seq=2200 feature0=0.000722 out0=0.000000 compute=0.000ms turnaround=0.009ms replay
+Reply #2300 seq=2300 feature0=0.000130 out0=0.000000 compute=0.000ms turnaround=0.022ms replay
+Reply #2400 seq=2400 feature0=0.000031 out0=0.000000 compute=0.000ms turnaround=0.009ms replay
+Reply #2500 seq=2500 feature0=0.000057 out0=0.000000 compute=0.000ms turnaround=0.022ms replay
+Reply #2600 seq=2600 feature0=0.000610 out0=0.000000 compute=0.000ms turnaround=0.022ms replay
+Reply #2700 seq=2700 feature0=0.000019 out0=0.000000 compute=0.000ms turnaround=0.022ms replay
+Reply #2800 seq=2800 feature0=0.000053 out0=0.000000 compute=0.000ms turnaround=0.023ms replay
+Reply #2900 seq=2900 feature0=0.000021 out0=0.000000 compute=0.000ms turnaround=0.016ms replay
+Reply #3000 seq=3000 feature0=0.000214 out0=0.000000 compute=0.001ms turnaround=0.017ms replay
+Reply #3100 seq=3100 feature0=0.000027 out0=0.000000 compute=0.000ms turnaround=0.018ms replay
+Reply #3200 seq=3200 feature0=0.000034 out0=0.000000 compute=0.000ms turnaround=0.022ms replay
+Reply #3300 seq=3300 feature0=0.000355 out0=0.000000 compute=0.000ms turnaround=0.022ms replay
+Reply #3400 seq=3400 feature0=0.000110 out0=0.000000 compute=0.000ms turnaround=0.017ms replay
+Reply #3500 seq=3500 feature0=0.000015 out0=0.000000 compute=0.000ms turnaround=0.012ms replay
+Reply #3600 seq=3600 feature0=0.000184 out0=0.000000 compute=0.000ms turnaround=0.015ms replay
+Reply #3700 seq=3700 feature0=0.000042 out0=0.000000 compute=0.000ms turnaround=0.023ms replay
+Reply #3800 seq=3800 feature0=0.000035 out0=0.000000 compute=0.000ms turnaround=0.017ms replay
+Reply #3900 seq=3900 feature0=0.000476 out0=0.000000 compute=0.001ms turnaround=0.020ms replay
+Reply #4000 seq=4000 feature0=0.000032 out0=0.000000 compute=0.000ms turnaround=0.040ms replay
+Reply #4100 seq=4100 feature0=0.000006 out0=0.000000 compute=0.000ms turnaround=0.022ms replay
+Reply #4200 seq=4200 feature0=0.000014 out0=0.000000 compute=0.001ms turnaround=0.024ms replay
+Reply #4300 seq=4300 feature0=0.000050 out0=0.000000 compute=0.000ms turnaround=0.016ms replay
+Reply #4400 seq=4400 feature0=0.000073 out0=0.000000 compute=0.000ms turnaround=0.022ms replay
+Reply #4500 seq=4500 feature0=0.000208 out0=0.000000 compute=0.000ms turnaround=0.022ms replay
+Reply #4600 seq=4600 feature0=0.000026 out0=0.000000 compute=0.001ms turnaround=0.022ms replay
+Reply #4700 seq=4700 feature0=0.000129 out0=0.000000 compute=0.000ms turnaround=0.021ms replay
+Reply #4800 seq=4800 feature0=0.000034 out0=0.000000 compute=0.000ms turnaround=0.017ms replay
+Reply #4900 seq=4900 feature0=0.000049 out0=0.000000 compute=0.000ms turnaround=0.017ms replay
+Reply #5000 seq=5000 feature0=0.000262 out0=0.000000 compute=0.001ms turnaround=0.017ms replay
+Reply #5100 seq=5100 feature0=0.000433 out0=0.000000 compute=0.001ms turnaround=0.023ms replay
+Reply #5200 seq=5200 feature0=0.000360 out0=0.000000 compute=0.000ms turnaround=0.005ms replay
+Reply #5300 seq=5300 feature0=0.000008 out0=0.000000 compute=0.000ms turnaround=0.010ms replay
+Reply #5400 seq=5400 feature0=0.000030 out0=0.000000 compute=0.001ms turnaround=0.022ms replay
+Reply #5500 seq=5500 feature0=0.000970 out0=0.000000 compute=0.000ms turnaround=0.017ms replay
+Reply #5600 seq=5600 feature0=0.000091 out0=0.000000 compute=0.000ms turnaround=0.022ms replay
+Reply #5700 seq=5700 feature0=0.000086 out0=0.000000 compute=0.001ms turnaround=0.022ms replay
+Reply #5800 seq=5800 feature0=0.000091 out0=0.000000 compute=0.001ms turnaround=0.023ms replay
+Reply #5900 seq=5900 feature0=0.000083 out0=0.000000 compute=0.000ms turnaround=0.022ms replay
+Reply #6000 seq=6000 feature0=0.000452 out0=0.000000 compute=0.001ms turnaround=0.021ms replay
+Reply #6100 seq=6100 feature0=0.000005 out0=0.000000 compute=0.000ms turnaround=0.021ms replay
+Reply #6200 seq=6200 feature0=0.000067 out0=0.000000 compute=0.000ms turnaround=0.017ms replay
+Reply #6300 seq=6300 feature0=0.000124 out0=0.000000 compute=0.001ms turnaround=0.022ms replay
+Reply #6400 seq=6400 feature0=0.000060 out0=0.000000 compute=0.000ms turnaround=0.009ms replay
+Reply #6500 seq=6500 feature0=0.000108 out0=0.000000 compute=0.000ms turnaround=0.022ms replay
+Reply #6600 seq=6600 feature0=0.000279 out0=0.000000 compute=0.000ms turnaround=0.023ms replay
+Reply #6700 seq=6700 feature0=0.000023 out0=0.000000 compute=0.000ms turnaround=0.009ms replay
+Reply #6800 seq=6800 feature0=0.000054 out0=0.000000 compute=0.000ms turnaround=0.017ms replay
+Reply #6900 seq=6900 feature0=0.000220 out0=0.000000 compute=0.000ms turnaround=0.022ms replay
+Reply #7000 seq=7000 feature0=0.000010 out0=0.000000 compute=0.000ms turnaround=0.009ms replay
+Reply #7100 seq=7100 feature0=0.000006 out0=0.000000 compute=0.000ms turnaround=0.022ms replay
+Reply #7200 seq=7200 feature0=0.000007 out0=0.000000 compute=0.000ms turnaround=0.022ms replay
+Reply #7300 seq=7300 feature0=0.000083 out0=0.000000 compute=0.000ms turnaround=0.023ms replay
+Reply #7400 seq=7400 feature0=0.000021 out0=0.000000 compute=0.000ms turnaround=0.022ms replay
+Reply #7500 seq=7500 feature0=0.000122 out0=0.000000 compute=0.000ms turnaround=0.010ms replay
+Reply #7600 seq=7600 feature0=0.000066 out0=0.000000 compute=0.000ms turnaround=0.022ms replay
+Reply #7700 seq=7700 feature0=0.000074 out0=0.000000 compute=0.000ms turnaround=0.022ms replay
+Reply #7800 seq=7800 feature0=0.000067 out0=0.000000 compute=0.000ms turnaround=0.022ms replay
+Reply #7900 seq=7900 feature0=0.002180 out0=0.000000 compute=0.001ms turnaround=0.029ms replay
+Reply #8000 seq=8000 feature0=0.000016 out0=0.000000 compute=0.000ms turnaround=0.022ms replay
+Reply #8100 seq=8100 feature0=0.000091 out0=0.000000 compute=0.000ms turnaround=0.022ms replay
+Reply #8200 seq=8200 feature0=0.000070 out0=0.000000 compute=0.000ms turnaround=0.019ms replay
+Reply #8300 seq=8300 feature0=0.000040 out0=0.000000 compute=0.000ms turnaround=0.007ms replay
+Reply #8400 seq=8400 feature0=0.000021 out0=0.000000 compute=0.000ms turnaround=0.017ms replay
+Reply #8500 seq=8500 feature0=0.000259 out0=0.000000 compute=0.000ms turnaround=0.016ms replay
+Reply #8600 seq=8600 feature0=0.000008 out0=0.000000 compute=0.000ms turnaround=0.022ms replay
+Reply #8700 seq=8700 feature0=0.000065 out0=0.000000 compute=0.000ms turnaround=0.023ms replay
+Reply #8800 seq=8800 feature0=0.000715 out0=0.000000 compute=0.000ms turnaround=0.017ms replay
+Reply #8900 seq=8900 feature0=0.000053 out0=0.000000 compute=0.000ms turnaround=0.022ms replay
+Reply #9000 seq=9000 feature0=0.000037 out0=0.000000 compute=0.000ms turnaround=0.022ms replay
+Reply #9100 seq=9100 feature0=0.000053 out0=0.000000 compute=0.001ms turnaround=0.022ms replay
+
+Server turnaround over 9101 packets: avg 0.018 ms, median 0.021 ms, p95 0.024 ms, max 0.069 ms
+Wrote 9101 capture rows to capture_rig_rungate4.csv
+Wrote timing log to server_lat_capture_rig_rungate4.csv

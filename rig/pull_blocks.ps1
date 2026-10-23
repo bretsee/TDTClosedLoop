@@ -3,7 +3,8 @@
 #   .\rig\pull_blocks.ps1 -Source \\SYNAPSEPC\Tanks\BSCL20261014 -Check          # reachability + free space
 #   .\rig\pull_blocks.ps1 -Source \\SYNAPSEPC\Tanks\BSCL20261014 -Watch          # copy loop, prints NEW BLOCK lines
 #   .\rig\pull_blocks.ps1 -Source D:\Tanks\BSCL20261014 -Once                   # single pass
-#   .\rig\pull_blocks.ps1 -Source \\DESKTOP-G2170R2\SynapseTanks -Tank Acute_101426 -Watch
+#   .\rig\pull_blocks.ps1 -Source E:\Acute_102226 -Once                               # 10-22: USB flash drive, one pass per round-trip
+#   .\rig\pull_blocks.ps1 -Source \\DESKTOP-G2170R2\SynapseTanks -Tank Acute_102226 -Watch
 #        -Tank <prefix>: -Source is the SHARE ROOT and the tank folder is resolved on every
 #        pass as the newest directory whose name starts with <prefix> (Synapse creates
 #        <Subject>-<yymmdd>-<hhmmss> at the first Record, so the name is unknown beforehand).
@@ -18,7 +19,7 @@
 param(
     [string] $Source = '',
     [string] $Tank   = '',
-    [string] $Dest   = 'C:\Users\brets\Desktop\Data\Acute_101426',
+    [string] $Dest   = 'C:\Users\brets\Desktop\Data\Acute_102226',
     [switch] $Check,
     [switch] $Watch,
     [switch] $Once,

@@ -1,0 +1,2 @@
+AUDIT burst30: FAIL | fresh@2 ticks=28917/28917 dropped=8811 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.01 u_std=3.59 qpConv=100%
+  FAIL: droppedControlTicks=8811 (> 14: PC timing degraded)

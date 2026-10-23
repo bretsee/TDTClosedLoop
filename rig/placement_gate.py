@@ -60,7 +60,14 @@ DEFAULT_DATA_ROOT = r"C:\Users\brets\Desktop\Data"
 # thresholds (one place; quoted in the JSON so a deck can print them)
 CORT = dict(z_go=8.0, z_marg=4.0, shc_go=0.80, shc_marg=0.60,
             lat_lo_ms=8.0, lat_hi_ms=45.0, n_min=30, win_ms=(5.0, 60.0),
-            pre_ms=40.0, post_ms=200.0, foot_z=4.0)
+            pre_ms=40.0, post_ms=200.0, foot_z=4.0,
+            # 2026-10-21 (acute #3 post-mortem): a healthy focal S1 response is not
+            # on every channel. On 10-14 the broken array gave GO z 23 with a 63/64-ch
+            # half-max footprint riding on a 54-134 uV common-mode touch wave.
+            # Acute #2's GOOD placement also carried a +63 uV common-mode wave under a
+            # -219 uV focal response, so the rule is relative: the common-mode wave is a
+            # problem when it exceeds cm_wave_uv AND cm_ratio x the re-referenced focal peak.
+            cm_wave_uv=20.0, cm_ratio=0.5, foot_max=32)
 THAL = dict(z_resp=5.0, z_weak=3.0, lat_lo_ms=6.0, lat_hi_ms=30.0,
             n_min=20, win_ms=(6.0, 30.0), pre_ms=20.0, post_ms=60.0, edge_skip=2,
             rank_thresh=0.1, knee_z=3.0)
@@ -266,6 +273,13 @@ def gate_cortical(block_dir, n_channels, chmap, blacklist, out_dir, plt):
     for ch in blacklist:
         if 1 <= ch <= n_ch:
             data[ch - 1] = 0.0
+    # 2026-10-21: array health + common-mode + re-referenced map (acute #3 post-mortem)
+    import array_health as AH
+    health = AH.metrics(data, fs, "tissue", ())
+    live = np.std(data, axis=1) > 1e-6
+    med_trace = np.median(data[live], axis=0)
+    data_rr = data - med_trace[None, :]
+    data_rr[~live] = 0.0
     onsets = thwack_onsets(blk)
     i0, n_pre, n_post = epoch_idx(data.shape[1], fs, t0, onsets, P["pre_ms"], P["post_ms"])
     n_tr = len(i0)
@@ -281,6 +295,25 @@ def gate_cortical(block_dir, n_channels, chmap, blacklist, out_dir, plt):
     z_best = float(z[best])
     half = (z >= P["foot_z"]) & (np.abs(peak) >= 0.5 * abs(peak[best]))
     footprint = int(np.sum(half))
+    # common-mode touch wave = evoked mean of the per-sample median of all live channels
+    m_cm, _ = mean_response(med_trace[None, :], i0, n_pre, n_post)
+    cm_pk, cm_lt = peak_in_window(m_cm, n_pre, fs, P["win_ms"])
+    cm_wave, cm_lat = float(cm_pk[0]), float(cm_lt[0])
+    # re-referenced (channel minus median) focal map: what the control channel must come from
+    m_rr, tr_rr = mean_response(data_rr, i0, n_pre, n_post)
+    peak_rr, lat_rr = peak_in_window(m_rr, n_pre, fs, P["win_ms"])
+    nmean_rr, nsd_rr = shuffled_null(data_rr, n_tr, n_pre, n_post, fs, P["win_ms"], rng)
+    z_rr = (np.abs(peak_rr) - nmean_rr) / nsd_rr
+    shc_rr = split_half(tr_rr, rng)
+    # control-channel candidate = LARGEST re-referenced peak among significant channels
+    # (argmax z alone picks a quiet channel with a 20 uV bump over a 280 uV focal response)
+    # candidates: z in the top half of the map's z range AND the contact has its own signal
+    own = np.asarray(health["has_own_signal"][:n_ch], dtype=bool)
+    sig_rr = (z_rr >= max(P["z_go"], 0.5 * float(np.max(z_rr)))) & own
+    best_rr = int(np.argmax(np.where(sig_rr, np.abs(peak_rr), -1.0))) if np.any(sig_rr) else int(np.argmax(z_rr))
+    z_rr_best = float(z_rr[best_rr])
+    half_rr = (z_rr >= P["foot_z"]) & (np.abs(peak_rr) >= 0.5 * abs(peak_rr[best_rr]))
+    footprint_rr = int(np.sum(half_rr))
     # focus position on the grid (|peak|-weighted centroid of the half-max footprint)
     gz = grid_of(z, chmap)
     gp = grid_of(np.abs(peak) * half, chmap)
@@ -326,7 +359,32 @@ def gate_cortical(block_dir, n_channels, chmap, blacklist, out_dir, plt):
     if edge:
         hint = (hint + "; " if hint else "") + "focus on the %s -> shift array toward it" % " & ".join(edge)
 
+    # ---- 2026-10-21 rules: broken array, reference on responsive tissue, non-focal footprint
+    broken = health["verdict"] == "BROKEN"
+    cm_bad = abs(cm_wave) > P["cm_wave_uv"] and abs(cm_wave) > P["cm_ratio"] * abs(peak_rr[best_rr])
+    foot_bad = footprint > P["foot_max"]
+    if broken:
+        verdict = "NO-GO"
+        reasons.insert(0, "ARRAY BROKEN: " + "; ".join(health["reasons"]))
+        hint = health["hint"] + "; the thalamic ladder cannot be read on this array"
+    else:
+        if (cm_bad or foot_bad) and verdict == "GO":
+            verdict = "MARGINAL"
+        if health["verdict"] == "SUSPECT":
+            reasons.append("array SUSPECT: " + "; ".join(health["reasons"]))
+        if cm_bad:
+            reasons.append("common-mode touch wave %+.0f uV @ %.0f ms on the median of all channels (> %g uV and > %.0f%% of "
+                           "the re-referenced focal peak %+.0f uV): the reference sits on responsive tissue"
+                           % (cm_wave, cm_lat, P["cm_wave_uv"], 100 * P["cm_ratio"], peak_rr[best_rr]))
+            hint = ((hint + "; ") if hint else "") + \
+                "move the REFERENCE (skull screw / quiet site), re-thwack 40x; until then take the control " \
+                "channel from the RE-REFERENCED map (ch%d z %.0f), not the raw one" % (best_rr + 1, z_rr_best)
+        if foot_bad and not cm_bad:
+            reasons.append("half-max footprint %d ch (> %d): not a focal S1 response" % (footprint, P["foot_max"]))
+            hint = ((hint + "; ") if hint else "") + "check reference and headstage ground"
+
     top = np.argsort(z)[::-1][:5]
+    top_rr = np.argsort(z_rr)[::-1][:5]
     res = dict(mode="cortical", block=os.path.basename(block_dir), verdict=verdict,
                n_trials=int(n_tr), n_channels=int(n_ch), fs=fs,
                best_channel_1based=best + 1, best_z=z_best,
@@ -337,44 +395,70 @@ def gate_cortical(block_dir, n_channels, chmap, blacklist, out_dir, plt):
                           lat_ms=float(lat[c])) for c in top],
                z_per_channel=[float(v) for v in z], thresholds=P,
                grid_convention="row-major by channel (ch1-8 = row 1)" if chmap is None
-               else "custom --map")
+               else "custom --map",
+               # 2026-10-21 additions
+               array_health=dict(verdict=health["verdict"], n_own=health["n_own"], n_live=health["n_live"],
+                                 med_pair_corr=health["med_pair_corr"], pc1_share=health["pc1_share"],
+                                 own_rms_median_uv=health["own_rms_median_uv"], dead_banks=health["dead_banks"],
+                                 channels_without_own_signal=health["channels_without_own_signal"],
+                                 reasons=health["reasons"]),
+               common_mode_wave_uv=cm_wave, common_mode_latency_ms=cm_lat,
+               reref=dict(best_channel_1based=best_rr + 1, best_z=z_rr_best,
+                          best_peak_uv=float(peak_rr[best_rr]), best_latency_ms=float(lat_rr[best_rr]),
+                          split_half=shc_rr, footprint_channels=footprint_rr,
+                          top5=[dict(ch=int(c + 1), z=float(z_rr[c]), peak_uv=float(peak_rr[c]),
+                                     lat_ms=float(lat_rr[c])) for c in top_rr],
+                          z_per_channel=[float(v) for v in z_rr]))
 
     # ---- figure ---------------------------------------------------------
     t_ms = (np.arange(-n_pre, n_post)) / fs * 1e3
-    fig, axes = plt.subplots(1, 3, figsize=(13.0, 4.2), width_ratios=[1.0, 1.4, 1.2])
-    ax = axes[0]
-    im = ax.imshow(gz, cmap="Blues", vmin=0, vmax=max(P["z_go"], np.nanmax(gz)))
-    ax.set_title("evoked z, 8x8 grid (half-max ch labelled)")
-    for r in range(8):
-        for c in range(8):
-            v = gz[r, c]
-            if np.isfinite(v) and half[chmap[r * 8 + c] - 1]:
-                ax.text(c, r, "%d" % chmap[r * 8 + c], ha="center", va="center", fontsize=7,
-                        color="white" if v > 0.6 * np.nanmax(gz) else "black")
+    gz_rr = grid_of(z_rr, chmap)
+    fig, axes = plt.subplots(1, 4, figsize=(16.5, 4.2), width_ratios=[1.0, 1.0, 1.4, 1.2])
+
+    def zgrid(ax, g, hmask, title):
+        im = ax.imshow(g, cmap="Blues", vmin=0, vmax=max(P["z_go"], np.nanmax(g)))
+        ax.set_title(title)
+        for r in range(8):
+            for c in range(8):
+                v = g[r, c]
+                k = chmap[r * 8 + c] - 1
+                if np.isfinite(v) and hmask[k]:
+                    ax.text(c, r, "%d" % (k + 1), ha="center", va="center", fontsize=7,
+                            color="white" if v > 0.6 * np.nanmax(g) else "black")
+                if k < len(health["has_own_signal"]) and not health["has_own_signal"][k]:
+                    ax.plot(c, r, "x", color="#e34948", ms=5, mew=1.2)
+        ax.set_xticks([]); ax.set_yticks([])
+        fig.colorbar(im, ax=ax, shrink=0.8, label="z")
+
+    zgrid(axes[0], gz, half, "RAW evoked z (half-max labelled, x = no own signal)")
     if np.isfinite(cy):
-        ax.plot(cx, cy, "+", color="#e34948", ms=14, mew=2)
-    ax.set_xticks([]); ax.set_yticks([])
-    fig.colorbar(im, ax=ax, shrink=0.8, label="z")
-    ax = axes[1]
-    for c in top:
-        ax.plot(t_ms, m[c], lw=1.4, label="ch%d z%.0f" % (c + 1, z[c]))
+        axes[0].plot(cx, cy, "+", color="#e34948", ms=14, mew=2)
+    zgrid(axes[1], gz_rr, half_rr, "RE-REFERENCED z (minus channel median)")
+    ax = axes[2]
+    for c in top[:3]:
+        ax.plot(t_ms, m[c], lw=1.2, label="raw ch%d z%.0f" % (c + 1, z[c]))
+    ax.plot(t_ms, m_cm[0], lw=1.6, ls="--", color="#52514e", label="common-mode (median) %+.0f uV" % cm_wave)
+    ax.plot(t_ms, m_rr[best_rr], lw=1.6, color="#e34948", label="re-ref ch%d z%.0f" % (best_rr + 1, z_rr_best))
     ax.axvspan(P["win_ms"][0], P["win_ms"][1], color="#e1e0d9", alpha=0.5, lw=0)
     ax.axvline(0, color="#52514e", lw=0.8, ls="--")
     ax.set_xlabel("ms from touch onset"); ax.set_ylabel("uV")
-    ax.set_title("top-5 channel means (n=%d)" % n_tr)
-    ax.legend(frameon=False, fontsize=8)
-    ax = axes[2]
-    stack = tr[best]
+    ax.set_title("means (n=%d): raw top-3, common-mode, re-ref best" % n_tr)
+    ax.legend(frameon=False, fontsize=7.5)
+    ax = axes[3]
+    stack = tr_rr[best_rr]
     v = np.percentile(np.abs(stack), 98) + 1e-9
     ax.imshow(stack, aspect="auto", cmap="RdBu_r", vmin=-v, vmax=v,
               extent=[t_ms[0], t_ms[-1], n_tr, 0], interpolation="nearest")
     ax.axvline(0, color="#52514e", lw=0.8, ls="--")
     ax.set_xlabel("ms"); ax.set_ylabel("trial")
-    ax.set_title("ch%d single trials, split-half %.2f" % (best + 1, shc))
-    fig.suptitle("CORTICAL GATE: %s  --  %s | best ch%d %+.0f uV @ %.0f ms, z %.1f, footprint %d ch%s"
-                 % (verdict, res["block"], best + 1, peak[best], lat[best], z_best, footprint,
-                    (" | " + hint) if hint else ""),
-                 fontsize=11, color={"GO": "#1b7a3a", "MARGINAL": "#b8860b", "NO-GO": "#b3413a"}[verdict])
+    ax.set_title("re-ref ch%d single trials, split-half %.2f" % (best_rr + 1, shc_rr))
+    fig.suptitle("CORTICAL GATE: %s  --  %s | array %s (%d/%d own signal, corr %.2f) | raw best ch%d %+.0f uV @ %.0f ms z %.1f fp %d | "
+                 "CM %+.0f uV | re-ref best ch%d %+.0f uV z %.1f fp %d%s"
+                 % (verdict, res["block"], health["verdict"], health["n_own"], n_ch, health["med_pair_corr"],
+                    best + 1, peak[best], lat[best], z_best, footprint, cm_wave,
+                    best_rr + 1, peak_rr[best_rr], z_rr_best, footprint_rr,
+                    ("\n" + hint) if hint else ""),
+                 fontsize=9.5, color={"GO": "#1b7a3a", "MARGINAL": "#b8860b", "NO-GO": "#b3413a"}[verdict])
     fig.tight_layout()
     return res, fig
 
@@ -538,6 +622,20 @@ def print_summary(res):
                  res["best_z"], res["split_half"], res["footprint_channels"]))
         print("  top-5: " + "  ".join("ch%d z%.0f %+.0fuV@%.0fms" % (t["ch"], t["z"], t["peak_uv"], t["lat_ms"])
                                      for t in res["top5"]))
+        h = res.get("array_health")
+        if h:
+            print("  array: %s | own-signal %d/%d ch | pair-corr %.3f | PC1 %.2f | own RMS med %.1f uV | dead banks: %s"
+                  % (h["verdict"], h["n_own"], res["n_channels"], h["med_pair_corr"], h["pc1_share"],
+                     h["own_rms_median_uv"], ", ".join(h["dead_banks"]) if h["dead_banks"] else "none"))
+            print("  common-mode touch wave (median of all channels): %+.0f uV @ %.0f ms   (flagged when > %g uV AND > %.0f%% of the re-ref focal peak)"
+                  % (res["common_mode_wave_uv"], res["common_mode_latency_ms"], res["thresholds"]["cm_wave_uv"],
+                     100 * res["thresholds"]["cm_ratio"]))
+            rr = res["reref"]
+            print("  re-referenced best ch%-3d  %+7.0f uV @ %4.0f ms   z %5.1f   split-half %.2f   footprint %d ch   <- control-channel candidate"
+                  % (rr["best_channel_1based"], rr["best_peak_uv"], rr["best_latency_ms"], rr["best_z"],
+                     rr["split_half"], rr["footprint_channels"]))
+            print("  re-ref top-5: " + "  ".join("ch%d z%.0f %+.0fuV@%.0fms" % (t["ch"], t["z"], t["peak_uv"], t["lat_ms"])
+                                                 for t in rr["top5"]))
         if res["reasons"]:
             print("  short of GO because: " + "; ".join(res["reasons"]))
     else:

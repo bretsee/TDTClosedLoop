@@ -1,0 +1,284 @@
+{
+ "mode": "thalamic",
+ "block": "BSCL20260909BU-261014-214559",
+ "verdict": "NO-GO",
+ "min_amp": 18.0,
+ "n_probes": 240,
+ "n_channels": 64,
+ "n_responsive": 0,
+ "n_weak": 0,
+ "silent_pairs": [
+  1,
+  2,
+  3,
+  4,
+  5,
+  6,
+  7,
+  8
+ ],
+ "eff_rank": 0,
+ "sv": [],
+ "footprint_corr": [],
+ "live_pairs": [],
+ "per_pair": [
+  {
+   "pair": 1,
+   "n_trials": 30,
+   "tip_mm": 7.4,
+   "status": "SILENT",
+   "z": 0.018210956861814398,
+   "best_channel_1based": 34,
+   "peak_uv": 13.441666666666666,
+   "latency_ms": 26.214399999999998,
+   "artifact_edge_channels": 1,
+   "footprint_channels": 0,
+   "knee_uA": 18,
+   "amp_z": [
+    {
+     "amp": 18,
+     "n": 10,
+     "z": 3.199448787986491
+    },
+    {
+     "amp": 25,
+     "n": 10,
+     "z": 0.1544765469153445
+    },
+    {
+     "amp": 30,
+     "n": 10,
+     "z": -0.3548507253539856
+    }
+   ]
+  },
+  {
+   "pair": 2,
+   "n_trials": 30,
+   "tip_mm": 7.6,
+   "status": "SILENT",
+   "z": 2.38266303254989,
+   "best_channel_1based": 26,
+   "peak_uv": 26.65277777777778,
+   "latency_ms": 9.8304,
+   "artifact_edge_channels": 1,
+   "footprint_channels": 0,
+   "knee_uA": null,
+   "amp_z": [
+    {
+     "amp": 18,
+     "n": 10,
+     "z": 1.708669439283048
+    },
+    {
+     "amp": 25,
+     "n": 10,
+     "z": -0.6712389009677404
+    },
+    {
+     "amp": 30,
+     "n": 10,
+     "z": -0.9559379182181377
+    }
+   ]
+  },
+  {
+   "pair": 3,
+   "n_trials": 30,
+   "tip_mm": 7.8,
+   "status": "SILENT",
+   "z": 0.6166289910069376,
+   "best_channel_1based": 11,
+   "peak_uv": -16.88611111111111,
+   "latency_ms": 19.6608,
+   "artifact_edge_channels": 1,
+   "footprint_channels": 0,
+   "knee_uA": null,
+   "amp_z": [
+    {
+     "amp": 18,
+     "n": 10,
+     "z": -0.6514345887028931
+    },
+    {
+     "amp": 25,
+     "n": 10,
+     "z": 1.2206024708309464
+    },
+    {
+     "amp": 30,
+     "n": 10,
+     "z": 0.2731112300653991
+    }
+   ]
+  },
+  {
+   "pair": 4,
+   "n_trials": 30,
+   "tip_mm": 8.0,
+   "status": "SILENT",
+   "z": 1.5325530350827543,
+   "best_channel_1based": 24,
+   "peak_uv": -23.76388888888889,
+   "latency_ms": 22.9376,
+   "artifact_edge_channels": 1,
+   "footprint_channels": 0,
+   "knee_uA": null,
+   "amp_z": [
+    {
+     "amp": 18,
+     "n": 10,
+     "z": 0.4344876729933389
+    },
+    {
+     "amp": 25,
+     "n": 10,
+     "z": -1.3497949371199356
+    },
+    {
+     "amp": 30,
+     "n": 10,
+     "z": 1.3207738537692566
+    }
+   ]
+  },
+  {
+   "pair": 5,
+   "n_trials": 30,
+   "tip_mm": 8.0,
+   "status": "SILENT",
+   "z": 0.1220488483890885,
+   "best_channel_1based": 15,
+   "peak_uv": -15.997222222222225,
+   "latency_ms": 16.384,
+   "artifact_edge_channels": 1,
+   "footprint_channels": 0,
+   "knee_uA": null,
+   "amp_z": [
+    {
+     "amp": 18,
+     "n": 10,
+     "z": 0.732618062124596
+    },
+    {
+     "amp": 25,
+     "n": 10,
+     "z": -0.21336081197638437
+    },
+    {
+     "amp": 30,
+     "n": 10,
+     "z": -0.3710055332605587
+    }
+   ]
+  },
+  {
+   "pair": 6,
+   "n_trials": 30,
+   "tip_mm": 8.0,
+   "status": "SILENT",
+   "z": 1.10967065906815,
+   "best_channel_1based": 40,
+   "peak_uv": 20.041666666666668,
+   "latency_ms": 26.214399999999998,
+   "artifact_edge_channels": 1,
+   "footprint_channels": 0,
+   "knee_uA": 30,
+   "amp_z": [
+    {
+     "amp": 18,
+     "n": 10,
+     "z": -1.1818561222373303
+    },
+    {
+     "amp": 25,
+     "n": 10,
+     "z": 0.4868215267899657
+    },
+    {
+     "amp": 30,
+     "n": 10,
+     "z": 3.2778541539651833
+    }
+   ]
+  },
+  {
+   "pair": 7,
+   "n_trials": 30,
+   "tip_mm": 8.0,
+   "status": "SILENT",
+   "z": 0.8310809114441391,
+   "best_channel_1based": 24,
+   "peak_uv": -21.486111111111107,
+   "latency_ms": 18.0224,
+   "artifact_edge_channels": 1,
+   "footprint_channels": 0,
+   "knee_uA": null,
+   "amp_z": [
+    {
+     "amp": 18,
+     "n": 10,
+     "z": -0.540266013431735
+    },
+    {
+     "amp": 25,
+     "n": 10,
+     "z": 0.8001232959957759
+    },
+    {
+     "amp": 30,
+     "n": 10,
+     "z": 0.1886844122744053
+    }
+   ]
+  },
+  {
+   "pair": 8,
+   "n_trials": 30,
+   "tip_mm": 8.0,
+   "status": "SILENT",
+   "z": 0.0,
+   "best_channel_1based": 20,
+   "peak_uv": 0.0,
+   "latency_ms": 9.8304,
+   "artifact_edge_channels": 1,
+   "footprint_channels": 0,
+   "knee_uA": null,
+   "amp_z": [
+    {
+     "amp": 18,
+     "n": 10,
+     "z": 0.0
+    },
+    {
+     "amp": 25,
+     "n": 10,
+     "z": 0.0
+    },
+    {
+     "amp": 30,
+     "n": 10,
+     "z": 0.0
+    }
+   ]
+  }
+ ],
+ "hint": "no pair evokes cortex at >= 18 uA -> stim array not coupled to the recorded S1 (check current flow via artifact; if present, reposition: AP/ML, not depth alone); short-tip pairs [1, 2, 3] silent, 8 mm pairs [4, 5, 6, 7, 8] silent",
+ "thresholds": {
+  "z_resp": 5.0,
+  "z_weak": 3.0,
+  "lat_lo_ms": 6.0,
+  "lat_hi_ms": 30.0,
+  "n_min": 20,
+  "win_ms": [
+   6.0,
+   30.0
+  ],
+  "pre_ms": 20.0,
+  "post_ms": 60.0,
+  "edge_skip": 2,
+  "rank_thresh": 0.1,
+  "knee_z": 3.0
+ },
+ "png": "C:\\Users\\brets\\Documents\\Repositories\\TDTClosedLoop\\galleries\\BSCL20260909BU-261014-214559\\gate_thalamic.png"
+}

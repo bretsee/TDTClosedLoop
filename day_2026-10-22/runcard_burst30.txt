@@ -1,0 +1,5 @@
+﻿# RUNCARD 2026-10-22  phase=burst30 (hand-built 22:53: 30 uA burst ladder B=1/3/10 at the 7.0 mm position)
+.\cpp_controller.exe --mode openloop --play design_runburst30.csv --output-count 8 --capture capture_rig_runburst30.csv
+.\rig\2_loop.ps1 -RZ2 10.1.0.100 -InputChannels 64 -TimeoutMs 10 -TickFrames 6 -Run burst30 -Design design_runburst30.csv -Capture capture_rig_runburst30.csv
+& $py rig\run_audit.py --run burst30 --loop-log loop_runburst30.log --capture capture_rig_runburst30.csv --design design_runburst30.csv
+& $py rig\fit_burst_plant.py --block <blk> --capture capture_rig_runburst30.csv --design-meta design_runburst30_meta.json

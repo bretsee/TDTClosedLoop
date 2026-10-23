@@ -1,0 +1,17 @@
+{
+  "block": "BSCL20260909BU-261022-233752",
+  "block_path": "C:/Users/brets/Desktop/Data/Acute_102226/BSCL20260909BU-261022-233752",
+  "mode": "thwack",
+  "fs": 610.3516,
+  "n_channels": 64,
+  "n_trials_total": 163,
+  "groups": {
+    "thwack": {
+      "n_trials": 163,
+      "peak_uv": -570.6,
+      "latency_ms": 27.9,
+      "best_channel_1based": 19,
+      "split_half_corr": 0.978
+    }
+  }
+}

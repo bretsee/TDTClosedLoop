@@ -1,0 +1,20 @@
+sim baseline <V> = 634.651 (mean y34 of the first 200 dutyid ticks)
+
+=== gate ===
+  A: .\cpp_controller.exe --mode openloop --play design_rungate.csv --output-count 8 --capture capture_rig_rungate1.csv
+  B: .\rig\2_loop.ps1 -Sim -InputChannels 64 -TimeoutMs 10 -TickFrames 6 -Run gate1 -Design design_rungate.csv -Capture capture_rig_rungate1.csv
+  -> OK  259 s  Exit reason: reached max control ticks (26277).
+  $ & $py rig\run_audit.py --run gate1 --loop-log loop_rungate1.log --capture capture_rig_rungate1.csv --design design_rungate.csv --sim
+    rc=0 1 s  AUDIT gate1: PASS | fresh@2 ticks=26277/26277 dropped=0 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.00 u_std=1.13 qpConv=100%
+  $ & $py rig\placement_gate.py --mode thalamic --block day_rehearsal1013/synthetic_block_gate_clean.npz --min-amp 13
+    rc=0 2 s    figure: C:\Users\brets\Documents\Repositories\TDTClosedLoop\galleries\synthetic_block_gate_clean\gate_thalamic.png
+  $ & $py rig\check_impulse_delivery.py --block day_rehearsal1013/synthetic_block_gate_clean.npz --capture day_rehearsal1013/synthetic_block_gate_clean_capture.csv --amps 13 18 25 --pairs "16:12,15:11,14:10,13:9,4:8,3:7,2:6,1:5" --design-meta design_rungate_meta.json
+    rc=0 2 s  VERDICT: DELIVERY VERIFIED (0 hard failure(s), 0 warning(s))
+  $ & $py rig\check_dead_time.py --capture capture_rig_rungate1.csv --y-channel 34 --json day_rehearsal1021\dead_time_gate1.json
+    rc=0 1 s  wrote day_rehearsal1021\dead_time_gate1.json
+  $ & $py rig\ingest_block.py --label "gate depth 1 probe" --day rehearsal1021
+    rc=0 6 s  next: look at galleries\synthetic_block_gate_clean\index.png, then replace the PENDING cell with key results
+
+=== REHEARSAL rehearsal1021 ===
+  gate       OK      270 s  runs 1  checks 5 (bad 0)  AUDIT gate1: PASS | fresh@2 ticks=26277/26277 dropped=0 timeouts=0 stale=0 zero=1 obs=n/a(n/a) offsets=n/a y=LIVE u_nz=0.00 u_std=1.13 qpConv=100%
+json: C:\Users\brets\Documents\Repositories\TDTClosedLoop\day_rehearsal1021\rehearsal_rehearsal1021.json

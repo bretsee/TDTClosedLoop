@@ -1,0 +1,1 @@
+timer_hold: timeBeginPeriod(1) rc=0 | current 1.00 ms -> 1.00 ms (min 15.62, max 0.50)

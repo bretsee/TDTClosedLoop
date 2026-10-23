@@ -1,0 +1,11 @@
+[driver] A started (pid 31432), waiting for ready
+[driver] WAITING_FOR_GO  (create C:\Users\brets\Documents\Repositories\TDTClosedLoop\day_2026-10-22\GO_burst30 ; write 'abort' in it to abort)
+[driver] RUNNING since 22:56:55 (go sent)
+[driver] RUNNING; liveness@30s: y-liveness: LIVE     capture_rig_runburst30.csv  rows 3034  dead ch 0/64  median|y| 4.66e-05  banks ch1-32=4.9e-05 ch33-64=4.6e-05
+[driver] DONE CHECK rc=0 controller exit rc=0
+Exit reason: reached max control ticks (28917).
+Summary: packets=28917 controlTicks=28917 droppedControlTicks=8811 finalBuffered=65536/65536 nominalWindowSamples=6 minWindowSamples=6 undersampledWindows=0 channelMode=exact(in=64 card=64)
+Localhost summary: submitted=28917 replies=28916 failures=0 timeouts=0 staleDropped=0 skippedWhileBusy=0 freshTicks=28916 heldTicks=0 zeroTicks=1 freshReplyTransitions=28916 policyTransitions=2 inFlight=true lastReplySeq=28916
+Exit reason: reached max control ticks (28917).
+Summary: packets=28917 controlTicks=28917 droppedControlTicks=8811 finalBuffered=65536/65536 nominalWindowSamples=6
+Localhost summary: submitted=28917 replies=28916 failures=0 timeouts=0 staleDropped=0 skippedWhileBusy=0

@@ -1,0 +1,105 @@
+Control period measured from capture: Ts = 0.0098304 s (101.7253 Hz)
+Loaded capture_rig_rundutyid2.csv: 30360 ticks (298.5 s), 8 inputs, 64 outputs
+Applied 9-tick input delay: u(k) now aligned with y(k+9).
+Discarded 50 warm-up ticks.
+MIMO fit: 2 outputs [34  64] -- fitting each, then stacking.
+
+===== output 34 (1 of 2) =====
+Control period measured from capture: Ts = 0.0098304 s (101.7253 Hz)
+Loaded capture_rig_rundutyid2.csv: 30360 ticks (298.5 s), 8 inputs, 64 outputs
+Applied 9-tick input delay: u(k) now aligned with y(k+9).
+Discarded 50 warm-up ticks.
+Using inputs [1  4  8] and output 34.
+
+Excitation check:
+  input 1: range [0 30], std 7.75, 165 distinct levels
+  input 2: range [0 30], std 7.92, 172 distinct levels
+  input 3: range [0 30], std 7.99, 175 distinct levels
+  output 1: range [9.17e-07 0.000294], std 3.02e-05
+  |corr| u1 -> y1 within 0-500 ms: 0.025
+    WARNING: little apparent response. A model fitted here will mostly describe noise.
+  |corr| u2 -> y1 within 0-500 ms: 0.025
+    WARNING: little apparent response. A model fitted here will mostly describe noise.
+  |corr| u3 -> y1 within 0-500 ms: 0.057
+    WARNING: little apparent response. A model fitted here will mostly describe noise.
+
+Split: 21211 ticks train (208.5 s), 9090 ticks validation (89.4 s).
+
+  order   trainFit%   valFit%   stable   slowestPole
+  -----   ---------   -------   ------   -----------
+      1        0.01     -0.07      yes        0.7142
+      2        0.04     -0.05      yes        0.4696
+      3        0.04     -0.07      yes        0.6869
+      4        0.05     -0.08      yes        0.7228
+
+Parsimony: order 1 (-0.07%) is within 1.00 pp of the best order 2 (-0.05%); taking the smaller model.
+Offsets stored in sys: uOffset=[2.391 2.493 2.538] yOffset=3.692e-05
+
+Chosen: order 1, validation fit -0.07%
+
+Model summary:
+  states 1, inputs 3, outputs 1, Ts 0.0098304 s
+  dead time 1 tick(s) in the controller row frame (0 delay state(s) + nk)
+  DC gain: [-8.346e-08 -4.404e-09 4.704e-08]
+  slowest pole |z| = 0.7142 -> time constant ~29 ms (settles ~117 ms)
+  all poles inside unit circle: yes
+
+Not saved. Re-run with opts.save = true to write this into AllModels(10).sys.
+
+===== output 64 (2 of 2) =====
+Control period measured from capture: Ts = 0.0098304 s (101.7253 Hz)
+Loaded capture_rig_rundutyid2.csv: 30360 ticks (298.5 s), 8 inputs, 64 outputs
+Applied 9-tick input delay: u(k) now aligned with y(k+9).
+Discarded 50 warm-up ticks.
+Using inputs [1  4  8] and output 64.
+
+Excitation check:
+  input 1: range [0 30], std 7.75, 165 distinct levels
+  input 2: range [0 30], std 7.92, 172 distinct levels
+  input 3: range [0 30], std 7.99, 175 distinct levels
+  output 1: range [8.62e-07 0.000425], std 4.62e-05
+  |corr| u1 -> y1 within 0-500 ms: 0.027
+    WARNING: little apparent response. A model fitted here will mostly describe noise.
+  |corr| u2 -> y1 within 0-500 ms: 0.043
+    WARNING: little apparent response. A model fitted here will mostly describe noise.
+  |corr| u3 -> y1 within 0-500 ms: 0.046
+    WARNING: little apparent response. A model fitted here will mostly describe noise.
+
+Split: 21211 ticks train (208.5 s), 9090 ticks validation (89.4 s).
+
+  order   trainFit%   valFit%   stable   slowestPole
+  -----   ---------   -------   ------   -----------
+      1        0.07     -0.13      yes        0.8013
+      2        0.13     -0.10      yes        0.6786
+      3        0.12     -0.10      yes        0.7275
+      4        0.11     -0.10      yes        0.7731
+
+Parsimony: order 1 (-0.13%) is within 1.00 pp of the best order 2 (-0.10%); taking the smaller model.
+Offsets stored in sys: uOffset=[2.391 2.493 2.538] yOffset=5.946e-05
+
+Chosen: order 1, validation fit -0.13%
+
+Model summary:
+  states 1, inputs 3, outputs 1, Ts 0.0098304 s
+  dead time 1 tick(s) in the controller row frame (0 delay state(s) + nk)
+  DC gain: [-1.181e-07 2.738e-07 3.556e-08]
+  slowest pole |z| = 0.8013 -> time constant ~44 ms (settles ~178 ms)
+  all poles inside unit circle: yes
+
+Not saved. Re-run with opts.save = true to write this into AllModels(10).sys.
+
+Delay states: appended 9 x 3 pure-delay states to the stack (controller row frame: command at k acts on y at k+10).
+
+MIMO stacked model: n=29 states, m=3 inputs, p=2 outputs.
+  per-output orders [1  1], valFit% [-0.07 -0.13]
+  yOffset = [3.692e-05 5.946e-05]
+
+Not saved. Re-run with opts.save = true to write this into AllModels(10).sys.
+Wrote plant_duty.lti  (n=29 m=3 p=2 Ts=0.0098304 uOff=[2.391 2.493 2.538] yOff=[3.692e-05 5.946e-05])
+Check the native controller agrees on this model:
+  cpp_controller.exe --mode mpc --model plant_duty.lti --target 0
+
+ans =
+
+    'plant_duty.lti'
+

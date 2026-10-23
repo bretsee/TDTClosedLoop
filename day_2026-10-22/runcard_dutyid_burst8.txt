@@ -1,0 +1,4 @@
+# RUNCARD 2026-10-22  phase=dutyid (hand-built 23:50: duty-PRBS, 8-tick bursts, pairs 1 2 4 7 8, 15-30 uA, duty 0.3, gap 40)
+.\cpp_controller.exe --mode openloop --play design_rundutyid_burst8.csv --output-count 8 --capture capture_rig_rundutyid.csv
+.\rig\2_loop.ps1 -RZ2 10.1.0.100 -InputChannels 64 -TimeoutMs 10 -TickFrames 6 -Run dutyid -Design design_rundutyid_burst8.csv -Capture capture_rig_rundutyid.csv
+& $py rig\run_audit.py --run dutyid --loop-log loop_rundutyid.log --capture capture_rig_rundutyid.csv --design design_rundutyid_burst8.csv --active-u u1,u2,u4,u7,u8

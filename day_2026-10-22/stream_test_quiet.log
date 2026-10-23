@@ -1,0 +1,659 @@
+MpcPo8eUdpClosedLoop build: Aug 29 2026 18:25:56
+Constant-output mode enabled: skipping MATLAB, value=0
+Found 1 card(s) in the system.
+Connecting to card 0...
+Connected: 000001B4F8B6F850
+Source is collecting (PO8e).
+Waiting for stream...
+Streaming. numChannels=64 sampleBytes=4 (float32)
+Output channels per UDP packet=8 (bipolar stim pairs)
+Feature window=6 samples/channel (fixed count, not arrival time), mode=rectified mean(|x|)
+UDP socket connected to RZ target: 10.1.0.100:22022
+here waiting
+done
+checkRZ: RZ2 ACK received.
+Sent SET_REMOTE_IP command.
+Discarded 10145 frame(s) buffered before loop start (stale history; the feature only uses the newest 6).
+Entering loop (MPC input size=64, cardChannels=64, channelMode=exact, UDP output count=8, control=100 Hz, ring capacity=65536, matlabDelayTicks=0, maxControlTicks=5000).
+
+Detected PO8e offset step=40
+Tick trace: begin controlTick=1 packet=0 buffered=52
+Tick trace: features controlTick=1 windowSamples=6 feature0=0.000450
+Tick trace: input controlTick=1 inputMode=live x0=0.000450
+Tick trace: controller controlTick=1 source=feval rawCount=1 raw0=0.000000
+WARNING: controller replied with 1 value for 8 outputs; sending it on OUTPUT 1 ONLY (no broadcast). If a different stim pair was identified, set the server-side pair mapping (4_mpc_server -Pairs <n>).
+Tick trace: normalized controlTick=1 path=normal u0=0.000000 amp0=0.000000
+Controller output shape: raw=1 normalized=8 raw0=0.000000 out0=0.000000 inputMode=live source=feval
+Tick debug: before first UDP send controlTick=1 packet=0 nPackets=8 skipUdp=true
+Tick debug: after first UDP send controlTick=1 packet=0
+Tick trace: send complete controlTick=1 packet=0
+Scheduler resync: dropped=3 totalDropped=3 lateUs=22921
+Tick trace: end controlTick=1 nextPacket=1
+Tick trace: begin controlTick=2 packet=1 buffered=79
+Tick trace: features controlTick=2 windowSamples=6 feature0=0.000059
+Tick trace: input controlTick=2 inputMode=live x0=0.000059
+Tick trace: controller controlTick=2 source=feval rawCount=1 raw0=0.000000
+Tick trace: normalized controlTick=2 path=normal u0=0.000000 amp0=0.000000
+Tick trace: send complete controlTick=2 packet=1
+Scheduler resync: dropped=1 totalDropped=4 lateUs=4203
+Tick trace: end controlTick=2 nextPacket=2
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=25)
+pos=632363 buffered=229
+
+Latency: mpc=0.008 ms, in->udp=0.010 ms (packet=50)
+pos=638403 buffered=380
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=75)
+pos=644523 buffered=533
+
+Latency: mpc=0.008 ms, in->udp=0.010 ms (packet=100)
+pos=650643 buffered=686
+
+Latency: mpc=0.004 ms, in->udp=0.004 ms (packet=125)
+pos=656763 buffered=839
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=150)
+pos=662843 buffered=991
+
+Latency: mpc=0.008 ms, in->udp=0.009 ms (packet=175)
+pos=668883 buffered=1142
+
+Latency: mpc=0.007 ms, in->udp=0.008 ms (packet=200)
+pos=675003 buffered=1295
+
+Latency: mpc=0.008 ms, in->udp=0.010 ms (packet=225)
+pos=681123 buffered=1448
+
+Latency: mpc=0.005 ms, in->udp=0.007 ms (packet=250)
+pos=687283 buffered=1602
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=275)
+pos=693323 buffered=1753
+
+Latency: mpc=0.006 ms, in->udp=0.008 ms (packet=300)
+pos=699403 buffered=1905
+
+Latency: mpc=0.007 ms, in->udp=0.009 ms (packet=325)
+pos=705523 buffered=2058
+
+Latency: mpc=0.008 ms, in->udp=0.010 ms (packet=350)
+pos=711603 buffered=2210
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=375)
+pos=717763 buffered=2364
+
+Latency: mpc=0.007 ms, in->udp=0.009 ms (packet=400)
+pos=723883 buffered=2517
+
+Latency: mpc=0.006 ms, in->udp=0.008 ms (packet=425)
+pos=729923 buffered=2668
+
+Latency: mpc=0.007 ms, in->udp=0.009 ms (packet=450)
+pos=736003 buffered=2820
+
+Latency: mpc=0.004 ms, in->udp=0.004 ms (packet=475)
+pos=742163 buffered=2974
+
+Latency: mpc=0.007 ms, in->udp=0.009 ms (packet=500)
+pos=748283 buffered=3127
+
+Latency: mpc=0.007 ms, in->udp=0.009 ms (packet=525)
+pos=754403 buffered=3280
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=550)
+pos=760483 buffered=3432
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=575)
+pos=766603 buffered=3585
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=600)
+pos=772683 buffered=3737
+
+Latency: mpc=0.008 ms, in->udp=0.010 ms (packet=625)
+pos=778763 buffered=3889
+
+Latency: mpc=0.005 ms, in->udp=0.007 ms (packet=650)
+pos=784883 buffered=4042
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=675)
+pos=790963 buffered=4194
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=700)
+pos=797123 buffered=4348
+
+Latency: mpc=0.008 ms, in->udp=0.010 ms (packet=725)
+pos=803203 buffered=4500
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=750)
+pos=809323 buffered=4653
+
+Latency: mpc=0.003 ms, in->udp=0.004 ms (packet=775)
+pos=815403 buffered=4805
+
+Latency: mpc=0.008 ms, in->udp=0.010 ms (packet=800)
+pos=821523 buffered=4958
+
+Latency: mpc=0.003 ms, in->udp=0.003 ms (packet=825)
+pos=827603 buffered=5110
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=850)
+pos=833723 buffered=5263
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=875)
+pos=839843 buffered=5416
+
+Latency: mpc=0.002 ms, in->udp=0.003 ms (packet=900)
+pos=845923 buffered=5568
+
+Latency: mpc=0.008 ms, in->udp=0.009 ms (packet=925)
+pos=852043 buffered=5721
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=950)
+pos=858163 buffered=5874
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=975)
+pos=864283 buffered=6027
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=1000)
+pos=870363 buffered=6179
+
+Latency: mpc=0.002 ms, in->udp=0.002 ms (packet=1025)
+pos=876483 buffered=6332
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=1050)
+pos=882523 buffered=6483
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=1075)
+pos=888683 buffered=6637
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=1100)
+pos=894723 buffered=6788
+
+Latency: mpc=0.005 ms, in->udp=0.007 ms (packet=1125)
+pos=900883 buffered=6942
+
+Latency: mpc=0.005 ms, in->udp=0.007 ms (packet=1150)
+pos=906923 buffered=7093
+
+Latency: mpc=0.005 ms, in->udp=0.006 ms (packet=1175)
+pos=913043 buffered=7246
+
+Latency: mpc=0.006 ms, in->udp=0.008 ms (packet=1200)
+pos=919203 buffered=7400
+
+Latency: mpc=0.005 ms, in->udp=0.006 ms (packet=1225)
+pos=925283 buffered=7552
+
+Latency: mpc=0.005 ms, in->udp=0.007 ms (packet=1250)
+pos=931363 buffered=7704
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=1275)
+pos=937523 buffered=7858
+
+Latency: mpc=0.005 ms, in->udp=0.007 ms (packet=1300)
+pos=943603 buffered=8010
+
+Latency: mpc=0.003 ms, in->udp=0.003 ms (packet=1325)
+pos=949683 buffered=8162
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=1350)
+pos=955803 buffered=8315
+
+Latency: mpc=0.008 ms, in->udp=0.010 ms (packet=1375)
+pos=961883 buffered=8467
+
+Latency: mpc=0.005 ms, in->udp=0.007 ms (packet=1400)
+pos=968003 buffered=8620
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=1425)
+pos=974123 buffered=8773
+
+Latency: mpc=0.006 ms, in->udp=0.008 ms (packet=1450)
+pos=980243 buffered=8926
+
+Latency: mpc=0.003 ms, in->udp=0.004 ms (packet=1475)
+pos=986283 buffered=9077
+
+Latency: mpc=0.005 ms, in->udp=0.007 ms (packet=1500)
+pos=992443 buffered=9231
+
+Latency: mpc=0.003 ms, in->udp=0.003 ms (packet=1525)
+pos=998483 buffered=9382
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=1550)
+pos=1004563 buffered=9534
+
+Latency: mpc=0.005 ms, in->udp=0.007 ms (packet=1575)
+pos=1010763 buffered=9689
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=1600)
+pos=1016843 buffered=9841
+
+Latency: mpc=0.007 ms, in->udp=0.009 ms (packet=1625)
+pos=1022963 buffered=9994
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=1650)
+pos=1029003 buffered=10145
+
+Latency: mpc=0.005 ms, in->udp=0.006 ms (packet=1675)
+pos=1035083 buffered=10297
+
+Latency: mpc=0.008 ms, in->udp=0.009 ms (packet=1700)
+pos=1041203 buffered=10450
+
+Latency: mpc=0.007 ms, in->udp=0.009 ms (packet=1725)
+pos=1047363 buffered=10604
+
+Latency: mpc=0.008 ms, in->udp=0.010 ms (packet=1750)
+pos=1053483 buffered=10757
+
+Latency: mpc=0.007 ms, in->udp=0.009 ms (packet=1775)
+pos=1059603 buffered=10910
+
+Latency: mpc=0.008 ms, in->udp=0.009 ms (packet=1800)
+pos=1065723 buffered=11063
+
+Latency: mpc=0.007 ms, in->udp=0.009 ms (packet=1825)
+pos=1071803 buffered=11215
+
+Latency: mpc=0.008 ms, in->udp=0.010 ms (packet=1850)
+pos=1077883 buffered=11367
+
+Latency: mpc=0.007 ms, in->udp=0.009 ms (packet=1875)
+pos=1083963 buffered=11519
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=1900)
+pos=1090083 buffered=11672
+
+Latency: mpc=0.008 ms, in->udp=0.010 ms (packet=1925)
+pos=1096203 buffered=11825
+
+Latency: mpc=0.008 ms, in->udp=0.010 ms (packet=1950)
+pos=1102243 buffered=11976
+
+Latency: mpc=0.005 ms, in->udp=0.006 ms (packet=1975)
+pos=1108323 buffered=12128
+
+Latency: mpc=0.005 ms, in->udp=0.007 ms (packet=2000)
+pos=1114483 buffered=12282
+
+Latency: mpc=0.008 ms, in->udp=0.009 ms (packet=2025)
+pos=1120603 buffered=12435
+
+Latency: mpc=0.008 ms, in->udp=0.010 ms (packet=2050)
+pos=1126683 buffered=12587
+
+Latency: mpc=0.007 ms, in->udp=0.009 ms (packet=2075)
+pos=1132843 buffered=12741
+
+Latency: mpc=0.007 ms, in->udp=0.009 ms (packet=2100)
+pos=1138963 buffered=12894
+
+Latency: mpc=0.003 ms, in->udp=0.003 ms (packet=2125)
+pos=1145003 buffered=13045
+
+Latency: mpc=0.008 ms, in->udp=0.010 ms (packet=2150)
+pos=1151123 buffered=13198
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=2175)
+pos=1157243 buffered=13351
+
+Latency: mpc=0.008 ms, in->udp=0.009 ms (packet=2200)
+pos=1163363 buffered=13504
+
+Latency: mpc=0.008 ms, in->udp=0.010 ms (packet=2225)
+pos=1169443 buffered=13656
+
+Latency: mpc=0.004 ms, in->udp=0.004 ms (packet=2250)
+pos=1175523 buffered=13808
+
+Latency: mpc=0.005 ms, in->udp=0.007 ms (packet=2275)
+pos=1181643 buffered=13961
+
+Latency: mpc=0.007 ms, in->udp=0.009 ms (packet=2300)
+pos=1187763 buffered=14114
+
+Latency: mpc=0.005 ms, in->udp=0.007 ms (packet=2325)
+pos=1193803 buffered=14265
+
+Latency: mpc=0.008 ms, in->udp=0.010 ms (packet=2350)
+pos=1199963 buffered=14419
+
+Latency: mpc=0.007 ms, in->udp=0.009 ms (packet=2375)
+pos=1206043 buffered=14571
+
+Latency: mpc=0.008 ms, in->udp=0.010 ms (packet=2400)
+pos=1212123 buffered=14723
+
+Latency: mpc=0.008 ms, in->udp=0.010 ms (packet=2425)
+pos=1218203 buffered=14875
+
+Latency: mpc=0.004 ms, in->udp=0.005 ms (packet=2450)
+pos=1224403 buffered=15030
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=2475)
+pos=1230483 buffered=15182
+
+Latency: mpc=0.007 ms, in->udp=0.009 ms (packet=2500)
+pos=1236523 buffered=15333
+
+Latency: mpc=0.006 ms, in->udp=0.008 ms (packet=2525)
+pos=1242643 buffered=15486
+
+Latency: mpc=0.007 ms, in->udp=0.009 ms (packet=2550)
+pos=1248723 buffered=15638
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=2575)
+pos=1254883 buffered=15792
+
+Latency: mpc=0.004 ms, in->udp=0.004 ms (packet=2600)
+pos=1260963 buffered=15944
+
+Latency: mpc=0.005 ms, in->udp=0.007 ms (packet=2625)
+pos=1267043 buffered=16096
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=2650)
+pos=1273203 buffered=16250
+
+Latency: mpc=0.005 ms, in->udp=0.007 ms (packet=2675)
+pos=1279283 buffered=16402
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=2700)
+pos=1285443 buffered=16556
+
+Latency: mpc=0.006 ms, in->udp=0.008 ms (packet=2725)
+pos=1291523 buffered=16708
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=2750)
+pos=1297563 buffered=16859
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=2775)
+pos=1303643 buffered=17011
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=2800)
+pos=1309763 buffered=17164
+
+Latency: mpc=0.005 ms, in->udp=0.006 ms (packet=2825)
+pos=1315923 buffered=17318
+
+Latency: mpc=0.003 ms, in->udp=0.003 ms (packet=2850)
+pos=1322003 buffered=17470
+
+Latency: mpc=0.008 ms, in->udp=0.010 ms (packet=2875)
+pos=1328163 buffered=17624
+
+Latency: mpc=0.003 ms, in->udp=0.003 ms (packet=2900)
+pos=1334203 buffered=17775
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=2925)
+pos=1340283 buffered=17927
+
+Latency: mpc=0.005 ms, in->udp=0.007 ms (packet=2950)
+pos=1346443 buffered=18081
+
+Latency: mpc=0.006 ms, in->udp=0.008 ms (packet=2975)
+pos=1352563 buffered=18234
+
+Latency: mpc=0.002 ms, in->udp=0.003 ms (packet=3000)
+pos=1358643 buffered=18386
+
+Latency: mpc=0.005 ms, in->udp=0.006 ms (packet=3025)
+pos=1364683 buffered=18537
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=3050)
+pos=1370843 buffered=18691
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=3075)
+pos=1376923 buffered=18843
+
+Latency: mpc=0.005 ms, in->udp=0.007 ms (packet=3100)
+pos=1383083 buffered=18997
+
+Latency: mpc=0.005 ms, in->udp=0.007 ms (packet=3125)
+pos=1389123 buffered=19148
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=3150)
+pos=1395283 buffered=19302
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=3175)
+pos=1401363 buffered=19454
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=3200)
+pos=1407443 buffered=19606
+
+Latency: mpc=0.002 ms, in->udp=0.002 ms (packet=3225)
+pos=1413603 buffered=19760
+
+Latency: mpc=0.003 ms, in->udp=0.003 ms (packet=3250)
+pos=1419683 buffered=19912
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=3275)
+pos=1425723 buffered=20063
+
+Latency: mpc=0.006 ms, in->udp=0.008 ms (packet=3300)
+pos=1431883 buffered=20217
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=3325)
+pos=1437963 buffered=20369
+
+Latency: mpc=0.007 ms, in->udp=0.009 ms (packet=3350)
+pos=1444083 buffered=20522
+
+Latency: mpc=0.003 ms, in->udp=0.004 ms (packet=3375)
+pos=1450203 buffered=20675
+
+Latency: mpc=0.007 ms, in->udp=0.009 ms (packet=3400)
+pos=1456283 buffered=20827
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=3425)
+pos=1462403 buffered=20980
+
+Latency: mpc=0.008 ms, in->udp=0.009 ms (packet=3450)
+pos=1468483 buffered=21132
+
+Latency: mpc=0.007 ms, in->udp=0.009 ms (packet=3475)
+pos=1474603 buffered=21285
+
+Latency: mpc=0.008 ms, in->udp=0.010 ms (packet=3500)
+pos=1480723 buffered=21438
+
+Latency: mpc=0.005 ms, in->udp=0.007 ms (packet=3525)
+pos=1486803 buffered=21590
+
+Latency: mpc=0.008 ms, in->udp=0.010 ms (packet=3550)
+pos=1492923 buffered=21743
+
+Latency: mpc=0.008 ms, in->udp=0.009 ms (packet=3575)
+pos=1499043 buffered=21896
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=3600)
+pos=1505123 buffered=22048
+
+Latency: mpc=0.007 ms, in->udp=0.009 ms (packet=3625)
+pos=1511243 buffered=22201
+
+Latency: mpc=0.008 ms, in->udp=0.010 ms (packet=3650)
+pos=1517243 buffered=22351
+
+Latency: mpc=0.008 ms, in->udp=0.010 ms (packet=3675)
+pos=1523443 buffered=22506
+
+Latency: mpc=0.008 ms, in->udp=0.010 ms (packet=3700)
+pos=1529563 buffered=22659
+
+Latency: mpc=0.006 ms, in->udp=0.008 ms (packet=3725)
+pos=1535643 buffered=22811
+
+Latency: mpc=0.008 ms, in->udp=0.010 ms (packet=3750)
+pos=1541683 buffered=22962
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=3775)
+pos=1547883 buffered=23117
+
+Latency: mpc=0.005 ms, in->udp=0.007 ms (packet=3800)
+pos=1553923 buffered=23268
+
+Latency: mpc=0.008 ms, in->udp=0.009 ms (packet=3825)
+pos=1560003 buffered=23420
+
+Latency: mpc=0.008 ms, in->udp=0.010 ms (packet=3850)
+pos=1566163 buffered=23574
+
+Latency: mpc=0.008 ms, in->udp=0.010 ms (packet=3875)
+pos=1572283 buffered=23727
+
+Latency: mpc=0.008 ms, in->udp=0.010 ms (packet=3900)
+pos=1578363 buffered=23879
+
+Latency: mpc=0.006 ms, in->udp=0.008 ms (packet=3925)
+pos=1584483 buffered=24032
+
+Latency: mpc=0.026 ms, in->udp=0.027 ms (packet=3950)
+pos=1590523 buffered=24183
+
+Latency: mpc=0.007 ms, in->udp=0.009 ms (packet=3975)
+pos=1596603 buffered=24335
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=4000)
+pos=1602723 buffered=24488
+
+Latency: mpc=0.007 ms, in->udp=0.009 ms (packet=4025)
+pos=1608843 buffered=24641
+
+Latency: mpc=0.008 ms, in->udp=0.009 ms (packet=4050)
+pos=1615003 buffered=24795
+
+Latency: mpc=0.008 ms, in->udp=0.010 ms (packet=4075)
+pos=1621083 buffered=24947
+
+Latency: mpc=0.008 ms, in->udp=0.010 ms (packet=4100)
+pos=1627203 buffered=25100
+
+Latency: mpc=0.008 ms, in->udp=0.009 ms (packet=4125)
+pos=1633243 buffered=25251
+
+Latency: mpc=0.005 ms, in->udp=0.007 ms (packet=4150)
+pos=1639363 buffered=25404
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=4175)
+pos=1645523 buffered=25558
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=4200)
+pos=1651563 buffered=25709
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=4225)
+pos=1657683 buffered=25862
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=4250)
+pos=1663803 buffered=26015
+
+Latency: mpc=0.005 ms, in->udp=0.007 ms (packet=4275)
+pos=1669923 buffered=26168
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=4300)
+pos=1675963 buffered=26319
+
+Latency: mpc=0.004 ms, in->udp=0.005 ms (packet=4325)
+pos=1682123 buffered=26473
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=4350)
+pos=1688203 buffered=26625
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=4375)
+pos=1694283 buffered=26777
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=4400)
+pos=1700403 buffered=26930
+
+Latency: mpc=0.005 ms, in->udp=0.007 ms (packet=4425)
+pos=1706523 buffered=27083
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=4450)
+pos=1712683 buffered=27237
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=4475)
+pos=1718763 buffered=27389
+
+Latency: mpc=0.008 ms, in->udp=0.010 ms (packet=4500)
+pos=1724883 buffered=27542
+
+Latency: mpc=0.004 ms, in->udp=0.005 ms (packet=4525)
+pos=1730923 buffered=27693
+
+Latency: mpc=0.006 ms, in->udp=0.008 ms (packet=4550)
+pos=1737043 buffered=27846
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=4575)
+pos=1743163 buffered=27999
+
+Latency: mpc=0.006 ms, in->udp=0.008 ms (packet=4600)
+pos=1749243 buffered=28151
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=4625)
+pos=1755363 buffered=28304
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=4650)
+pos=1761483 buffered=28457
+
+Latency: mpc=0.006 ms, in->udp=0.008 ms (packet=4675)
+pos=1767563 buffered=28609
+
+Latency: mpc=0.006 ms, in->udp=0.008 ms (packet=4700)
+pos=1773683 buffered=28762
+
+Latency: mpc=0.005 ms, in->udp=0.007 ms (packet=4725)
+pos=1779803 buffered=28915
+
+Latency: mpc=0.007 ms, in->udp=0.008 ms (packet=4750)
+pos=1785923 buffered=29068
+
+Latency: mpc=0.004 ms, in->udp=0.004 ms (packet=4775)
+pos=1792003 buffered=29220
+
+Latency: mpc=0.008 ms, in->udp=0.010 ms (packet=4800)
+pos=1798083 buffered=29372
+
+Latency: mpc=0.005 ms, in->udp=0.007 ms (packet=4825)
+pos=1804163 buffered=29524
+
+Latency: mpc=0.007 ms, in->udp=0.008 ms (packet=4850)
+pos=1810283 buffered=29677
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=4875)
+pos=1816403 buffered=29830
+
+Latency: mpc=0.006 ms, in->udp=0.007 ms (packet=4900)
+pos=1822523 buffered=29983
+
+Latency: mpc=0.005 ms, in->udp=0.007 ms (packet=4925)
+pos=1828563 buffered=30134
+
+Latency: mpc=0.006 ms, in->udp=0.008 ms (packet=4950)
+pos=1834763 buffered=30289
+
+Latency: mpc=0.008 ms, in->udp=0.010 ms (packet=4975)
+pos=1840803 buffered=30440
+
+Latency: mpc=0.006 ms, in->udp=0.008 ms (packet=5000)
+pos=1846923 buffered=30593
+
+Exit reason: reached max control ticks (5000).
+
+Summary: packets=5000 controlTicks=5000 droppedControlTicks=4 finalBuffered=30593/65536 nominalWindowSamples=6 minWindowSamples=6 undersampledWindows=0 channelMode=exact(in=64 card=64)
+Acquisition: backlogFramesDropped=10145 (stale pre-start history plus any mid-run catch-up; not a data loss the controller can see)
+Timing summary:
+  preprocess count=5000 minUs=1 avgUs=4.1 maxUs=29
+  controller count=5000 minUs=0 avgUs=6.2 maxUs=14729
+  normalizeClamp count=5000 minUs=0 avgUs=1.3 maxUs=23
+  udpSend count=5000 minUs=0 avgUs=2.9 maxUs=11096
+  totalTick count=5000 minUs=2 avgUs=14.5 maxUs=25836
+
+Stopping.
+Cleanup trace: normal shutdown begin
+Cleanup trace: zeroed 8 stim output(s), 5/5 packets acknowledged by send()
+Cleanup trace: disconnecting RZ socket
+Cleanup trace: WSACleanup
+Cleanup trace: releasing PO8e card
+StreamSource will allocate 4096 blocks of 8196 b per port
+StreamConsumer 000001B4F8B72960 allocated 000001B4F8EA2040 for 1 MB

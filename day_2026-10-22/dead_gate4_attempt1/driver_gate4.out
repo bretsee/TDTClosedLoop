@@ -1,0 +1,5 @@
+[driver] A started (pid 29548), waiting for ready
+[driver] WAITING_FOR_GO  (create C:\Users\brets\Documents\Repositories\TDTClosedLoop\day_2026-10-22\GO_gate4 ; write 'abort' in it to abort)
+[driver] RUNNING since 22:32:41 (go sent)
+[driver] RUNNING; liveness@30s: y-liveness: DEAD     capture_rig_rungate4.csv  rows 3024  dead ch 64/64  median|y| 0  banks ch1-32=0 ch33-64=0 |   >>> FEATURES ARE ZERO. Amp/PZ2 off or stream dead. STOP THE RUN, fix, rerun. <<<
+[driver] DONE CHECK rc=0 controller exit rc=4294967295

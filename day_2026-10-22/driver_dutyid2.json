@@ -1,0 +1,23 @@
+{
+ "run": "dutyid2",
+ "a_cmd": ".\\cpp_controller.exe --mode openloop --play design_rundutyid_burst16.csv --output-count 8 --capture capture_rig_rundutyid2.csv",
+ "b_cmd": ".\\rig\\2_loop.ps1 -RZ2 10.1.0.100 -InputChannels 64 -TimeoutMs 10 -TickFrames 6 -Run dutyid2 -Design design_rundutyid_burst16.csv -Capture capture_rig_rundutyid2.csv",
+ "t_start": "00:09:01",
+ "t_go": "00:11:01",
+ "secs": 419.6,
+ "b_rc": 0,
+ "controller": "controller exit rc=0",
+ "loop_summary": [
+  "Exit reason: reached max control ticks (30360).",
+  "Summary: packets=30360 controlTicks=30360 droppedControlTicks=0 finalBuffered=65536/65536 nominalWindowSamples=6 minWindowSamples=6 undersampledWindows=0 channelMode=exact(in=64 card=64)",
+  "Localhost summary: submitted=30360 replies=30359 failures=0 timeouts=0 staleDropped=0 skippedWhileBusy=0 freshTicks=30359 heldTicks=0 zeroTicks=1 freshReplyTransitions=30359 policyTransitions=2 inFlight=true lastReplySeq=30359",
+  "Exit reason: reached max control ticks (30360).",
+  "Summary: packets=30360 controlTicks=30360 droppedControlTicks=0 finalBuffered=65536/65536 nominalWindowSamples=6",
+  "Localhost summary: submitted=30360 replies=30359 failures=0 timeouts=0 staleDropped=0 skippedWhileBusy=0"
+ ],
+ "fatal": [],
+ "liveness": [
+  "y-liveness: LIVE     capture_rig_rundutyid2.csv  rows 3038  dead ch 0/64  median|y| 3.27e-05  banks ch1-32=3.2e-05 ch33-64=3.3e-05"
+ ],
+ "t_end": "00:16:00"
+}

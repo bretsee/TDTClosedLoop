@@ -238,6 +238,94 @@ def fig_plan14():
 # ---------------------------------------------------------------------------
 # deck
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# acute #3 results (2026-10-14) -- every number from day_2026-10-14/analysis/*.json
+# and galleries/<block>/gate_*.json; nothing typed in.
+# ---------------------------------------------------------------------------
+GAL = REPO / "galleries"
+AN14 = DAY14 / "analysis"
+
+
+def fig_day14_timeline():
+    """What actually happened on 10-14, from the block ledger times."""
+    ev = [
+        ("09:30-16:20", "induction, two craniotomies, both arrays in (solo); no auditory confirmation possible", "warn"),
+        ("20:07", "first recording: cortical gate GO on amplitude but 63/64-ch footprint (common-mode)", "warn"),
+        ("20:34 / 20:46", "reference re-seated, array +600 um: focal ch47 response appears; accepted", "ok"),
+        ("21:15", "thalamic gate depth 1: 720/720 pulses delivered, 0/8 pairs evoke cortex", "fail"),
+        ("21:36", "re-probe after reposition: VOID (cortical stream zero; liveness alarm caught it)", "fail"),
+        ("21:45", "re-probe 2: delivered 240/240, 0/8 pairs", "fail"),
+        ("21:53-22:14", "switch to the touch battery: D1 P1 MP LP P3 SHAM, 150 thwacks each", "ok"),
+        ("22:30", "all blocks ingested, templates written, ledger + notebook + archive", "ok"),
+        ("10-15", "cortical array found physically broken -> the whole day explained", "ok"),
+    ]
+    with dk.deck_style() as plt:
+        fig, ax = dk.new_fig("WIDE")
+        y = np.arange(len(ev))[::-1]
+        for yi, (when, what, kind) in zip(y, ev):
+            ax.scatter([0], [yi], s=130, color=dk.COLOR[kind], zorder=3)
+            ax.text(0.05, yi, f"{when}   {what}", va="center", fontsize=10.5)
+        ax.plot([0, 0], [y.min(), y.max()], color=dk.AXIS, lw=2, zorder=1)
+        ax.set_xlim(-0.1, 4); ax.set_ylim(-0.7, len(ev) - 0.3); ax.axis("off")
+        ax.set_title("Acute #3, Wednesday 10-14: late start, two gates, one diagnosis")
+        dk.save_fig(fig, png("day14"))
+
+
+def fig_thal_gate(j1, j2):
+    """Per-pair evoked z at both thalamic positions, with the RESPONSIVE threshold."""
+    with dk.deck_style() as plt:
+        fig, ax = dk.new_fig("WIDE")
+        pairs = [e["pair"] for e in j1["per_pair"]]
+        x = np.arange(len(pairs)); w = 0.38
+        z1 = [e.get("z", 0.0) for e in j1["per_pair"]]
+        z2 = {e["pair"]: e.get("z", 0.0) for e in j2["per_pair"]}
+        ax.bar(x - w / 2, z1, w, color=dk.CAT[0], label="position 1 (acute-2 coordinates), 13-25 uA, 90 probes/pair")
+        ax.bar(x + w / 2, [z2.get(p, 0.0) for p in pairs], w, color=dk.CAT[1], label="position 2 (repositioned), 18-30 uA, 30 probes/pair")
+        ax.axhline(j1["thresholds"]["z_resp"], color=dk.COLOR["fail"], ls="--", lw=1.2)
+        ax.text(len(pairs) - 0.5, j1["thresholds"]["z_resp"] + 0.3, "RESPONSIVE threshold (z = %g)" % j1["thresholds"]["z_resp"], ha="right", fontsize=9, color=dk.COLOR["fail"])
+        ax.set_xticks(x); ax.set_xticklabels(["pair %d\n%.1f mm" % (e["pair"], e.get("tip_mm") or 0) for e in j1["per_pair"]])
+        ax.set_ylabel("best-channel evoked z (6-30 ms)"); ax.set_ylim(0, 8)
+        ax.legend(loc="upper left", fontsize=9)
+        ax.set_title("Thalamic gate: no pair evoked the (broken) cortical array at either position; acute #2 gave 8/8 here")
+        dk.save_fig(fig, png("thalgate"))
+
+
+def fig_battery(bat):
+    """Per-site touch response: raw common-mode vs re-referenced ch47 vs row-5 mean; SHAM shows the thwacker artifact."""
+    sites = ["D1", "P1", "MP", "LP", "P3", "SHAM"]
+    with dk.deck_style() as plt:
+        fig, (a1, a2) = dk.new_fig("WIDE", nrows=1, ncols=2, gridspec_kw={"width_ratios": [1.15, 1]})
+        x = np.arange(len(sites)); w = 0.27
+        a1.bar(x - w, [bat[s]["common_mode_uv"] for s in sites], w, color=dk.MUTED, label="common-mode wave (all 63 ch, |peak| median)")
+        a1.bar(x, [abs(bat[s]["car_ch47_uv"]) for s in sites], w, color=dk.CAT[0], label="ch47 own signal (re-referenced, |peak|)")
+        a1.bar(x + w, [abs(bat[s]["car_row5_uv"]) for s in sites], w, color=dk.CAT[2], label="row 5 (ch33-38) own signal, mean |peak|")
+        a1.axhline(abs(bat["SHAM"]["car_ch47_uv"]), color=dk.COLOR["fail"], ls="--", lw=1.2)
+        a1.text(len(sites) - 0.6, abs(bat["SHAM"]["car_ch47_uv"]) + 3, "SHAM level on ch47 = thwacker artifact (%.0f uV)" % abs(bat["SHAM"]["car_ch47_uv"]), fontsize=8.5, color=dk.COLOR["fail"], ha="right")
+        a1.set_xticks(x); a1.set_xticklabels(sites); a1.set_ylabel("evoked peak (uV)"); a1.legend(fontsize=8, loc="upper right")
+        a1.set_title("Touch battery, 150 thwacks per site")
+        for s_, c in zip(sites, [dk.CAT[0], dk.CAT[1], dk.CAT[2], dk.CAT[3], dk.MUTED, dk.COLOR["fail"]]):
+            a2.plot(bat[s_]["t_ms"], bat[s_]["car_ch47_trace"], color=c, lw=1.4 if s_ in ("MP", "D1", "SHAM") else 0.9, label=s_)
+        a2.axvspan(8, 45, color=dk.GRID, lw=0); a2.axvline(0, color=dk.AXIS, ls="--", lw=0.8)
+        a2.set_xlim(-40, 200); a2.set_xlabel("ms from touch onset"); a2.set_ylabel("ch47 minus array median (uV)")
+        a2.legend(fontsize=8, ncol=2); a2.set_title("ch47 re-referenced mean: MP and D1 carry a negative wave")
+        dk.save_fig(fig, png("battery"))
+
+
+def fig_lit_depth():
+    """Reported forepaw-VPL depths in the literature vs our tip lengths (docs/ACUTE4_LOCALIZATION_METHODS.md)."""
+    rows = [("Choi 2016 (hand VPL)", 6.0, 7.0), ("Chao 2014 (forepaw VP)", 5.0, 6.0), ("Aguilar 2008 (VPM/VPL)", 5.0, 7.0),
+            ("Jiang 2015 (hindpaw VPL)", 6.3, 6.65), ("ours: tip lengths, acute #2 = 8/8 responsive", 7.4, 8.0), ("ours: acute #3 (0/8, broken readout)", 7.4, 8.0)]
+    with dk.deck_style() as plt:
+        fig, ax = dk.new_fig("WIDE")
+        for i, (lab, lo, hi) in enumerate(rows):
+            c = dk.CAT[0] if lab.startswith("ours: tip") else (dk.COLOR["fail"] if lab.startswith("ours: acute #3") else dk.MUTED)
+            ax.barh(i, hi - lo, left=lo, color=c, height=0.55)
+            ax.text(hi + 0.05, i, lab, va="center", fontsize=10)
+        ax.set_yticks([]); ax.set_xlim(4.5, 11); ax.set_xlabel("depth below skull / dura (mm)  -- reference point differs between reports")
+        ax.invert_yaxis(); ax.set_title("Where forepaw VPL is reported vs where our tips sit: re-check the depth reference before acute #4")
+        dk.save_fig(fig, png("litdepth"))
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--skip-results", action="store_true")
@@ -261,17 +349,18 @@ def main():
     fig_plan14()
 
     d = dk.Deck(footer="Closed-loop thalamic stim -> S1  |  weekly 2026-10-16")
-    d.title_slide("Closed-loop MPC: rig recovered, day rehearsed, acute #3",
+    d.title_slide("Closed-loop MPC: rig recovered, day rehearsed, acute #3 diagnosed",
                   "Weekly update, 2026-10-16",
                   ["Rig back on the network through a USB adapter; every bring-up check passes",
                    "Full simulated rehearsal of the acute-3 runbook caught and fixed two server-side defects",
-                   "Delivery checker, QP conditioning and the artifact-aware re-analysis of acute #2 verified",
-                   "Acute #3 ran Wed 10-14 (results section)"])
+                   "Acute #3 (Wed 10-14): the cortical array was electrically broken before the first recording; the gates saw it, the stim path was verified, a six-site touch battery was banked",
+                   "Acute #4 plan: pre-implant array verification and a localization protocol from the literature"])
     d.agenda_slide("Agenda", [("Rig back online", "dead onboard port -> USB adapter, verified end to end"),
                               ("Rehearsal of the surgery day", "what the sim dress caught"),
                               ("Tooling verified offline", "delivery checker, QP cap, artifact-aware tracking"),
                               ("Acute #3 preparation", "runbook, safety checklist, data path"),
-                              ("Acute #3 results", "placeholder until the blocks are analysed")])
+                              ("Acute #3: an instrumentation day", "what happened, the diagnosis, what was banked"),
+                              ("Acute #4: verify first, then localize", "literature survey + protocol")])
 
     d.section_slide("Rig back online", kicker="network path")
     d.stat_slide("Verified path to the RZ2 through the USB adapter",
@@ -322,19 +411,75 @@ def main():
                   col_widths=[1.6, 3.4, 1.0],
                   takeaway="Pre-induction checklist in the runbook: stimulator voltage, PZ2 charger, reference wiring, electrode map, impedances, monitoring interval.")
 
-    d.section_slide("Acute #3 results", kicker="Wednesday 10-14")
-    if not args.skip_results and (DAY14 / "BLOCK_LEDGER_2026-10-14.md").exists():
-        d.bullets_slide("Acute #3: results", [(0, "ledger found -- results slides to be built from day_2026-10-14/")])
-    else:
-        d.bullets_slide("Acute #3: results to be added after the day",
-                        [(0, "gate verdicts and depth ladder"), (0, "burst-ladder efficacy and eff-rank per burst length; operating gap"),
-                         (0, "MIMO fit, rank gate, control channels"), (0, "MPC vs Choi r1 (+ early/late repeat), tiers reached"),
-                         (0, "run audits: every run PASS/WARN/FAIL")],
-                        takeaway="This section is filled from the acute-3 blocks on Thursday.")
+    # ---------------- acute #3 results ----------------
+    j1 = dk.jload(GAL / "BSCL20260909BU-261014-211506" / "gate_thalamic.json")
+    j2 = dk.jload(GAL / "BSCL20260909BU-261014-214559" / "gate_thalamic.json")
+    bat = dk.jload(AN14 / "battery_sites.json")
+    health = [h for h in dk.jload(AN14 / "array_health.json") if "error" not in h]
+    alive = dk.jload(AN14 / "array_alive_summary.json")
+    g1 = dk.jload(GAL / "BSCL20260909BU-261014-200749" / "gate_cortical.json")
+    fig_day14_timeline(); fig_thal_gate(j1, j2); fig_battery(bat); fig_lit_depth()
+    a2 = [h for h in health if h["label"].startswith("acute2")]
+    a3 = [h for h in health if h["label"].startswith("10-14")]
+    corr2 = (min(h["med_pair_corr"] for h in a2), max(h["med_pair_corr"] for h in a2))
+    corr3 = (min(h["med_pair_corr"] for h in a3), max(h["med_pair_corr"] for h in a3))
+    res2 = np.median([h["resid_rms_median"] for h in a2]); res3 = np.median([h["resid_rms_median"] for h in a3])
+    n_alive2 = alive["acute2 09-10 22:10 (last block)"]["n_alive"]; n_alive3a = alive["acute3 10-14 20:07 (first block)"]["n_alive"]; n_alive3b = alive["acute3 10-14 22:00 (MP)"]["n_alive"]
 
-    d.bullets_slide("Next", [(0, "Thursday: ingest the acute-3 blocks, artifact-aware tracking on the new arms, results deck"),
-                             (0, "Closed: the 3.6 s loop stall was the rehearsal driver's pipe; zero dropped ticks in every rerun"),
-                             (0, "Open item: block transfer needs a direct link between the Synapse and rig PCs (SMB over the school Wi-Fi dropped after 20 min on 10-13; USB drive by hand on 10-14; both PCs lost their Ethernet ports in one event, check the lab switch)")])
+    d.section_slide("Acute #3: an instrumentation day", kicker="Wednesday 10-14")
+    d.fig_slide("The day: late start, every safety tool fired, no thalamic plant", png("day14"),
+                takeaway="Solo surgeon at the table with the engineer lane on the helper card. The gates, the audit, the liveness alarm and the delivery checker all did their job in real time; what they reported was a broken recording array.")
+    d.fig_slide("Cortical gate, first block: GO on amplitude and reliability, but the footprint is the whole array",
+                dk.need(GAL / "BSCL20260909BU-261014-200749" / "gate_cortical.png"),
+                takeaway=f"z {g1['best_z']:.0f}, split-half {g1['split_half']:.2f}, latency {g1['best_latency_ms']:.0f} ms, but {g1['footprint_channels']}/64 channels at half-max with one identical waveform: the touch response was arriving through the reference, not the contacts. Flagged at 20:10, before any stim.")
+    d.fig_slide("Re-referenced (minus array median): what the contacts themselves saw",
+                dk.need(GAL / "BSCL20260909BU-261014-204658" / "avg" / "avg_car_grid.png"),
+                takeaway="Final cortical position (+600 um): one channel (47) with a focal, repeatable response and a faint copy on 26/30/31; 60 of 64 channels contribute nothing of their own.")
+    d.fig_slide("Post hoc: which contacts still carried their own signal", png("alive_maps"),
+                takeaway=f"Same array, differential RMS per channel. Acute #2 last block: {n_alive2}/64 channels above 10 uV. Acute #3 first block: {n_alive3a}/64, by the battery {n_alive3b}/64; rows 1-2 (ch1-16) and 7-8 gone as a bank = connector / lead damage, not tissue.")
+    d.fig_slide("The signature is there from the first minute of 10-14", png("array_metrics"),
+                takeaway=f"Median pairwise channel correlation {corr3[0]:.3f}-{corr3[1]:.3f} on 10-14 vs {corr2[0]:.2f}-{corr2[1]:.2f} on 09-10; channel-own RMS {res3:.0f} vs {res2:.0f} uV. The break happened between the end of acute #2 (09-10 22:10, still {n_alive2}/64) and the first 10-14 recording.")
+    d.fig_slide("Inside the day: 10-second windows, every block", png("array_timeline"),
+                takeaway="No step inside any block and none between blocks: handling, the +600 um move and the thalamic repositions changed nothing. The 10-13 bench block was recorded in air (pure mains) and could not have shown it; a saline impedance check would have.")
+    d.fig_slide("Thalamic gate, two positions: stim verified, no readout to see it", png("thalgate"),
+                takeaway=f"Position 1: {j1['n_probes']} probes, delivery verified 720/720, pair mapping confirmed on all 8 pairs, 0 responsive. Position 2: 240/240, 0 responsive. With {n_alive3b} live contacts and the forepaw focus on one of them, the gate had no way to see VPL; the array, not the target, is the unknown.")
+    d.fig_slide("Banked: a six-site touch battery with a SHAM control", png("battery"),
+                takeaway=f"MP {bat['MP']['car_ch47_uv']:+.0f} uV and D1 {bat['D1']['car_ch47_uv']:+.0f} uV on ch47 are genuine focal responses; P1/LP/P3 on ch47 sit at the SHAM level ({bat['SHAM']['car_ch47_uv']:+.0f} uV at {bat['SHAM']['car_ch47_lat_ms']:.0f} ms = thwacker coupling into one contact). Row 5 carries a small real palm map ({bat['LP']['car_row5_uv']:+.0f} uV LP). Templates are banked but must be rebuilt re-referenced.")
+    d.table_slide("What acute #3 established", ["question", "answer", "evidence"],
+                  [["Was the stim path intact?", "yes", "720/720 and 240/240 pulses on the wire, mapping exact, IZ2 blips per pair, battery charged"],
+                   ["Was the recording path intact?", "amplifier yes, array no", "liveness LIVE on every run except one PZ2 drop (caught); array common-mode from the first block"],
+                   ["Was the thalamic target wrong?", "unknown, untestable that day", "the only readout had ~21 live contacts and one focal channel"],
+                   ["Did the rig-day tooling work under solo conditions?", "yes", "gates, audit, delivery check, liveness alarm, ledger, archive all ran; one void run cost 10 min"],
+                   ["What is reusable?", "touch battery + templates, the diagnosis, the runbook", "6 blocks, SHAM-controlled; array-health metrics now a pre-implant check"]],
+                  col_widths=[2.2, 1.6, 3.8],
+                  takeaway="The experiment that did not happen was blocked by one broken component that no step in the protocol tested before implant. That is the fix.")
+
+    d.section_slide("Acute #4: verify first, then localize", kicker="literature survey + protocol")
+    d.table_slide("Array integrity before anything touches the brain (literature)", ["check", "criterion reported", "source"],
+                  [["1 kHz impedance census, saline, both arrays", "Utah pre-implant mean 305 kOhm; open > 2.5 MOhm; connector short = all ch < 50-100 kOhm; 48% of failures acute mechanical, 83% of those connector", "Barrese 2013, J Neural Eng 10:066014"],
+                   ["Second frequency (< 100 Hz magnitude + phase)", "1 kHz alone did not separate working from broken leads; opens = |Z| > 1e8 Ohm below 100 Hz, phase is the discriminator", "Caldwell 2018, J Neural Eng (rat Utah)"],
+                   ["Synapse runtime impedance -> CSV in the block", "500 ms sine per channel, user thresholds, green/yellow/red, Ref-to-ground and Gnd impedance on the PZ5", "TDT Synapse docs (IZ2, PZ5 fast facts)"],
+                   ["Saline bench protocol", "contacts + ref + gnd fully submerged, no bubbles (bubbles covered 44% of contacts in one study), inspect under magnification", "Emory CAMBER impedance protocol 2023"],
+                   ["Viability after insertion", "spikes p-p >= 40 uV and noise < 150 uV on the majority of channels before the second array goes in", "Barrese 2013"]],
+                  col_widths=[2.2, 4.0, 1.6],
+                  takeaway="On 10-14 the bench block was in air and the Phase-0 impedance item was unchecked. Either check would have been a NO-GO before induction.")
+    d.fig_slide("Target depth: the literature puts forepaw VPL shallower than our tips", png("litdepth"),
+                takeaway="Choi 2016: VPL hand region 2.8 L, 2.4 P, depth 6-7 mm; Chao 2014: AP -2.7, ML 2.5, DV 5-6; Aguilar 2008: D 5-7. Our acute #2 found 8/8 responsive at 7.4-8.0 mm tips, so the reference plane (skull vs dura, tip vs shank) must be pinned down and written on the runbook, not re-derived on the day.")
+    d.table_slide("Localization protocol for acute #4 (from the survey)", ["step", "method", "criterion", "source"],
+                  [["descent", "audio + forepaw tap while advancing from 5.5 mm; recording channel on the stim array or a separate tungsten", "forepaw units / multiunit hash at target, tactile latency 5-9 ms; fine-tune depth to maximize responsive shanks", "Choi 2016; Chao 2014; Aguilar 2008"],
+                   ["final test", "single-pulse bipolar VPL stim 20-30 uA, 200 us/phase", "S1 evoked response at 2-5 ms on >= 2 pairs (existing thalamic gate)", "Choi 2016; Jiang 2015"],
+                   ["delivery proof", "IZ2 MonBank output-voltage trace per stim channel", "non-railing pulse (< +/-10 V compliance) on every active channel", "TDT IZ2 docs"],
+                   ["reference", "cortical ref / gnd on a skull screw, verified by the cortical gate", "common-mode evoked wave < 20 uV; footprint < 16 ch; pairwise corr < 0.95", "this week's data"],
+                   ["post hoc", "DiI-coat the thalamic array; 30 uA / 30 s lesion at the end", "track in histology closes the loop on coordinates", "DiCarlo 1996; Chao 2014"]],
+                  col_widths=[1.1, 3.0, 2.8, 1.5],
+                  takeaway="Full list with URLs: docs/ACUTE4_LOCALIZATION_METHODS.md. Antidromic identification and hippocampal landmarks were reviewed and set aside (need a live S1 readout / no VPL protocol found).")
+
+    d.bullets_slide("Next", [(0, "Array: inspect / repair or replace the 64-ch cortical array; saline impedance at two frequencies becomes a logged Phase-0 artifact for every array"),
+                             (0, "Gate: add footprint and pairwise-correlation rules to placement_gate so a broken array is a NO-GO, not a GO"),
+                             (0, "Controller: common-median re-reference option for y extraction (today's y would have been the reference site)"),
+                             (0, "Data: rebuild the 10-14 touch templates re-referenced; keep MP / D1 as the usable targets"),
+                             (0, "Acute #4: date after the array is verified; descent protocol with audio + tap and the depth reference written down"),
+                             (0, "Open: direct link between the Synapse and rig PCs (USB drive by hand on 10-14, 2-3 min per block)")])
     out = d.save(OUT)
     print(f"deck: {out}")
     return 0

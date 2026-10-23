@@ -83,14 +83,20 @@ def resolve_block_dir(p):
     return p
 
 
-def block_dirs(data_root, depth=2):
-    """All folders under data_root (depth <= 2) that contain a .tsq, newest first."""
-    found = []
-    for tsq in glob.glob(os.path.join(data_root, "*", "*.tsq")) + \
-            glob.glob(os.path.join(data_root, "*", "*", "*.tsq")):
-        found.append(os.path.dirname(tsq))
-    found = sorted(set(found), key=os.path.getmtime, reverse=True)
-    return found
+def block_dirs(data_root, depth=3):
+    """All folders under data_root (depth <= 3) that contain a .tsq, newest first
+    (by the .tsq's own mtime, not the folder's: a hand-copied folder gets the copy
+    time, the .tsq keeps Synapse's close time).
+    Depth 3 since 2026-10-21: on 10-14 every block landed as
+    Desktop\\Data\\Acute_101426\\<blk>\\<blk>\\*.tsq and --newest (depth 2) missed
+    all of them, so every check line that day needed --block."""
+    found = {}
+    for k in range(1, depth + 1):
+        pat = os.path.join(data_root, *(["*"] * k), "*.tsq")
+        for tsq in glob.glob(pat):
+            d = os.path.dirname(tsq)
+            found[d] = max(found.get(d, 0.0), os.path.getmtime(tsq))
+    return sorted(found, key=found.get, reverse=True)
 
 
 def newest_block_dir(data_root):

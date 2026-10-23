@@ -1,0 +1,570 @@
+{
+  "block": "BSCL20260909BU-261022-235620",
+  "block_path": "C:/Users/brets/Desktop/Data/Acute_102226/BSCL20260909BU-261022-235620",
+  "mode": "probe",
+  "fs": 610.3516,
+  "n_channels": 64,
+  "n_trials_total": 977,
+  "groups": {
+    "pair1_amp15": {
+      "n_trials": 12,
+      "peak_uv": 111.5,
+      "latency_ms": 59.0,
+      "best_channel_1based": 12,
+      "split_half_corr": -0.201
+    },
+    "pair1_amp16": {
+      "n_trials": 12,
+      "peak_uv": -277.5,
+      "latency_ms": 140.9,
+      "best_channel_1based": 35,
+      "split_half_corr": -0.195
+    },
+    "pair1_amp17": {
+      "n_trials": 10,
+      "peak_uv": 219.4,
+      "latency_ms": 116.3,
+      "best_channel_1based": 63,
+      "split_half_corr": 0.096
+    },
+    "pair1_amp18": {
+      "n_trials": 9,
+      "peak_uv": -464.3,
+      "latency_ms": 60.6,
+      "best_channel_1based": 61,
+      "split_half_corr": 0.021
+    },
+    "pair1_amp19": {
+      "n_trials": 17,
+      "peak_uv": -144.4,
+      "latency_ms": 41.0,
+      "best_channel_1based": 61,
+      "split_half_corr": 0.133
+    },
+    "pair1_amp20": {
+      "n_trials": 12,
+      "peak_uv": -308.4,
+      "latency_ms": 170.4,
+      "best_channel_1based": 60,
+      "split_half_corr": 0.529
+    },
+    "pair1_amp21": {
+      "n_trials": 7,
+      "peak_uv": 194.5,
+      "latency_ms": 18.0,
+      "best_channel_1based": 38,
+      "split_half_corr": 0.063
+    },
+    "pair1_amp22": {
+      "n_trials": 15,
+      "peak_uv": -220.6,
+      "latency_ms": 142.5,
+      "best_channel_1based": 61,
+      "split_half_corr": 0.569
+    },
+    "pair1_amp23": {
+      "n_trials": 17,
+      "peak_uv": 174.4,
+      "latency_ms": 9.8,
+      "best_channel_1based": 61,
+      "split_half_corr": -0.094
+    },
+    "pair1_amp24": {
+      "n_trials": 11,
+      "peak_uv": -187.3,
+      "latency_ms": 90.1,
+      "best_channel_1based": 61,
+      "split_half_corr": -0.252
+    },
+    "pair1_amp25": {
+      "n_trials": 22,
+      "peak_uv": 161.8,
+      "latency_ms": 49.2,
+      "best_channel_1based": 38,
+      "split_half_corr": 0.144
+    },
+    "pair1_amp26": {
+      "n_trials": 6,
+      "peak_uv": -172.0,
+      "latency_ms": 170.4,
+      "best_channel_1based": 57,
+      "split_half_corr": 0.079
+    },
+    "pair1_amp27": {
+      "n_trials": 17,
+      "peak_uv": -214.5,
+      "latency_ms": 81.9,
+      "best_channel_1based": 14,
+      "split_half_corr": -0.228
+    },
+    "pair1_amp28": {
+      "n_trials": 15,
+      "peak_uv": -267.8,
+      "latency_ms": 24.6,
+      "best_channel_1based": 19,
+      "split_half_corr": 0.284
+    },
+    "pair1_amp29": {
+      "n_trials": 9,
+      "peak_uv": 195.0,
+      "latency_ms": 9.8,
+      "best_channel_1based": 12,
+      "split_half_corr": -0.421
+    },
+    "pair1_amp30": {
+      "n_trials": 7,
+      "peak_uv": -273.6,
+      "latency_ms": 0.0,
+      "best_channel_1based": 60,
+      "split_half_corr": -0.206
+    },
+    "pair2_amp15": {
+      "n_trials": 1,
+      "peak_uv": -361.8,
+      "latency_ms": 181.9,
+      "best_channel_1based": 64,
+      "split_half_corr": null
+    },
+    "pair2_amp16": {
+      "n_trials": 8,
+      "peak_uv": -158.6,
+      "latency_ms": 116.3,
+      "best_channel_1based": 12,
+      "split_half_corr": 0.086
+    },
+    "pair2_amp17": {
+      "n_trials": 17,
+      "peak_uv": -139.2,
+      "latency_ms": 162.2,
+      "best_channel_1based": 61,
+      "split_half_corr": -0.346
+    },
+    "pair2_amp18": {
+      "n_trials": 16,
+      "peak_uv": -190.6,
+      "latency_ms": 85.2,
+      "best_channel_1based": 61,
+      "split_half_corr": -0.055
+    },
+    "pair2_amp19": {
+      "n_trials": 8,
+      "peak_uv": -446.9,
+      "latency_ms": 109.8,
+      "best_channel_1based": 61,
+      "split_half_corr": -0.246
+    },
+    "pair2_amp20": {
+      "n_trials": 15,
+      "peak_uv": -292.9,
+      "latency_ms": 80.3,
+      "best_channel_1based": 61,
+      "split_half_corr": 0.06
+    },
+    "pair2_amp21": {
+      "n_trials": 20,
+      "peak_uv": -204.9,
+      "latency_ms": 13.1,
+      "best_channel_1based": 61,
+      "split_half_corr": -0.293
+    },
+    "pair2_amp22": {
+      "n_trials": 8,
+      "peak_uv": -164.1,
+      "latency_ms": 193.3,
+      "best_channel_1based": 39,
+      "split_half_corr": -0.001
+    },
+    "pair2_amp23": {
+      "n_trials": 9,
+      "peak_uv": 139.0,
+      "latency_ms": 186.8,
+      "best_channel_1based": 38,
+      "split_half_corr": -0.74
+    },
+    "pair2_amp24": {
+      "n_trials": 16,
+      "peak_uv": 153.9,
+      "latency_ms": 196.6,
+      "best_channel_1based": 4,
+      "split_half_corr": 0.285
+    },
+    "pair2_amp25": {
+      "n_trials": 8,
+      "peak_uv": -449.4,
+      "latency_ms": 198.2,
+      "best_channel_1based": 24,
+      "split_half_corr": 0.467
+    },
+    "pair2_amp26": {
+      "n_trials": 10,
+      "peak_uv": -240.6,
+      "latency_ms": 91.8,
+      "best_channel_1based": 37,
+      "split_half_corr": 0.531
+    },
+    "pair2_amp27": {
+      "n_trials": 11,
+      "peak_uv": -147.3,
+      "latency_ms": 149.1,
+      "best_channel_1based": 51,
+      "split_half_corr": -0.487
+    },
+    "pair2_amp28": {
+      "n_trials": 10,
+      "peak_uv": -267.2,
+      "latency_ms": 144.2,
+      "best_channel_1based": 12,
+      "split_half_corr": 0.394
+    },
+    "pair2_amp29": {
+      "n_trials": 12,
+      "peak_uv": -187.6,
+      "latency_ms": 165.5,
+      "best_channel_1based": 60,
+      "split_half_corr": 0.263
+    },
+    "pair2_amp30": {
+      "n_trials": 9,
+      "peak_uv": -169.0,
+      "latency_ms": 173.7,
+      "best_channel_1based": 12,
+      "split_half_corr": -0.103
+    },
+    "pair4_amp15": {
+      "n_trials": 6,
+      "peak_uv": -560.1,
+      "latency_ms": 0.0,
+      "best_channel_1based": 61,
+      "split_half_corr": 0.067
+    },
+    "pair4_amp16": {
+      "n_trials": 9,
+      "peak_uv": -158.4,
+      "latency_ms": 198.2,
+      "best_channel_1based": 57,
+      "split_half_corr": 0.615
+    },
+    "pair4_amp17": {
+      "n_trials": 13,
+      "peak_uv": -390.7,
+      "latency_ms": 168.8,
+      "best_channel_1based": 61,
+      "split_half_corr": 0.299
+    },
+    "pair4_amp18": {
+      "n_trials": 14,
+      "peak_uv": 212.8,
+      "latency_ms": 167.1,
+      "best_channel_1based": 15,
+      "split_half_corr": 0.249
+    },
+    "pair4_amp19": {
+      "n_trials": 18,
+      "peak_uv": -214.7,
+      "latency_ms": 1.6,
+      "best_channel_1based": 61,
+      "split_half_corr": -0.2
+    },
+    "pair4_amp20": {
+      "n_trials": 13,
+      "peak_uv": 122.3,
+      "latency_ms": 77.0,
+      "best_channel_1based": 60,
+      "split_half_corr": -0.136
+    },
+    "pair4_amp21": {
+      "n_trials": 12,
+      "peak_uv": -235.2,
+      "latency_ms": 195.0,
+      "best_channel_1based": 33,
+      "split_half_corr": 0.392
+    },
+    "pair4_amp22": {
+      "n_trials": 15,
+      "peak_uv": -124.5,
+      "latency_ms": 198.2,
+      "best_channel_1based": 57,
+      "split_half_corr": -0.237
+    },
+    "pair4_amp23": {
+      "n_trials": 15,
+      "peak_uv": -233.0,
+      "latency_ms": 121.2,
+      "best_channel_1based": 35,
+      "split_half_corr": 0.218
+    },
+    "pair4_amp24": {
+      "n_trials": 7,
+      "peak_uv": 238.3,
+      "latency_ms": 68.8,
+      "best_channel_1based": 60,
+      "split_half_corr": -0.605
+    },
+    "pair4_amp25": {
+      "n_trials": 12,
+      "peak_uv": -174.1,
+      "latency_ms": 50.8,
+      "best_channel_1based": 12,
+      "split_half_corr": 0.072
+    },
+    "pair4_amp26": {
+      "n_trials": 17,
+      "peak_uv": -226.4,
+      "latency_ms": 27.9,
+      "best_channel_1based": 35,
+      "split_half_corr": 0.118
+    },
+    "pair4_amp27": {
+      "n_trials": 8,
+      "peak_uv": -131.0,
+      "latency_ms": 178.6,
+      "best_channel_1based": 57,
+      "split_half_corr": -0.032
+    },
+    "pair4_amp28": {
+      "n_trials": 11,
+      "peak_uv": -368.3,
+      "latency_ms": 172.0,
+      "best_channel_1based": 61,
+      "split_half_corr": -0.242
+    },
+    "pair4_amp29": {
+      "n_trials": 9,
+      "peak_uv": -124.3,
+      "latency_ms": 195.0,
+      "best_channel_1based": 60,
+      "split_half_corr": -0.563
+    },
+    "pair4_amp30": {
+      "n_trials": 9,
+      "peak_uv": -272.2,
+      "latency_ms": 6.6,
+      "best_channel_1based": 53,
+      "split_half_corr": 0.331
+    },
+    "pair7_amp15": {
+      "n_trials": 9,
+      "peak_uv": -243.8,
+      "latency_ms": 149.1,
+      "best_channel_1based": 8,
+      "split_half_corr": 0.08
+    },
+    "pair7_amp16": {
+      "n_trials": 15,
+      "peak_uv": -249.4,
+      "latency_ms": 93.4,
+      "best_channel_1based": 12,
+      "split_half_corr": 0.323
+    },
+    "pair7_amp17": {
+      "n_trials": 16,
+      "peak_uv": -789.2,
+      "latency_ms": 134.3,
+      "best_channel_1based": 61,
+      "split_half_corr": 0.769
+    },
+    "pair7_amp18": {
+      "n_trials": 14,
+      "peak_uv": -264.6,
+      "latency_ms": 72.1,
+      "best_channel_1based": 61,
+      "split_half_corr": -0.079
+    },
+    "pair7_amp19": {
+      "n_trials": 12,
+      "peak_uv": -149.1,
+      "latency_ms": 41.0,
+      "best_channel_1based": 57,
+      "split_half_corr": -0.165
+    },
+    "pair7_amp20": {
+      "n_trials": 11,
+      "peak_uv": -314.7,
+      "latency_ms": 60.6,
+      "best_channel_1based": 14,
+      "split_half_corr": -0.131
+    },
+    "pair7_amp21": {
+      "n_trials": 13,
+      "peak_uv": -217.5,
+      "latency_ms": 134.3,
+      "best_channel_1based": 61,
+      "split_half_corr": -0.014
+    },
+    "pair7_amp22": {
+      "n_trials": 14,
+      "peak_uv": -139.4,
+      "latency_ms": 175.3,
+      "best_channel_1based": 26,
+      "split_half_corr": -0.519
+    },
+    "pair7_amp23": {
+      "n_trials": 16,
+      "peak_uv": -183.1,
+      "latency_ms": 181.9,
+      "best_channel_1based": 56,
+      "split_half_corr": 0.712
+    },
+    "pair7_amp24": {
+      "n_trials": 19,
+      "peak_uv": -153.9,
+      "latency_ms": 37.7,
+      "best_channel_1based": 61,
+      "split_half_corr": 0.512
+    },
+    "pair7_amp25": {
+      "n_trials": 18,
+      "peak_uv": -91.1,
+      "latency_ms": 70.5,
+      "best_channel_1based": 14,
+      "split_half_corr": 0.004
+    },
+    "pair7_amp26": {
+      "n_trials": 8,
+      "peak_uv": -428.2,
+      "latency_ms": 198.2,
+      "best_channel_1based": 12,
+      "split_half_corr": -0.044
+    },
+    "pair7_amp27": {
+      "n_trials": 17,
+      "peak_uv": -254.3,
+      "latency_ms": 86.8,
+      "best_channel_1based": 12,
+      "split_half_corr": -0.091
+    },
+    "pair7_amp28": {
+      "n_trials": 11,
+      "peak_uv": -169.1,
+      "latency_ms": 55.7,
+      "best_channel_1based": 61,
+      "split_half_corr": 0.437
+    },
+    "pair7_amp29": {
+      "n_trials": 13,
+      "peak_uv": -326.3,
+      "latency_ms": 42.6,
+      "best_channel_1based": 43,
+      "split_half_corr": 0.097
+    },
+    "pair7_amp30": {
+      "n_trials": 8,
+      "peak_uv": -232.3,
+      "latency_ms": 118.0,
+      "best_channel_1based": 35,
+      "split_half_corr": -0.318
+    },
+    "pair8_amp15": {
+      "n_trials": 3,
+      "peak_uv": 667.0,
+      "latency_ms": 50.8,
+      "best_channel_1based": 12,
+      "split_half_corr": null
+    },
+    "pair8_amp16": {
+      "n_trials": 16,
+      "peak_uv": 225.0,
+      "latency_ms": 93.4,
+      "best_channel_1based": 60,
+      "split_half_corr": 0.29
+    },
+    "pair8_amp17": {
+      "n_trials": 15,
+      "peak_uv": -321.4,
+      "latency_ms": 55.7,
+      "best_channel_1based": 61,
+      "split_half_corr": 0.31
+    },
+    "pair8_amp18": {
+      "n_trials": 15,
+      "peak_uv": -156.0,
+      "latency_ms": 39.3,
+      "best_channel_1based": 35,
+      "split_half_corr": -0.384
+    },
+    "pair8_amp19": {
+      "n_trials": 11,
+      "peak_uv": 133.5,
+      "latency_ms": 111.4,
+      "best_channel_1based": 60,
+      "split_half_corr": -0.585
+    },
+    "pair8_amp20": {
+      "n_trials": 15,
+      "peak_uv": -262.5,
+      "latency_ms": 81.9,
+      "best_channel_1based": 61,
+      "split_half_corr": 0.141
+    },
+    "pair8_amp21": {
+      "n_trials": 18,
+      "peak_uv": -208.9,
+      "latency_ms": 152.4,
+      "best_channel_1based": 61,
+      "split_half_corr": 0.094
+    },
+    "pair8_amp22": {
+      "n_trials": 12,
+      "peak_uv": -300.7,
+      "latency_ms": 103.2,
+      "best_channel_1based": 12,
+      "split_half_corr": 0.173
+    },
+    "pair8_amp23": {
+      "n_trials": 11,
+      "peak_uv": -304.3,
+      "latency_ms": 93.4,
+      "best_channel_1based": 12,
+      "split_half_corr": 0.417
+    },
+    "pair8_amp24": {
+      "n_trials": 13,
+      "peak_uv": -230.3,
+      "latency_ms": 99.9,
+      "best_channel_1based": 35,
+      "split_half_corr": 0.009
+    },
+    "pair8_amp25": {
+      "n_trials": 10,
+      "peak_uv": -359.2,
+      "latency_ms": 4.9,
+      "best_channel_1based": 61,
+      "split_half_corr": -0.395
+    },
+    "pair8_amp26": {
+      "n_trials": 9,
+      "peak_uv": 208.4,
+      "latency_ms": 129.4,
+      "best_channel_1based": 60,
+      "split_half_corr": -0.088
+    },
+    "pair8_amp27": {
+      "n_trials": 15,
+      "peak_uv": -283.2,
+      "latency_ms": 52.4,
+      "best_channel_1based": 12,
+      "split_half_corr": -0.167
+    },
+    "pair8_amp28": {
+      "n_trials": 14,
+      "peak_uv": -145.6,
+      "latency_ms": 45.9,
+      "best_channel_1based": 14,
+      "split_half_corr": -0.062
+    },
+    "pair8_amp29": {
+      "n_trials": 12,
+      "peak_uv": -221.1,
+      "latency_ms": 80.3,
+      "best_channel_1based": 57,
+      "split_half_corr": 0.334
+    },
+    "pair8_amp30": {
+      "n_trials": 10,
+      "peak_uv": 199.9,
+      "latency_ms": 78.6,
+      "best_channel_1based": 60,
+      "split_half_corr": 0.244
+    }
+  }
+}
